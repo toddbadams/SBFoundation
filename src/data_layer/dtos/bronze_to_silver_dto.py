@@ -425,7 +425,7 @@ class BronzeToSilverDTO:
         if isinstance(x, dict):
             return dto_type.from_row(x)
 
-        # JSON string payload (common after Parquet/CSV)
+        # JSON string payload (e.g., re-serialized Bronze content)
         if isinstance(x, str):
             s = x.strip()
             if not s:

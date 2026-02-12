@@ -36,7 +36,7 @@ class FMPResultMapper:
 
     @staticmethod
     def to_storage_record(result: RunResult) -> dict[str, Any]:
-        """Representation used for Parquet persistence (no payload)."""
+        """Representation used for Bronze JSON storage (no payload)."""
         return FMPResultMapper.to_serializable_dict(result, include_payload=False)
 
     @staticmethod

@@ -8,9 +8,8 @@ Usage
 -----
     python cleanup_ticker_state_partitions.py /path/to/data/root
 
-The ``data_root`` should be the same directory configured for
-``ParquetStorageRepository``.  The script removes the entire
-``control/TICKER_STATE`` directory if it exists.
+The ``data_root`` should be the root data directory for the project.
+The script removes the entire ``control/TICKER_STATE`` directory if it exists.
 """
 
 from __future__ import annotations
@@ -29,7 +28,7 @@ def cleanup(data_root: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("data_root", help="Root directory used for parquet data")
+    parser.add_argument("data_root", help="Root data directory for the project")
     args = parser.parse_args()
     cleanup(args.data_root)
 

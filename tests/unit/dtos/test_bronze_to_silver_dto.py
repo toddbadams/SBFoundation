@@ -10,8 +10,8 @@ import pandas as pd
 import pytest
 from requests.structures import CaseInsensitiveDict
 
-from data_layer.dtos.bronze_to_silver_dto import BronzeToSilverDTO
-from data_layer.dtos.company.company_dto import CompanyDTO
+from sbfoundation.dtos.bronze_to_silver_dto import BronzeToSilverDTO
+from sbfoundation.dtos.company.company_dto import CompanyDTO
 
 
 # --- Test subclass for base class testing ---

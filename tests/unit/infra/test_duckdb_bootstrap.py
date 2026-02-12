@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from data_layer.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
+from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
 
 
 class _FakeConnection:

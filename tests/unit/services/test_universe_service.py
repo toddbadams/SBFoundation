@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from datetime import date
 
-from data_layer.services.universe_service import UniverseService
+from sbfoundation.services.universe_service import UniverseService
 
 
 def test_update_tickers_slice_and_limits() -> None:

@@ -2,11 +2,11 @@ from datetime import datetime, timezone
 
 import pytest
 
-from data_layer.run.dtos.run_context import RunContext
-from data_layer.dataset.models.dataset_recipe import DatasetRecipe
-from data_layer.dataset.services.dataset_service import DatasetService
-from data_layer.orchestrator import Orchestrator, OrchestrationSettings
-from settings import *
+from sbfoundation.run.dtos.run_context import RunContext
+from sbfoundation.dataset.models.dataset_recipe import DatasetRecipe
+from sbfoundation.dataset.services.dataset_service import DatasetService
+from sbfoundation.orchestrator import Orchestrator, OrchestrationSettings
+from sbfoundation.settings import *
 
 
 class DummyOpsService:
@@ -81,7 +81,7 @@ def test_orchestrator_processes_chunks(monkeypatch: pytest.MonkeyPatch) -> None:
         def close(self) -> None:
             pass
 
-    monkeypatch.setattr("data_layer.orchestrator.BronzeService", DummyBronzeService)
+    monkeypatch.setattr("sbfoundation.orchestrator.BronzeService", DummyBronzeService)
 
     silver_calls: list[int] = []
 

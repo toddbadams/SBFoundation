@@ -5,8 +5,8 @@ from datetime import date
 
 import duckdb
 
-from data_layer.ops.dtos.file_injestion import DatasetInjestion
-from data_layer.ops.infra.duckdb_ops_repo import DuckDbOpsRepo
+from sbfoundation.ops.dtos.file_injestion import DatasetInjestion
+from sbfoundation.ops.infra.duckdb_ops_repo import DuckDbOpsRepo
 
 
 class _StubBootstrap:

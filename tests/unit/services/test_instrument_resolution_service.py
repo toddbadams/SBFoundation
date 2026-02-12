@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from data_layer.services.instrument_resolution_service import InstrumentResolutionService
+from sbfoundation.services.instrument_resolution_service import InstrumentResolutionService
 
 
 @pytest.fixture

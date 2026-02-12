@@ -30,7 +30,7 @@ datasets:
     execution_phase: instrument_discovery
     help_url: https://site.financialmodelingprep.com/developer/docs#stock-list
   dto_schema:
-    dto_type: data_layer.dtos.instrument.stock_list_dto.StockListDTO
+    dto_type: sbfoundation.dtos.instrument.stock_list_dto.StockListDTO
     columns:
     - name: symbol
       type: str
@@ -84,7 +84,7 @@ datasets:
     execution_phase: instrument_discovery
     help_url: https://site.financialmodelingprep.com/developer/docs#etf-list
   dto_schema:
-    dto_type: data_layer.dtos.instrument.etf_list_dto.ETFListDTO
+    dto_type: sbfoundation.dtos.instrument.etf_list_dto.ETFListDTO
     columns:
     - name: symbol
       type: str
@@ -135,7 +135,7 @@ datasets:
     execution_phase: instrument_discovery
     help_url: https://site.financialmodelingprep.com/developer/docs#index-list
   dto_schema:
-    dto_type: data_layer.dtos.instrument.index_list_dto.IndexListDTO
+    dto_type: sbfoundation.dtos.instrument.index_list_dto.IndexListDTO
     columns:
     - name: symbol
       type: str
@@ -186,7 +186,7 @@ datasets:
     execution_phase: instrument_discovery
     help_url: https://site.financialmodelingprep.com/developer/docs#cryptocurrency-list
   dto_schema:
-    dto_type: data_layer.dtos.instrument.cryptocurrency_list_dto.CryptocurrencyListDTO
+    dto_type: sbfoundation.dtos.instrument.cryptocurrency_list_dto.CryptocurrencyListDTO
     columns:
     - name: symbol
       type: str
@@ -237,7 +237,7 @@ datasets:
     execution_phase: instrument_discovery
     help_url: https://site.financialmodelingprep.com/developer/docs#forex-list
   dto_schema:
-    dto_type: data_layer.dtos.instrument.forex_list_dto.ForexListDTO
+    dto_type: sbfoundation.dtos.instrument.forex_list_dto.ForexListDTO
     columns:
     - name: symbol
       type: str
@@ -295,7 +295,7 @@ datasets:
     - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#etf-holdings
   dto_schema:
-    dto_type: data_layer.dtos.instrument.etf_holdings_dto.ETFHoldingsDTO
+    dto_type: sbfoundation.dtos.instrument.etf_holdings_dto.ETFHoldingsDTO
     columns:
     - name: ticker
       type: str
@@ -352,7 +352,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#profile-symbol
   dto_schema:
-    dto_type: data_layer.dtos.company.company_dto.CompanyDTO
+    dto_type: sbfoundation.dtos.company.company_dto.CompanyDTO
     columns:
     - name: ticker
       type: str
@@ -493,7 +493,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#company-notes
   dto_schema:
-    dto_type: data_layer.dtos.company.company_dto.CompanyDTO
+    dto_type: sbfoundation.dtos.company.company_dto.CompanyDTO
     columns:
     - name: ticker
       type: str
@@ -653,7 +653,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#executive-compensation
   dto_schema:
-    dto_type: data_layer.dtos.company.company_officers_dto.CompanyOfficerDTO
+    dto_type: sbfoundation.dtos.company.company_officers_dto.CompanyOfficerDTO
     columns:
     - name: ticker
       type: str
@@ -711,7 +711,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#peers
   dto_schema:
-    dto_type: data_layer.dtos.company.company_peers_dto.CompanyPeersDTO
+    dto_type: sbfoundation.dtos.company.company_peers_dto.CompanyPeersDTO
     columns:
     - name: ticker
       type: str
@@ -756,7 +756,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#historical-employee-count
   dto_schema:
-    dto_type: data_layer.dtos.company.company_employees_dto.CompanyEmployeesDTO
+    dto_type: sbfoundation.dtos.company.company_employees_dto.CompanyEmployeesDTO
     columns:
     - name: ticker
       type: str
@@ -817,7 +817,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#all-shares-float
   dto_schema:
-    dto_type: data_layer.dtos.company.company_shares_float_dto.CompanySharesFloatDTO
+    dto_type: sbfoundation.dtos.company.company_shares_float_dto.CompanySharesFloatDTO
     columns:
     - name: ticker
       type: str
@@ -864,7 +864,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#delisted-companies
   dto_schema:
-    dto_type: data_layer.dtos.company.company_delisted_dto.CompanyDelistedDTO
+    dto_type: sbfoundation.dtos.company.company_delisted_dto.CompanyDelistedDTO
     columns:
     - name: ticker
       type: str
@@ -917,7 +917,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#historical-market-cap
   dto_schema:
-    dto_type: data_layer.dtos.company.company_market_cap_dto.CompanyMarketCapDTO
+    dto_type: sbfoundation.dtos.company.company_market_cap_dto.CompanyMarketCapDTO
     columns:
     - name: ticker
       type: str
@@ -962,7 +962,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#income-statement
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.income_statement_dto.IncomeStatementDTO
+    dto_type: sbfoundation.dtos.fundamentals.income_statement_dto.IncomeStatementDTO
     columns:
     - name: ticker
       type: str
@@ -1118,7 +1118,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#income-statement
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.income_statement_dto.IncomeStatementDTO
+    dto_type: sbfoundation.dtos.fundamentals.income_statement_dto.IncomeStatementDTO
     columns:
     - name: ticker
       type: str
@@ -1274,7 +1274,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.balance_sheet_statement_dto.BalanceSheetStatementDTO
+    dto_type: sbfoundation.dtos.fundamentals.balance_sheet_statement_dto.BalanceSheetStatementDTO
     columns:
     - name: ticker
       type: str
@@ -1493,7 +1493,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.balance_sheet_statement_dto.BalanceSheetStatementDTO
+    dto_type: sbfoundation.dtos.fundamentals.balance_sheet_statement_dto.BalanceSheetStatementDTO
     columns:
     - name: ticker
       type: str
@@ -1712,7 +1712,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#cashflow-statement
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.cashflow_statement_dto.CashflowStatementDTO
+    dto_type: sbfoundation.dtos.fundamentals.cashflow_statement_dto.CashflowStatementDTO
     columns:
     - name: ticker
       type: str
@@ -1892,7 +1892,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#cashflow-statement
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.cashflow_statement_dto.CashflowStatementDTO
+    dto_type: sbfoundation.dtos.fundamentals.cashflow_statement_dto.CashflowStatementDTO
     columns:
     - name: ticker
       type: str
@@ -2071,7 +2071,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#key-metrics
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.key_metrics_dto.KeyMetricsDTO
+    dto_type: sbfoundation.dtos.fundamentals.key_metrics_dto.KeyMetricsDTO
     columns:
     - name: ticker
       type: str
@@ -2250,7 +2250,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#metrics-ratios
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.metrics_ratios_dto.MetricsRatiosDTO
+    dto_type: sbfoundation.dtos.fundamentals.metrics_ratios_dto.MetricsRatiosDTO
     columns:
     - name: ticker
       type: str
@@ -2474,7 +2474,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#key-metrics-ttm
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.key_metrics_ttm_dto.KeyMetricsTtmDTO
+    dto_type: sbfoundation.dtos.fundamentals.key_metrics_ttm_dto.KeyMetricsTtmDTO
     columns:
     - name: ticker
       type: str
@@ -2638,7 +2638,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#financial-scores
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.financial_scores_dto.FinancialScoresDTO
+    dto_type: sbfoundation.dtos.fundamentals.financial_scores_dto.FinancialScoresDTO
     columns:
     - name: ticker
       type: str
@@ -2709,7 +2709,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#owner-earnings
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.owner_earnings_dto.OwnerEarningsDTO
+    dto_type: sbfoundation.dtos.fundamentals.owner_earnings_dto.OwnerEarningsDTO
     columns:
     - name: ticker
       type: str
@@ -2777,7 +2777,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#enterprise-values
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.enterprise_values_dto.EnterpriseValuesDTO
+    dto_type: sbfoundation.dtos.fundamentals.enterprise_values_dto.EnterpriseValuesDTO
     columns:
     - name: ticker
       type: str
@@ -2840,7 +2840,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#income-statement-growth
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.income_statement_growth_dto.IncomeStatementGrowthDTO
+    dto_type: sbfoundation.dtos.fundamentals.income_statement_growth_dto.IncomeStatementGrowthDTO
     columns:
     - name: ticker
       type: str
@@ -2981,7 +2981,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#income-statement-growth
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.income_statement_growth_dto.IncomeStatementGrowthDTO
+    dto_type: sbfoundation.dtos.fundamentals.income_statement_growth_dto.IncomeStatementGrowthDTO
     columns:
     - name: ticker
       type: str
@@ -3122,7 +3122,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement-growth
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.balance_sheet_statement_growth_dto.BalanceSheetStatementGrowthDTO
+    dto_type: sbfoundation.dtos.fundamentals.balance_sheet_statement_growth_dto.BalanceSheetStatementGrowthDTO
     columns:
     - name: ticker
       type: str
@@ -3329,7 +3329,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement-growth
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.balance_sheet_statement_growth_dto.BalanceSheetStatementGrowthDTO
+    dto_type: sbfoundation.dtos.fundamentals.balance_sheet_statement_growth_dto.BalanceSheetStatementGrowthDTO
     columns:
     - name: ticker
       type: str
@@ -3536,7 +3536,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#cashflow-statement-growth
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.cashflow_statement_growth_dto.CashflowStatementGrowthDTO
+    dto_type: sbfoundation.dtos.fundamentals.cashflow_statement_growth_dto.CashflowStatementGrowthDTO
     columns:
     - name: ticker
       type: str
@@ -3701,7 +3701,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#cashflow-statement-growth
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.cashflow_statement_growth_dto.CashflowStatementGrowthDTO
+    dto_type: sbfoundation.dtos.fundamentals.cashflow_statement_growth_dto.CashflowStatementGrowthDTO
     columns:
     - name: ticker
       type: str
@@ -3866,7 +3866,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#financial-statement-growth
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.financial_statement_growth_dto.FinancialStatementGrowthDTO
+    dto_type: sbfoundation.dtos.fundamentals.financial_statement_growth_dto.FinancialStatementGrowthDTO
     columns:
     - name: ticker
       type: str
@@ -4037,7 +4037,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#financial-statement-growth
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.financial_statement_growth_dto.FinancialStatementGrowthDTO
+    dto_type: sbfoundation.dtos.fundamentals.financial_statement_growth_dto.FinancialStatementGrowthDTO
     columns:
     - name: ticker
       type: str
@@ -4208,7 +4208,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#revenue-product-segmentation
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.revenue_segmentation_dto.RevenueSegmentationDTO
+    dto_type: sbfoundation.dtos.fundamentals.revenue_segmentation_dto.RevenueSegmentationDTO
     columns:
     - name: ticker
       type: str
@@ -4259,7 +4259,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#revenue-geographic-segementation
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.revenue_segmentation_dto.RevenueSegmentationDTO
+    dto_type: sbfoundation.dtos.fundamentals.revenue_segmentation_dto.RevenueSegmentationDTO
     columns:
     - name: ticker
       type: str
@@ -4307,7 +4307,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#treasury-rates
   dto_schema:
-    dto_type: data_layer.dtos.economics.treasury_rates_dto.TreasuryRatesDTO
+    dto_type: sbfoundation.dtos.economics.treasury_rates_dto.TreasuryRatesDTO
     columns:
     - name: ticker
       type: str
@@ -4378,7 +4378,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#market-risk-premium
   dto_schema:
-    dto_type: data_layer.dtos.economics.market_risk_premium_dto.MarketRiskPremiumDTO
+    dto_type: sbfoundation.dtos.economics.market_risk_premium_dto.MarketRiskPremiumDTO
     columns:
     - name: ticker
       type: str
@@ -4425,7 +4425,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -4469,7 +4469,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -4513,7 +4513,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -4557,7 +4557,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -4601,7 +4601,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -4645,7 +4645,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -4689,7 +4689,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -4733,7 +4733,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -4777,7 +4777,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -4821,7 +4821,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -4865,7 +4865,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -4909,7 +4909,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -4953,7 +4953,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -4997,7 +4997,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -5041,7 +5041,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -5085,7 +5085,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -5129,7 +5129,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -5173,7 +5173,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -5217,7 +5217,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -5261,7 +5261,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -5305,7 +5305,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -5349,7 +5349,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -5393,7 +5393,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -5437,7 +5437,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#economics-indicators
   dto_schema:
-    dto_type: data_layer.dtos.economics.economics_dto.EconomicsDTO
+    dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
     - name: ticker
       type: str
@@ -5481,7 +5481,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#historical-price-eod-full
   dto_schema:
-    dto_type: data_layer.dtos.technicals.historical_price_eod_full_dto.HistoricalPriceEodFullDTO
+    dto_type: sbfoundation.dtos.technicals.historical_price_eod_full_dto.HistoricalPriceEodFullDTO
     columns:
     - name: ticker
       type: str
@@ -5549,7 +5549,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#historical-price-eod-non-split-adjusted
   dto_schema:
-    dto_type: data_layer.dtos.technicals.historical_price_eod_non_split_adjusted_dto.HistoricalPriceEodNonSplitAdjustedDTO
+    dto_type: sbfoundation.dtos.technicals.historical_price_eod_non_split_adjusted_dto.HistoricalPriceEodNonSplitAdjustedDTO
     columns:
     - name: ticker
       type: str
@@ -5608,7 +5608,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#historical-price-eod-dividend-adjusted
   dto_schema:
-    dto_type: data_layer.dtos.technicals.historical_price_eod_dividend_adjusted_dto.HistoricalPriceEodDividendAdjustedDTO
+    dto_type: sbfoundation.dtos.technicals.historical_price_eod_dividend_adjusted_dto.HistoricalPriceEodDividendAdjustedDTO
     columns:
     - name: ticker
       type: str
@@ -5667,7 +5667,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#simple-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.simple_moving_average_dto.SimpleMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.simple_moving_average_dto.SimpleMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -5726,7 +5726,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#simple-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.simple_moving_average_dto.SimpleMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.simple_moving_average_dto.SimpleMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -5785,7 +5785,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#simple-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.simple_moving_average_dto.SimpleMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.simple_moving_average_dto.SimpleMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -5844,7 +5844,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#exponential-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.exponential_moving_average_dto.ExponentialMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.exponential_moving_average_dto.ExponentialMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -5903,7 +5903,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#exponential-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.exponential_moving_average_dto.ExponentialMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.exponential_moving_average_dto.ExponentialMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -5962,7 +5962,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#exponential-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.exponential_moving_average_dto.ExponentialMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.exponential_moving_average_dto.ExponentialMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -6021,7 +6021,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#exponential-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.exponential_moving_average_dto.ExponentialMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.exponential_moving_average_dto.ExponentialMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -6080,7 +6080,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#weighted-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.weighted_moving_average_dto.WeightedMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.weighted_moving_average_dto.WeightedMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -6139,7 +6139,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#weighted-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.weighted_moving_average_dto.WeightedMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.weighted_moving_average_dto.WeightedMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -6198,7 +6198,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#weighted-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.weighted_moving_average_dto.WeightedMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.weighted_moving_average_dto.WeightedMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -6257,7 +6257,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#double-exponential-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.double_exponential_moving_average_dto.DoubleExponentialMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.double_exponential_moving_average_dto.DoubleExponentialMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -6316,7 +6316,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#double-exponential-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.double_exponential_moving_average_dto.DoubleExponentialMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.double_exponential_moving_average_dto.DoubleExponentialMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -6375,7 +6375,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#double-exponential-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.double_exponential_moving_average_dto.DoubleExponentialMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.double_exponential_moving_average_dto.DoubleExponentialMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -6434,7 +6434,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#double-exponential-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.double_exponential_moving_average_dto.DoubleExponentialMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.double_exponential_moving_average_dto.DoubleExponentialMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -6493,7 +6493,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#triple-exponential-moving-average
   dto_schema:
-    dto_type: data_layer.dtos.technicals.triple_exponential_moving_average_dto.TripleExponentialMovingAverageDTO
+    dto_type: sbfoundation.dtos.technicals.triple_exponential_moving_average_dto.TripleExponentialMovingAverageDTO
     columns:
     - name: ticker
       type: str
@@ -6552,7 +6552,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#relative-strength-index
   dto_schema:
-    dto_type: data_layer.dtos.technicals.relative_strength_index_dto.RelativeStrengthIndexDTO
+    dto_type: sbfoundation.dtos.technicals.relative_strength_index_dto.RelativeStrengthIndexDTO
     columns:
     - name: ticker
       type: str
@@ -6611,7 +6611,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#relative-strength-index
   dto_schema:
-    dto_type: data_layer.dtos.technicals.relative_strength_index_dto.RelativeStrengthIndexDTO
+    dto_type: sbfoundation.dtos.technicals.relative_strength_index_dto.RelativeStrengthIndexDTO
     columns:
     - name: ticker
       type: str
@@ -6670,7 +6670,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#standard-deviation
   dto_schema:
-    dto_type: data_layer.dtos.technicals.standard_deviation_dto.StandardDeviationDTO
+    dto_type: sbfoundation.dtos.technicals.standard_deviation_dto.StandardDeviationDTO
     columns:
     - name: ticker
       type: str
@@ -6729,7 +6729,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#williams
   dto_schema:
-    dto_type: data_layer.dtos.technicals.williams_dto.WilliamsDTO
+    dto_type: sbfoundation.dtos.technicals.williams_dto.WilliamsDTO
     columns:
     - name: ticker
       type: str
@@ -6788,7 +6788,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#average-directional-index
   dto_schema:
-    dto_type: data_layer.dtos.technicals.average_directional_index_dto.AverageDirectionalIndexDTO
+    dto_type: sbfoundation.dtos.technicals.average_directional_index_dto.AverageDirectionalIndexDTO
     columns:
     - name: ticker
       type: str
@@ -6829,7 +6829,7 @@ datasets:
   - date
   row_date_col: date
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.income_statement_dto.IncomeStatementDTO
+    dto_type: sbfoundation.dtos.fundamentals.income_statement_dto.IncomeStatementDTO
     columns:
     - name: ticker
       type: str
@@ -6966,7 +6966,7 @@ datasets:
   - date
   row_date_col: date
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.balance_sheet_statement_dto.BalanceSheetStatementDTO
+    dto_type: sbfoundation.dtos.fundamentals.balance_sheet_statement_dto.BalanceSheetStatementDTO
     columns:
     - name: ticker
       type: str
@@ -7166,7 +7166,7 @@ datasets:
   - date
   row_date_col: date
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.cashflow_statement_dto.CashflowStatementDTO
+    dto_type: sbfoundation.dtos.fundamentals.cashflow_statement_dto.CashflowStatementDTO
     columns:
     - name: ticker
       type: str
@@ -7327,7 +7327,7 @@ datasets:
   - date
   row_date_col: date
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.key_metrics_dto.KeyMetricsDTO
+    dto_type: sbfoundation.dtos.fundamentals.key_metrics_dto.KeyMetricsDTO
     columns:
     - name: ticker
       type: str
@@ -7488,7 +7488,7 @@ datasets:
   - date
   row_date_col: date
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.metrics_ratios_dto.MetricsRatiosDTO
+    dto_type: sbfoundation.dtos.fundamentals.metrics_ratios_dto.MetricsRatiosDTO
     columns:
     - name: ticker
       type: str
@@ -7697,7 +7697,7 @@ datasets:
   - date
   row_date_col: date
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.income_statement_growth_dto.IncomeStatementGrowthDTO
+    dto_type: sbfoundation.dtos.fundamentals.income_statement_growth_dto.IncomeStatementGrowthDTO
     columns:
     - name: ticker
       type: str
@@ -7819,7 +7819,7 @@ datasets:
   - date
   row_date_col: date
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.balance_sheet_statement_growth_dto.BalanceSheetStatementGrowthDTO
+    dto_type: sbfoundation.dtos.fundamentals.balance_sheet_statement_growth_dto.BalanceSheetStatementGrowthDTO
     columns:
     - name: ticker
       type: str
@@ -8007,7 +8007,7 @@ datasets:
   - date
   row_date_col: date
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.cashflow_statement_growth_dto.CashflowStatementGrowthDTO
+    dto_type: sbfoundation.dtos.fundamentals.cashflow_statement_growth_dto.CashflowStatementGrowthDTO
     columns:
     - name: ticker
       type: str
@@ -8153,7 +8153,7 @@ datasets:
   - date
   row_date_col: date
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.financial_statement_growth_dto.FinancialStatementGrowthDTO
+    dto_type: sbfoundation.dtos.fundamentals.financial_statement_growth_dto.FinancialStatementGrowthDTO
     columns:
     - name: ticker
       type: str
@@ -8321,7 +8321,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#latest-financial-statements
   dto_schema:
-    dto_type: data_layer.dtos.fundamentals.latest_financial_statements_dto.LatestFinancialStatementsDTO
+    dto_type: sbfoundation.dtos.fundamentals.latest_financial_statements_dto.LatestFinancialStatementsDTO
     columns:
     - name: symbol
       type: str

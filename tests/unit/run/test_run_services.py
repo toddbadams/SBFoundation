@@ -3,9 +3,9 @@ import logging
 import duckdb
 import pandas as pd
 
-from src.data_layer.run.services.chunk_engine import ChunkEngine
-from src.data_layer.run.services.dedupe_engine import DedupeEngine
-from src.data_layer.run.services.orchestration_ticker_chunk_service import OrchestrationTickerChunkService
+from sbfoundation.run.services.chunk_engine import ChunkEngine
+from sbfoundation.run.services.dedupe_engine import DedupeEngine
+from sbfoundation.run.services.orchestration_ticker_chunk_service import OrchestrationTickerChunkService
 
 from tests.unit.helpers import make_run_context, make_dataset_recipe
 

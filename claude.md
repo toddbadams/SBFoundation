@@ -5,13 +5,13 @@
 **Maintenance**: Update when changing architecture patterns, modifying dataset_keymap.yaml structure, or adding new domains/contracts.
 
 ## Purpose
-Strawberry Foundation is a **Bronze + Silver data acquisition and validation package**. It ingests raw vendor data (Bronze) and promotes it to validated, typed, conformed datasets (Silver). The pipeline is orchestrated via `src/data_layer/orchestrator.py` and configured declaratively in `config/dataset_keymap.yaml`.
+Strawberry Foundation is a **Bronze + Silver data acquisition and validation package**. It ingests raw vendor data (Bronze) and promotes it to validated, typed, conformed datasets (Silver). The pipeline is orchestrated via `src/sbfoundation/orchestrator.py` and configured declaratively in `config/dataset_keymap.yaml`.
 
 ---
 
 ## Quick Reference
 - **Adding new dataset?** → Edit `config/dataset_keymap.yaml` (see Section 5.3)
-- **Modifying data pipeline?** → `src/data_layer/orchestrator.py` + `config/dataset_keymap.yaml`
+- **Modifying data pipeline?** → `src/sbfoundation/orchestrator.py` + `config/dataset_keymap.yaml`
 - **Complex refactor?** → Section 7 (ExecPlans)
 - **Writing a DTO?** → Section 8 (DTO Contracts)
 - **Writing a recipe?** → Section 9 (Recipe Contracts)
@@ -47,7 +47,7 @@ Strawberry implements the first two layers of a medallion/lakehouse architecture
 
 5. **Silver writes are idempotent** via DuckDB UPSERT/MERGE using KEY_COLS from the YAML keymap. No dataset may promote to Silver without a keymap entry.
 
-**Enforcement**: `DatasetService` validates keymap on load; `tests/unit/data_layer/dataset/` validates config parsing; `tests/e2e/` verifies end-to-end behavior; mypy enforces types.
+**Enforcement**: `DatasetService` validates keymap on load; `tests/unit/dataset/` validates config parsing; `tests/e2e/` verifies end-to-end behavior; mypy enforces types.
 
 ---
 
@@ -145,7 +145,7 @@ All dataset definitions live in `config/dataset_keymap.yaml`:
       run_days: [sat]
       help_url: https://example.com/docs
   dto_schema:
-    dto_type: data_layer.dtos.company.company_dto.CompanyDTO
+    dto_type: sbfoundation.dtos.company.company_dto.CompanyDTO
     columns:
       - {name: ticker, type: str, nullable: false}
       - {name: company_name, type: str, nullable: true}

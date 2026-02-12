@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import date
 
-from data_layer.dataset.models.dataset_identity import DatasetIdentity
-from data_layer.dataset.models.dataset_watermark import DatasetWatermark
+from sbfoundation.dataset.models.dataset_identity import DatasetIdentity
+from sbfoundation.dataset.models.dataset_watermark import DatasetWatermark
 
 
 def test_dataset_identity_watermark_serialization() -> None:

@@ -78,7 +78,7 @@ REPO_ROOT_FOLDER=c:/sb/SBFoundation               # Repo root (used for config/ 
 DATASET_KEYMAP_FILENAME=dataset_keymap.yaml  # Optional override
 ```
 
-The defaults (`DATA_ROOT_FOLDER=c:/sb/SBFoundation/data`, `REPO_ROOT_FOLDER=c:/sb/SBFoundation`) are set in `src/settings.py` and apply if the env vars are absent.
+The defaults (`DATA_ROOT_FOLDER=c:/sb/SBFoundation/data`, `REPO_ROOT_FOLDER=c:/sb/SBFoundation`) are set in `src/sbfoundation/settings.py` and apply if the env vars are absent.
 
 ---
 
@@ -111,9 +111,10 @@ SBFoundation/
 ├── docs/                         # project documentation
 Architecture, contracts, DuckDB design docs
 ├── src/
-│   ├── settings.py               # All constants: domains, datasets, data sources, placeholders, paths
-│   ├── folders.py                # Path resolution helpers (bronze/duckdb/log/migration folders)
-│   └── data_layer/
+│   └── sbfoundation/
+│       ├── __init__.py               # Public API: Orchestrator, NewEquitiesOrchestrationService
+│       ├── settings.py               # All constants: domains, datasets, data sources, placeholders, paths
+│       ├── folders.py                # Path resolution helpers (bronze/duckdb/log/migration folders)
 │       ├── orchestrator.py           # Top-level entry point; domain-ordered Bronze→Silver loop
 │       ├── new_equities_orchestrator.py
 │       ├── dataset/
@@ -171,8 +172,8 @@ Architecture, contracts, DuckDB design docs
 | `infra/duckdb/duckdb_bootstrap.py` | Opens/creates the DuckDB file, applies pending SQL migrations from `db/migrations/`. |
 | `dtos/bronze_to_silver_dto.py` | Base class enforcing the `from_row` / `to_dict` contract. Provides safe parse helpers (dates, floats, ints). |
 | `dtos/dto_registry.py` | Maps dataset name strings → DTO classes. Used by `SilverService` for dynamic dispatch. |
-| `settings.py` | Single module of all constants: domain names, dataset names, data source config, placeholder strings, folder names, cadence modes, FMP plan tiers. |
-| `folders.py` | Resolves `DATA_ROOT_FOLDER` / `REPO_ROOT_FOLDER` into concrete `Path` objects for Bronze, DuckDB, logs, migrations, and keymap. |
+| `sbfoundation/settings.py` | Single module of all constants: domain names, dataset names, data source config, placeholder strings, folder names, cadence modes, FMP plan tiers. |
+| `sbfoundation/folders.py` | Resolves `DATA_ROOT_FOLDER` / `REPO_ROOT_FOLDER` into concrete `Path` objects for Bronze, DuckDB, logs, migrations, and keymap. |
 
 ---
 
@@ -247,7 +248,7 @@ The single authoritative source for all dataset definitions. Each entry specifie
       execution_phase: data_acquisition   # instrument_discovery | data_acquisition
       help_url: https://...
   dto_schema:
-    dto_type: data_layer.dtos.company.company_dto.CompanyDTO
+    dto_type: sbfoundation.dtos.company.company_dto.CompanyDTO
     columns:
       - {name: ticker, type: str, nullable: false}
 ```
@@ -305,7 +306,7 @@ OrchestrationSettings(
 
 ```bash
 # Activate the venv (Poetry does this automatically in `poetry run`)
-poetry run python src/data_layer/orchestrator.py
+poetry run python src/sbfoundation/orchestrator.py
 ```
 
 The `if __name__ == "__main__"` block at the bottom of `orchestrator.py` contains a ready-to-edit example. Adjust `OrchestrationSettings` flags to scope the run.
@@ -386,6 +387,6 @@ Plain-text logs are written to `$DATA_ROOT_FOLDER/logs/`. Each log line carries 
 | **Parquet → DuckDB migration** | ~~Medium~~ Resolved | All Parquet references removed from active code. `silver_data_contracts.md` does not exist in the repo. Stale Parquet comments in `result_mapper.py`, `bronze_to_silver_dto.py`, and `scripts/cleanup_ticker_state_partitions.py` have been updated. No `pyarrow` or `fastparquet` imports remain in the codebase. DuckDB is now the sole Silver/Gold storage backend. |
 | **No pagination support** | Medium | `DatasetRecipe` defers pagination by design. All large datasets rely on `from_date` windowing (`from_date` → `to_date` = today) rather than offset or cursor pagination. If a single API window returns a truncated result set (e.g., FMP caps responses at 10 000 rows), data beyond that limit is silently dropped. Mitigation: use shorter `min_age_days` windows for high-volume datasets. Full fix requires adding `page`/`cursor` support to `RunProvider._get_query_vars()` and a looping driver in `bronze_service.py`. |
 | **FMP API key is the only configured source** | Low | `DATA_SOURCES_CONFIG` only has an FMP entry. Alpha Vantage, BIS, FRED, and other planned sources have dataset constants defined but no HTTP configuration yet. |
-| **`settings.py` uses wildcard import** | Low | `from settings import *` is used in `orchestrator.py` and `folders.py`. This makes static analysis harder and can cause name collisions if settings grow. |
+| **`sbfoundation/settings.py` uses wildcard import** | Low | `from sbfoundation.settings import *` is used in `orchestrator.py` and `sbfoundation/folders.py`. This makes static analysis harder and can cause name collisions if settings grow. |
 | **No concurrency / parallelism** | Info | Bronze ingestion is sequential per recipe. Throughput is bounded by `THROTTLE_MAX_CALLS_PER_MINUTE` (50/min for FMP). Large universes (1000+ tickers × 40+ datasets) take significant wall-clock time. |
 | **PROD runs on Raspberry Pi** | Info | Low RAM and single-core constraints apply. Chunk size (10 tickers) and recipe limits in `OrchestrationSettings` are the primary throughput controls. |

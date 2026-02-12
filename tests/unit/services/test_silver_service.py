@@ -5,10 +5,10 @@ from datetime import date, datetime
 import pandas as pd
 import pytest
 
-from data_layer.dtos.models import BronzeManifestRow
-from data_layer.dataset.models.dataset_keymap import DatasetKeymap
-from data_layer.dataset.models.dataset_keymap_entry import DatasetKeymapEntry
-from data_layer.services.silver.silver_service import SilverService
+from sbfoundation.dtos.models import BronzeManifestRow
+from sbfoundation.dataset.models.dataset_keymap import DatasetKeymap
+from sbfoundation.dataset.models.dataset_keymap_entry import DatasetKeymapEntry
+from sbfoundation.services.silver.silver_service import SilverService
 
 
 def _keymap_entry(dataset: str, silver_table: str, ticker_scope: str = "per_ticker") -> DatasetKeymapEntry:

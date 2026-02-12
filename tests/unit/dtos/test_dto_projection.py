@@ -9,9 +9,9 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from data_layer.dtos.bronze_to_silver_dto import BronzeToSilverDTO
-from data_layer.dtos.dto_projection import DTOProjection
-from data_layer.dataset.models.dataset_schema import DatasetDtoSchema, SchemaColumn
+from sbfoundation.dtos.bronze_to_silver_dto import BronzeToSilverDTO
+from sbfoundation.dtos.dto_projection import DTOProjection
+from sbfoundation.dataset.models.dataset_schema import DatasetDtoSchema, SchemaColumn
 
 
 # --- Test DTO classes ---

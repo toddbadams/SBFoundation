@@ -11,15 +11,15 @@ import pandas as pd
 import pytest
 from freezegun import freeze_time
 
-from data_layer.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
-from data_layer.dataset.models.dataset_recipe import DatasetRecipe
-from data_layer.services.universe_service import UniverseService
-from folders import Folders
-from data_layer.orchestrator import Orchestrator, OrchestrationSettings
+from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
+from sbfoundation.dataset.models.dataset_recipe import DatasetRecipe
+from sbfoundation.services.universe_service import UniverseService
+from sbfoundation.folders import Folders
+from sbfoundation.orchestrator import Orchestrator, OrchestrationSettings
 from tests.e2e.test_data import TestData
-from settings import *
+from sbfoundation.settings import *
 from tests.e2e.fake_api import FakeApiServer
-from data_layer.run.dtos.run_result import RunResult
+from sbfoundation.run.dtos.run_result import RunResult
 
 
 pytestmark = pytest.mark.xdist_group(name="data_layer_promotion")

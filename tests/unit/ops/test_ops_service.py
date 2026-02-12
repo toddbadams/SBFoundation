@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
-from data_layer.dataset.models.dataset_identity import DatasetIdentity
-from data_layer.ops.dtos.file_injestion import DatasetInjestion
-from data_layer.ops.services.ops_service import OpsService
+from sbfoundation.dataset.models.dataset_identity import DatasetIdentity
+from sbfoundation.ops.dtos.file_injestion import DatasetInjestion
+from sbfoundation.ops.services.ops_service import OpsService
 import pytest
 
 from tests.unit.helpers import make_run_context, make_run_result

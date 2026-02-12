@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Strawberry Bronze and Silver data acquisition pipeline"
 authors = ["Todd <toddbadams@outlook.com>"]
 package-mode = true
+packages = [{include = "sbfoundation", from = "src"}]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.14"

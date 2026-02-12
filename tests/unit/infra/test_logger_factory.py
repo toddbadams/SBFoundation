@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from data_layer.infra.logger import LoggerFactory
+from sbfoundation.infra.logger import LoggerFactory
 
 
 def _count_handler_types(logger: logging.Logger, handler_type: type[logging.Handler]) -> int:

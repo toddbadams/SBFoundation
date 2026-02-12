@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from data_layer.dataset.loaders.dataset_keymap_loader import DatasetKeymapLoader
+from sbfoundation.dataset.loaders.dataset_keymap_loader import DatasetKeymapLoader
 
 
 def test_load_raw_keymap_success(patch_folders: tuple[Path, Path]) -> None:

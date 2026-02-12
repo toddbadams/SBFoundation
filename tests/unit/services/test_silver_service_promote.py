@@ -11,15 +11,15 @@ import duckdb
 import pandas as pd
 import pytest
 
-from data_layer.dtos.bronze_to_silver_dto import BronzeToSilverDTO
-from data_layer.dtos.models import BronzeManifestRow
-from data_layer.dataset.models.dataset_keymap import DatasetKeymap
-from data_layer.dataset.models.dataset_keymap_entry import DatasetKeymapEntry
-from data_layer.dataset.models.dataset_schema import DatasetDtoSchema, SchemaColumn
-from data_layer.services.silver.silver_service import SilverService
-from data_layer.services.bronze.bronze_batch_reader import BronzeBatchItem
-from data_layer.run.dtos.run_result import RunResult
-from data_layer.run.services.chunk_engine import Chunk
+from sbfoundation.dtos.bronze_to_silver_dto import BronzeToSilverDTO
+from sbfoundation.dtos.models import BronzeManifestRow
+from sbfoundation.dataset.models.dataset_keymap import DatasetKeymap
+from sbfoundation.dataset.models.dataset_keymap_entry import DatasetKeymapEntry
+from sbfoundation.dataset.models.dataset_schema import DatasetDtoSchema, SchemaColumn
+from sbfoundation.services.silver.silver_service import SilverService
+from sbfoundation.services.bronze.bronze_batch_reader import BronzeBatchItem
+from sbfoundation.run.dtos.run_result import RunResult
+from sbfoundation.run.services.chunk_engine import Chunk
 
 
 # --- Test DTO ---
@@ -427,7 +427,7 @@ class TestResolveDtoType:
         service = object.__new__(SilverService)
 
         # Should either get from registry or raise ValueError
-        with patch("data_layer.services.silver.silver_service.DTO_REGISTRY", {"company-profile": _TestDTO}):
+        with patch("sbfoundation.services.silver.silver_service.DTO_REGISTRY", {"company-profile": _TestDTO}):
             dto_type = service._resolve_dto_type(row, result_mock)
             assert dto_type is _TestDTO
 
@@ -438,7 +438,7 @@ class TestResolveDtoType:
         row = _make_manifest_row(dataset="unknown-dataset")
         service = object.__new__(SilverService)
 
-        with patch("data_layer.services.silver.silver_service.DTO_REGISTRY", {}):
+        with patch("sbfoundation.services.silver.silver_service.DTO_REGISTRY", {}):
             with pytest.raises(ValueError, match="Missing DTO mapping"):
                 service._resolve_dto_type(row, result_mock)
 

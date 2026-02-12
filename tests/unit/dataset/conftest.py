@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pathlib import Path
 
-from folders import Folders
+from sbfoundation.folders import Folders
 
 
 @pytest.fixture

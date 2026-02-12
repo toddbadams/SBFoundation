@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from data_layer.dataset.models.dataset_identity import DatasetIdentity
-from data_layer.dataset.models.dataset_keymap import DatasetKeymap
-from data_layer.dataset.models.dataset_keymap_entry import DatasetKeymapEntry
+from sbfoundation.dataset.models.dataset_identity import DatasetIdentity
+from sbfoundation.dataset.models.dataset_keymap import DatasetKeymap
+from sbfoundation.dataset.models.dataset_keymap_entry import DatasetKeymapEntry
 
 
 def _identity_with_ticker(ticker: str | None) -> DatasetIdentity:

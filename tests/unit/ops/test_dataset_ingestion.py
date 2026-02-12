@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from data_layer.ops.dtos.file_injestion import DatasetInjestion
+from sbfoundation.ops.dtos.file_injestion import DatasetInjestion
 from tests.unit.helpers import make_run_result
 
 

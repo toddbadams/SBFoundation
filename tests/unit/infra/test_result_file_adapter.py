@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from data_layer.infra.result_file_adaptor import ResultFileAdapter
+from sbfoundation.infra.result_file_adaptor import ResultFileAdapter
 from tests.unit.helpers import make_run_result
 
 
@@ -65,7 +65,7 @@ def test_write_persists_payload(patch_folders) -> None:
     result = make_run_result()
     file_path = adapter.write(result)
 
-    from folders import Folders
+    from sbfoundation.folders import Folders
     target = Folders.data_absolute_path() / result.request.bronze_relative_filename
     assert target.exists()
     assert file_path == target

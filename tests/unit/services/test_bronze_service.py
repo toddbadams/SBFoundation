@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 from requests.structures import CaseInsensitiveDict
 
-from data_layer.services.bronze.bronze_service import BronzeService
-from data_layer.run.dtos.run_request import RunRequest
+from sbfoundation.services.bronze.bronze_service import BronzeService
+from sbfoundation.run.dtos.run_request import RunRequest
 from tests.unit.helpers import make_run_context, make_run_request
 
 

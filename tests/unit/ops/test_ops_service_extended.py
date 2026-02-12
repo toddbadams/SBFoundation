@@ -7,9 +7,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from data_layer.dataset.models.dataset_identity import DatasetIdentity
-from data_layer.ops.dtos.file_injestion import DatasetInjestion
-from data_layer.ops.services.ops_service import OpsService
+from sbfoundation.dataset.models.dataset_identity import DatasetIdentity
+from sbfoundation.ops.dtos.file_injestion import DatasetInjestion
+from sbfoundation.ops.services.ops_service import OpsService
 
 
 # --- Stub classes ---

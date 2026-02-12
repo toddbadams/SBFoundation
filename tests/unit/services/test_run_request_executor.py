@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 import requests
 
-from data_layer.run.services import run_request_executor as run_request_executor_module
-from data_layer.run.services.run_request_executor import RunRequestExecutor
+from sbfoundation.run.services import run_request_executor as run_request_executor_module
+from sbfoundation.run.services.run_request_executor import RunRequestExecutor
 from tests.unit.helpers import make_run_context
 
 

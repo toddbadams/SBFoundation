@@ -26,7 +26,7 @@ datasets:
       execution_phase: instrument_discovery
       help_url: https://example.com/docs/stock-list
   dto_schema:
-    dto_type: data_layer.dtos.instrument.stock_list_dto.StockListDTO
+    dto_type: sbfoundation.dtos.instrument.stock_list_dto.StockListDTO
     columns:
       - name: symbol
         type: str
@@ -75,7 +75,7 @@ datasets:
       execution_phase: instrument_discovery
       help_url: https://example.com/docs/etf-list
   dto_schema:
-    dto_type: data_layer.dtos.instrument.etf_list_dto.ETFListDTO
+    dto_type: sbfoundation.dtos.instrument.etf_list_dto.ETFListDTO
     columns:
       - name: symbol
         type: str

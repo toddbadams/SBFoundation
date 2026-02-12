@@ -4,7 +4,7 @@ from datetime import datetime
 import pytest
 from dateutil.relativedelta import relativedelta
 
-from src.settings import *
+from sbfoundation.settings import *
 from tests.unit.helpers import make_dataset_recipe
 
 

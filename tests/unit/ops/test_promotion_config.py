@@ -1,4 +1,4 @@
-from data_layer.ops.requests.promotion_config import PromotionConfig
+from sbfoundation.ops.requests.promotion_config import PromotionConfig
 
 
 def test_promotion_config_custom_values_preserved() -> None:

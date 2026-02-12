@@ -29,7 +29,9 @@
       "Bash(.venv/Scripts/pip show:*)",
       "Bash(poetry env info:*)",
       "Bash(findstr:*)",
-      "Bash(del \"C:\\\\sb\\\\SBFoundation\\\\src\\\\data_layer\\\\services\\\\gold\\\\gold_service.py\" \"C:\\\\sb\\\\SBFoundation\\\\src\\\\data_layer\\\\services\\\\gold\\\\__init__.py\" \"C:\\\\sb\\\\SBFoundation\\\\src\\\\data_layer\\\\dataset\\\\models\\\\gold_config.py\")"
+      "Bash(del \"C:\\\\sb\\\\SBFoundation\\\\src\\\\data_layer\\\\services\\\\gold\\\\gold_service.py\" \"C:\\\\sb\\\\SBFoundation\\\\src\\\\data_layer\\\\services\\\\gold\\\\__init__.py\" \"C:\\\\sb\\\\SBFoundation\\\\src\\\\data_layer\\\\dataset\\\\models\\\\gold_config.py\")",
+      "Bash(python3:*)",
+      "Bash(git stash:*)"
     ]
   }
 }

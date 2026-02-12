@@ -6,8 +6,8 @@ import json
 
 import pytest
 
-from data_layer.dtos.dto_registry import DTORegistry
-from data_layer.dataset.services.dataset_service import DatasetService
+from sbfoundation.dtos.dto_registry import DTORegistry
+from sbfoundation.dataset.services.dataset_service import DatasetService
 
 
 def _write_keymap(repo_root: Path, payload: dict) -> Path:
@@ -53,7 +53,7 @@ def test_strict_registry_mismatch_bubbles(monkeypatch: pytest.MonkeyPatch, patch
     _write_keymap(repo_root, payload)
     monkeypatch.setenv("STRICT_DTO_REGISTRY", "1")
     monkeypatch.setattr(
-        "data_layer.dtos.dto_registry.DTO_REGISTRY",
+        "sbfoundation.dtos.dto_registry.DTO_REGISTRY",
         DTORegistry({}),
     )
     service = DatasetService(today="2026-01-01", plan="basic")

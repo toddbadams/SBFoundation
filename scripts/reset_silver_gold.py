@@ -31,8 +31,8 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from data_layer.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
-from data_layer.infra.logger import LoggerFactory
+from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
+from sbfoundation.infra.logger import LoggerFactory
 
 
 def get_schema_tables(conn, schema: str) -> list[str]:

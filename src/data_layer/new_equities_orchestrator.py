@@ -337,7 +337,7 @@ if __name__ == "__main__":
             enable_bronze=True,
             enable_silver=True,
             ticker_limit=20,
-            fmp_plan=FMP_STARTER_PLAN,
+            fmp_plan=FMP_PREMIUM_PLAN,
             exchanges=["NASDAQ"],
         ),
         today=date.today().isoformat(),

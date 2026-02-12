@@ -653,12 +653,12 @@ LIMIT_PLACEHOLDER = "__limit__"
 PERIOD_PLACEHOLDER = "__period__"
 
 # --- DATA FOLDERS ---
-DATA_ROOT_FOLDER = os.environ.get("DATA_ROOT_FOLDER", "c:/strawberry/data")
-REPO_ROOT_FOLDER = os.environ.get("REPO_ROOT_FOLDER", "c:/strawberry")
+DATA_ROOT_FOLDER = os.environ.get("DATA_ROOT_FOLDER", "c:/sb/SBFoundation/data")
+REPO_ROOT_FOLDER = os.environ.get("REPO_ROOT_FOLDER", "c:/sb/SBFoundation")
 MANIFEST_FOLDER = "manifests"
 BRONZE_FOLDER = "bronze"
 DUCKDB_FOLDER = "duckdb"
-DUCKDB_FILENAME = "strawberry.duckdb"
+DUCKDB_FILENAME = "SBFoundation.duckdb"
 MIGRATIONS_FOLDER = "db/migrations"
 LOG_FOLDER = "logs"
 CHARTS_DATA_FOLDER = "charts"

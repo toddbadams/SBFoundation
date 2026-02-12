@@ -25,4 +25,4 @@ jobs:
       - name: Install deps (dev)
         run: poetry install --no-interaction --no-ansi --with dev
       - name: mypy
-        run: poetry run mypy src/strawberry/services/__init__.py
+        run: poetry run mypy src/sb/SBFoundation/services/__init__.py

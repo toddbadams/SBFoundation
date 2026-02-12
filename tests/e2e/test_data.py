@@ -11,7 +11,6 @@ _TIME_UTC = "2026-01-19T12:00:00Z"
 _TIME_TIME_ZONE = "2026-01-19T12:00:00+00:00"
 _DATE = "2026-01-19"
 
-_GOLD_BUILD_MODEL_VERSION = "test-model-version"
 _RUN_ID = f"{_DATE}.123456"
 
 _HASH = "bdcbc6ebad2e45e6990502d67d5f9e011b483b8479529cb7fba9db7fe9dd2987"
@@ -28,7 +27,6 @@ class TestData:
     TIME_TIME_ZONE = _TIME_TIME_ZONE
     DATE = _DATE
 
-    GOLD_BUILD_MODEL_VERSION = _GOLD_BUILD_MODEL_VERSION
     RUN_ID = _RUN_ID
     PORT = _PORT
 
@@ -76,28 +74,6 @@ class TestData:
             {"symbol": "SPY", "name": "SPDR S&P 500 ETF Trust", "price": 520.3, "exchange": "NYSE Arca", "exchange_short_name": "AMEX", "ticker": "SPY"},
         ]
         SILVER_DATE_FIELDS = ["ingested_at"]
-
-    class Instrument:
-        """Unified instrument table expectations after promotion."""
-        SQL_SILVER = 'SELECT symbol, instrument_type, source_endpoint, name, exchange, exchange_short_name, is_active FROM "silver"."instrument" ORDER BY symbol, instrument_type'
-        SILVER_EXPECTED = [
-            {"symbol": "AAPL", "instrument_type": "equity", "source_endpoint": "stock-list", "name": "Apple Inc.", "exchange": "NASDAQ", "exchange_short_name": "NASDAQ", "is_active": True},
-            {"symbol": "GOOGL", "instrument_type": "equity", "source_endpoint": "stock-list", "name": "Alphabet Inc.", "exchange": "NASDAQ", "exchange_short_name": "NASDAQ", "is_active": True},
-            {"symbol": "MSFT", "instrument_type": "equity", "source_endpoint": "stock-list", "name": "Microsoft Corporation", "exchange": "NASDAQ", "exchange_short_name": "NASDAQ", "is_active": True},
-            {"symbol": "QQQ", "instrument_type": "etf", "source_endpoint": "etf-list", "name": "Invesco QQQ Trust", "exchange": "NASDAQ", "exchange_short_name": "NASDAQ", "is_active": True},
-            {"symbol": "SPY", "instrument_type": "etf", "source_endpoint": "etf-list", "name": "SPDR S&P 500 ETF Trust", "exchange": "NYSE Arca", "exchange_short_name": "AMEX", "is_active": True},
-        ]
-
-        # Gold layer expectations
-        SQL_GOLD_DIM = 'SELECT symbol, instrument_type, source_endpoint, name, exchange, exchange_short_name, is_active, is_current FROM "gold"."dim_instrument" ORDER BY symbol, instrument_type'
-        GOLD_EXPECTED_DIM = [
-            {"symbol": "AAPL", "instrument_type": "equity", "source_endpoint": "stock-list", "name": "Apple Inc.", "exchange": "NASDAQ", "exchange_short_name": "NASDAQ", "is_active": True, "is_current": True},
-            {"symbol": "GOOGL", "instrument_type": "equity", "source_endpoint": "stock-list", "name": "Alphabet Inc.", "exchange": "NASDAQ", "exchange_short_name": "NASDAQ", "is_active": True, "is_current": True},
-            {"symbol": "MSFT", "instrument_type": "equity", "source_endpoint": "stock-list", "name": "Microsoft Corporation", "exchange": "NASDAQ", "exchange_short_name": "NASDAQ", "is_active": True, "is_current": True},
-            {"symbol": "QQQ", "instrument_type": "etf", "source_endpoint": "etf-list", "name": "Invesco QQQ Trust", "exchange": "NASDAQ", "exchange_short_name": "NASDAQ", "is_active": True, "is_current": True},
-            {"symbol": "SPY", "instrument_type": "etf", "source_endpoint": "etf-list", "name": "SPDR S&P 500 ETF Trust", "exchange": "NYSE Arca", "exchange_short_name": "AMEX", "is_active": True, "is_current": True},
-        ]
-        GOLD_DATE_FIELDS = ["effective_from", "effective_to", "discovered_at", "last_enriched_at"]
 
     # ---- COMPANY DOMAIN ---- #
     class CompanyProfile:
@@ -197,47 +173,6 @@ class TestData:
             "status_code": 200,
         }
 
-        SQL_GOLD_DIM = 'SELECT * FROM "gold"."dim_company_profile"'
-
-        GOLD_EXPECTED_DIM = [
-            {
-                "effective_from": _DATE,
-                "effective_to": "NaT",
-                "is_current": True,
-                "company_sk": 1,
-                "ticker": _TICKER,
-                "cik": DATA[0]["cik"],
-                "isin": DATA[0]["isin"],
-                "cusip": DATA[0]["cusip"],
-                "exchange": DATA[0]["exchange"],
-                "exchange_full_name": DATA[0]["exchangeFullName"],
-                "currency": DATA[0]["currency"],
-                "company_name": DATA[0]["companyName"],
-                "industry": DATA[0]["industry"],
-                "sector": DATA[0]["sector"],
-                "description": DATA[0]["description"],
-                "website": DATA[0]["website"],
-                "ceo": DATA[0]["ceo"],
-                "country": DATA[0]["country"],
-                "full_time_employees": 164000,
-                "phone": DATA[0]["phone"],
-                "address": DATA[0]["address"],
-                "city": DATA[0]["city"],
-                "state": DATA[0]["state"],
-                "zip": DATA[0]["zip"],
-                "image": DATA[0]["image"],
-                "ipo_date": DATA[0]["ipoDate"],
-                "default_image": DATA[0]["defaultImage"],
-                "is_etf": DATA[0]["isEtf"],
-                "is_actively_trading": DATA[0]["isActivelyTrading"],
-                "is_adr": DATA[0]["isAdr"],
-                "is_fund": DATA[0]["isFund"],
-                "gold_build_id": 2,
-                "model_version": _GOLD_BUILD_MODEL_VERSION,
-            }
-        ]
-        GOLD_DATE_FIELDS = ["effective_from", "effective_to", "ipo_date"]
-
     class MarketCap:
         # --- Endpoint / identifiers --- #
         ENDPOINT = "company-market-cap"
@@ -328,87 +263,6 @@ class TestData:
         ]
         SILVER_DATE_FIELDS = ["date", "ingested_at"]
 
-        SQL_GOLD_FACT = 'SELECT * FROM "gold"."fact_market_cap_snapshot"'
-        GOLD_EXPECTED = [
-            {
-                "company_sk": 1,
-                "date_sk": 1,
-                "ticker": _TICKER,
-                "date": DATA[0]["date"],
-                "market_cap": DATA[0]["marketCap"],
-                "gold_build_id": 2,
-                "model_version": _GOLD_BUILD_MODEL_VERSION,
-            },
-            {
-                "company_sk": 1,
-                "date_sk": 2,
-                "ticker": _TICKER,
-                "date": DATA[1]["date"],
-                "market_cap": DATA[1]["marketCap"],
-                "gold_build_id": 2,
-                "model_version": _GOLD_BUILD_MODEL_VERSION,
-            },
-            {
-                "company_sk": 1,
-                "date_sk": 3,
-                "ticker": _TICKER,
-                "date": DATA[2]["date"],
-                "market_cap": DATA[2]["marketCap"],
-                "gold_build_id": 2,
-                "model_version": _GOLD_BUILD_MODEL_VERSION,
-            },
-        ]
-        GOLD_DATE_FIELDS = ["date"]
-
-    class Dates:
-        # --- Dates dimension (derived from data-driven rows) --- #
-        SQL_GOLD_DIM_DATE = 'SELECT * FROM "gold"."dim_date"'
-        GOLD_EXPECTED_DIM_DATE = [
-            {
-                "date_sk": 1,
-                "date": "2026-01-15",
-                "year": 2026,
-                "quarter": 1,
-                "month": 1,
-                "day": 15,
-                "day_of_week": 4,
-                "day_name": "Thursday",
-                "month_name": "January",
-                "iso_week": 3,
-                "gold_build_id": 2,
-                "model_version": _GOLD_BUILD_MODEL_VERSION,
-            },
-            {
-                "date_sk": 2,
-                "date": "2026-01-16",
-                "year": 2026,
-                "quarter": 1,
-                "month": 1,
-                "day": 16,
-                "day_of_week": 5,
-                "day_name": "Friday",
-                "month_name": "January",
-                "iso_week": 3,
-                "gold_build_id": 2,
-                "model_version": _GOLD_BUILD_MODEL_VERSION,
-            },
-            {
-                "date_sk": 3,
-                "date": "2026-01-17",
-                "year": 2026,
-                "quarter": 1,
-                "month": 1,
-                "day": 17,
-                "day_of_week": 6,
-                "day_name": "Saturday",
-                "month_name": "January",
-                "iso_week": 3,
-                "gold_build_id": 2,
-                "model_version": _GOLD_BUILD_MODEL_VERSION,
-            },
-        ]
-        GOLD_DATE_FIELDS = ["date"]
-
     class Economics:
         # --- Endpoint / identifiers --- #
         ENDPOINT = "economic-indicators"
@@ -470,65 +324,6 @@ class TestData:
             },
             "status_code": 200,
         }
-
-    class Ops:
-        # --- Ops file ingestions (shown in your snippet for economics) --- #
-        SQL_OPS_FILE_INGESTIONS = 'SELECT * FROM "ops"."file_ingestions" WHERE dataset = \'economic-indicators\''
-        OPS_EXPECTED_FILE_INGESTIONS = {
-            "run_id": _RUN_ID,
-            "file_id": "economic-indicators",
-            "domain": "economics",
-            "source": "fmp",
-            "dataset": "economic-indicators",
-            "discriminator": None,
-            "ticker": None,
-            "bronze_filename": "bronze\\economics\\fmp\\economic-indicators\\economic-indicators.json",
-            "bronze_error": None,
-            "bronze_rows": 1,
-            "bronze_from_date": "2026-01-01",
-            "bronze_to_date": "2026-01-01",
-            "bronze_injest_start_time": _DATE,
-            "bronze_injest_end_time": _DATE,
-            "bronze_can_promote": False,
-            "bronze_payload_hash": _HASH,
-            "silver_tablename": '"silver"."economic-indicators"',
-            "silver_errors": None,
-            "silver_rows_created": 1,
-            "silver_rows_updated": 0,
-            "silver_rows_failed": 0,
-            "silver_from_date": "2026-01-01",
-            "silver_to_date": "2026-01-01",
-            "silver_injest_start_time": _DATE,
-            "silver_injest_end_time": _DATE,
-            "silver_can_promote": True,
-            # Note: Gold columns contain aggregate metrics across all processed tables
-            # This is a known limitation - ideally these would be per-dataset, not aggregate
-            "gold_object_type": "dimension, fact",
-            "gold_tablename": "dim_instrument, dim_company_profile, fact_market_cap_snapshot",
-            "gold_errors": None,
-            "gold_rows_created": 4,  # Aggregate: dims_inserted + facts_upserted
-            "gold_rows_updated": 0,
-            "gold_rows_failed": 0,
-            "gold_from_date": _DATE,
-            "gold_to_date": _DATE,
-            "gold_injest_start_time": _DATE,
-            "gold_injest_end_time": _DATE,
-            "gold_can_promote": True,
-        }
-        OPS_DATE_FIELDS = [
-            "bronze_from_date",
-            "bronze_to_date",
-            "bronze_injest_start_time",
-            "bronze_injest_end_time",
-            "silver_from_date",
-            "silver_to_date",
-            "silver_injest_start_time",
-            "silver_injest_end_time",
-            "gold_from_date",
-            "gold_to_date",
-            "gold_injest_start_time",
-            "gold_injest_end_time",
-        ]
 
     class Error:
         # --- Endpoint / identifiers --- #

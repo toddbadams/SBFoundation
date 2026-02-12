@@ -73,12 +73,12 @@ uv pip install -r <(poetry export --without-hashes)
 
 ```dotenv
 FMP_API_KEY=your_fmp_api_key_here
-DATA_ROOT_FOLDER=c:/strawberry/data          # Bronze JSON files, DuckDB, logs
-REPO_ROOT_FOLDER=c:/strawberry               # Repo root (used for config/ and db/migrations/)
+DATA_ROOT_FOLDER=c:/sb/SBFoundation/data          # Bronze JSON files, DuckDB, logs
+REPO_ROOT_FOLDER=c:/sb/SBFoundation               # Repo root (used for config/ and db/migrations/)
 DATASET_KEYMAP_FILENAME=dataset_keymap.yaml  # Optional override
 ```
 
-The defaults (`DATA_ROOT_FOLDER=c:/strawberry/data`, `REPO_ROOT_FOLDER=c:/strawberry`) are set in `src/settings.py` and apply if the env vars are absent.
+The defaults (`DATA_ROOT_FOLDER=c:/sb/SBFoundation/data`, `REPO_ROOT_FOLDER=c:/sb/SBFoundation`) are set in `src/settings.py` and apply if the env vars are absent.
 
 ---
 
@@ -268,8 +268,8 @@ The single authoritative source for all dataset definitions. Each entry specifie
 | Variable | Default | Purpose |
 |---|---|---|
 | `FMP_API_KEY` | *(required)* | FMP REST API key |
-| `DATA_ROOT_FOLDER` | `c:/strawberry/data` | Root for Bronze files, DuckDB, logs |
-| `REPO_ROOT_FOLDER` | `c:/strawberry` | Repo root for `config/` and `db/migrations/` |
+| `DATA_ROOT_FOLDER` | `c:/sb/SBFoundation/data` | Root for Bronze files, DuckDB, logs |
+| `REPO_ROOT_FOLDER` | `c:/sb/SBFoundation` | Repo root for `config/` and `db/migrations/` |
 | `DATASET_KEYMAP_FILENAME` | `dataset_keymap.yaml` | Keymap filename override |
 
 ### `OrchestrationSettings` (runtime switches)
@@ -352,7 +352,7 @@ Bronze JSON files are written to `$DATA_ROOT_FOLDER/bronze/<domain>/<source>/<da
 
 ```python
 import duckdb
-con = duckdb.connect("c:/strawberry/data/duckdb/strawberry.duckdb")
+con = duckdb.connect("c:/sb/SBFoundation/data/duckdb/sb/SBFoundation.duckdb")
 con.execute("SELECT * FROM ops.bronze_manifest LIMIT 10").fetchdf()
 con.execute("SELECT * FROM ops.dataset_watermarks").fetchdf()
 con.execute("SELECT * FROM silver.fmp_company_profile LIMIT 5").fetchdf()

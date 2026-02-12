@@ -12,7 +12,7 @@
       "Bash(dir:*)",
       "WebFetch(domain:site.financialmodelingprep.com)",
       "Bash(..venvScriptspython.exe -c \"import yaml; yaml.safe_load\\(open\\(''config/dataset_keymap.yaml'', encoding=''utf-8''\\)\\); print\\(''YAML parsed successfully''\\)\")",
-      "Bash(c:/strawberry/.venv/Scripts/python.exe:*)",
+      "Bash(c:/sb/SBFoundation/.venv/Scripts/python.exe:*)",
       "Bash(Get-ChildItem -Path \"C:\\\\sb\\SBFoundation\\\\data\\\\bronze\\\\instrument\" -Recurse -Filter \"*.json\")",
       "Bash(ForEach-Object { $content = Get-Content $_FullName -Raw)",
       "Bash($content = $content -replace '\"\"tue\"\"', '\"\"tues\"\"')",
@@ -22,7 +22,14 @@
       "Bash($env:PYTHONPATH=\"src\")",
       "Bash(powershell -c:*)",
       "WebFetch(domain:mmfhgult8m.youware.app)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(cmd /c \".venv\\\\Scripts\\\\python.exe -m pytest tests/e2e/test_data_layer_promotion.py --collect-only > C:\\\\sb\\\\SBFoundation\\\\temp\\\\test_output.txt 2>&1 & type C:\\\\sb\\\\SBFoundation\\\\temp\\\\test_output.txt\")",
+      "Bash(.venv/Scripts/python.exe -m pytest:*)",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(.venv/Scripts/pip show:*)",
+      "Bash(poetry env info:*)",
+      "Bash(findstr:*)",
+      "Bash(del \"C:\\\\sb\\\\SBFoundation\\\\src\\\\data_layer\\\\services\\\\gold\\\\gold_service.py\" \"C:\\\\sb\\\\SBFoundation\\\\src\\\\data_layer\\\\services\\\\gold\\\\__init__.py\" \"C:\\\\sb\\\\SBFoundation\\\\src\\\\data_layer\\\\dataset\\\\models\\\\gold_config.py\")"
     ]
   }
 }

@@ -381,7 +381,7 @@ Optional (nullable): `cpu_temp_c`, `throttle_flags` (Pi only), `cpu_freq_mhz`, `
 
 **Gold Dataset** (`OPS_HOST_METRICS_5M_ROLLUP_DATASET`): 5-minute bucket rollups per host.
 
-**Implementation structure** (`src/strawberry/ops/telemetry/`):
+**Implementation structure** (`src/sb/SBFoundation/ops/telemetry/`):
 `config.py`, `providers/base.py`, `providers/portable_psutil.py`, `providers/linux_pi_sensors.py`, `schemas.py`, `writer.py`, `rollups.py`, `flow.py`
 
 **Cross-platform**: use `psutil` for portable metrics (CPU/RAM/disk/network). Temperature and throttle flags are Linux-only and optional; failures must degrade gracefully (return null, never raise).

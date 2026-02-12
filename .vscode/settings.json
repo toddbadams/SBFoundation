@@ -45,8 +45,8 @@
     {
       "previewLimit": 50,
       "driver": "DuckDB",
-      "database": "${workspaceFolder:strawberry}data/duckdb/strawberry.duckdb",
-      "name": "strawberry2"
+      "database": "${workspaceFolder:SBFoundation}data/duckdb/sb/SBFoundation.duckdb",
+      "name": "SBFoundation2"
     }
   ],
   "claudeCode.allowDangerouslySkipPermissions": true

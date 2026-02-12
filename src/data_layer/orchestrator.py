@@ -12,7 +12,7 @@ from data_layer.ops.services.ops_service import OpsService
 from data_layer.run.services.orchestration_ticker_chunk_service import OrchestrationTickerChunkService
 
 
-# c:/strawberry/data/duckdb/strawberry.duckdb
+# c:/sb/SBFoundation/data/duckdb/sb/SBFoundation.duckdb
 @dataclass(frozen=True)
 class OrchestrationSettings:
     # Domain enable switches

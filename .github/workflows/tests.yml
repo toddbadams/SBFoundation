@@ -57,7 +57,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           mkdir -p test-results
-          poetry run pytest -v --maxfail=1 --junitxml=test-results/junit.xml --cov=strawberry --cov-report=xml --cov-report=term-missing  # package name: strawberry :contentReference[oaicite:4]{index=4}
+          poetry run pytest -v --maxfail=1 --junitxml=test-results/junit.xml --cov=SBFoundation --cov-report=xml --cov-report=term-missing  # package name: strawberry :contentReference[oaicite:4]{index=4}
 
       - name: Upload JUnit
         if: always()

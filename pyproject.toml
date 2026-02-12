@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "sb-foundation"
+version = "0.1.0"
+description = "Strawberry Bronze and Silver data acquisition pipeline"
+authors = ["Todd <toddbadams@outlook.com>"]
+package-mode = true
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.14"
+pandas = "^2.3.3"
+numpy = "^2.4.1"
+requests = "^2.32.5"
+duckdb = "^1.4.3"
+PyYAML = "^6.0.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.2"
+freezegun = "^1.3.1"
+pandera = "^0.25.0"
+pytest-httpserver = "^1.1.0"
+flake8 = "^7.3.0"
+black = "^25.12.0"
+isort = "^7.0.0"
+mypy = "^1.19.1"
+uv = ">=0.9.24"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 150
+
+[tool.isort]
+profile = "black"

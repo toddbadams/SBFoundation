@@ -1,0 +1,74 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  tests:
+    name: pytest (${{ matrix.os }} / py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.12", "3.13"]
+
+    env:
+      PYTHONUNBUFFERED: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install Poetry
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pipx
+          pipx ensurepath
+          pipx install poetry
+
+      # Cache download caches (fast, portable). We avoid caching the venv since it's out-of-project. :contentReference[oaicite:2]{index=2}
+      - name: Cache pip and Poetry caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pypoetry
+          key: pip-poetry-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install dependencies (incl. dev group)
+        run: |
+          poetry --version
+          poetry install --no-interaction --no-ansi --with dev  # dev tools live under [tool.poetry.group.dev] :contentReference[oaicite:3]{index=3}
+
+      - name: Show environment (debug)
+        run: |
+          poetry run python -V
+          poetry run python -c "import sys; print('src in sys.path?', any(p.endswith('src') for p in sys.path))"
+          poetry show --tree
+
+      - name: Run tests with coverage
+        run: |
+          mkdir -p test-results
+          poetry run pytest -v --maxfail=1 --junitxml=test-results/junit.xml --cov=strawberry --cov-report=xml --cov-report=term-missing  # package name: strawberry :contentReference[oaicite:4]{index=4}
+
+      - name: Upload JUnit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-${{ matrix.os }}-py${{ matrix.python }}
+          path: test-results/junit.xml
+
+      - name: Upload coverage XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}-py${{ matrix.python }}
+          path: coverage.xml

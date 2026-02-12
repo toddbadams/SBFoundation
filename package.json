@@ -1,0 +1,18 @@
+{
+  "name": "strawberry",
+  "version": "1.0.0",
+  "description": "**Problem:** Long-term, sustainable income growth through dividends can be hard to plan and track over decades.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "duckdb": "^0.10.2"
+  }
+}

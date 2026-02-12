@@ -1,0 +1,418 @@
+version: 1
+gold:
+  dims:
+    - dim_table: dim_instrument
+      silver_table: instrument
+      schema:
+        business_keys:
+          - symbol
+          - instrument_type
+        columns:
+          - name: effective_from
+            type: date
+            nullable: false
+          - name: effective_to
+            type: date
+            nullable: true
+          - name: is_current
+            type: bool
+            nullable: false
+          - name: instrument_sk
+            type: int
+            nullable: true
+          - name: instrument_id
+            type: str
+            nullable: false
+          - name: symbol
+            type: str
+            nullable: false
+          - name: instrument_type
+            type: str
+            nullable: false
+          - name: source_endpoint
+            type: str
+            nullable: false
+          - name: name
+            type: str
+            nullable: true
+          - name: exchange
+            type: str
+            nullable: true
+          - name: exchange_short_name
+            type: str
+            nullable: true
+          - name: currency
+            type: str
+            nullable: true
+          - name: base_currency
+            type: str
+            nullable: true
+          - name: quote_currency
+            type: str
+            nullable: true
+          - name: is_active
+            type: bool
+            nullable: true
+          - name: discovered_at
+            type: datetime
+            nullable: true
+          - name: last_enriched_at
+            type: datetime
+            nullable: true
+          - name: gold_build_id
+            type: int
+            nullable: true
+          - name: model_version
+            type: str
+            nullable: true
+    - dim_table: dim_company_profile
+      silver_table: company-profile
+      schema:
+        business_keys:
+          - ticker
+        columns:
+          - name: effective_from
+            type: date
+            nullable: false
+          - name: effective_to
+            type: date
+            nullable: true
+          - name: is_current
+            type: bool
+            nullable: false
+          - name: company_sk
+            type: int
+            nullable: true
+          - name: instrument_sk
+            type: int
+            nullable: true
+          - name: ticker
+            type: str
+            nullable: false
+          - name: cik
+            type: str
+            nullable: true
+          - name: isin
+            type: str
+            nullable: true
+          - name: cusip
+            type: str
+            nullable: true
+          - name: exchange
+            type: str
+            nullable: true
+          - name: exchange_full_name
+            type: str
+            nullable: true
+          - name: currency
+            type: str
+            nullable: true
+          - name: company_name
+            type: str
+            nullable: true
+          - name: industry
+            type: str
+            nullable: true
+          - name: sector
+            type: str
+            nullable: true
+          - name: description
+            type: str
+            nullable: true
+          - name: website
+            type: str
+            nullable: true
+          - name: ceo
+            type: str
+            nullable: true
+          - name: country
+            type: str
+            nullable: true
+          - name: full_time_employees
+            type: int
+            nullable: true
+          - name: phone
+            type: str
+            nullable: true
+          - name: address
+            type: str
+            nullable: true
+          - name: city
+            type: str
+            nullable: true
+          - name: state
+            type: str
+            nullable: true
+          - name: zip
+            type: str
+            nullable: true
+          - name: image
+            type: str
+            nullable: true
+          - name: ipo_date
+            type: date
+            nullable: true
+          - name: default_image
+            type: bool
+            nullable: true
+          - name: is_etf
+            type: bool
+            nullable: true
+          - name: is_actively_trading
+            type: bool
+            nullable: true
+          - name: is_adr
+            type: bool
+            nullable: true
+          - name: is_fund
+            type: bool
+            nullable: true
+          - name: gold_build_id
+            type: int
+            nullable: true
+          - name: model_version
+            type: str
+            nullable: true
+  facts:
+    - fact_table: fact_market_cap_snapshot
+      silver_table: company-market-cap
+      schema:
+        grain_keys:
+          - ticker
+          - date
+        columns:
+          - name: instrument_sk
+            type: int
+            nullable: true
+          - name: date_sk
+            type: int
+            nullable: true
+          - name: ticker
+            type: str
+            nullable: false
+          - name: date
+            type: date
+            nullable: false
+          - name: market_cap
+            type: int
+            nullable: true
+          - name: gold_build_id
+            type: int
+            nullable: true
+          - name: model_version
+            type: str
+            nullable: true
+      has_snapshot_date: false
+datasets:
+# ---- INSTRUMENT DOMAIN (discovery endpoints - run first) ----
+- domain: instrument
+  source: fmp
+  dataset: stock-list
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_stock_list
+  key_cols:
+    - symbol
+  row_date_col: null
+  instrument_behavior: create
+  instrument_type: equity
+  recipes:
+    - plans:
+        - basic
+      data_source_path: fake/stock-list
+      query_vars: {}
+      date_key: null
+      cadence_mode: interval
+      min_age_days: 0
+      run_days:
+        - mon
+      execution_phase: instrument_discovery
+      help_url: https://example.com/docs/stock-list
+  dto_schema:
+    dto_type: data_layer.dtos.instrument.stock_list_dto.StockListDTO
+    columns:
+      - name: symbol
+        type: str
+        nullable: false
+      - name: name
+        type: str
+        nullable: true
+      - name: price
+        type: float
+        nullable: true
+      - name: exchange
+        type: str
+        nullable: true
+      - name: exchange_short_name
+        type: str
+        nullable: true
+      - name: type
+        type: str
+        nullable: true
+      - name: ticker
+        type: str
+        nullable: true
+
+- domain: instrument
+  source: fmp
+  dataset: etf-list
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_etf_list
+  key_cols:
+    - symbol
+  row_date_col: null
+  instrument_behavior: create
+  instrument_type: etf
+  recipes:
+    - plans:
+        - basic
+      data_source_path: fake/etf-list
+      query_vars: {}
+      date_key: null
+      cadence_mode: interval
+      min_age_days: 0
+      run_days:
+        - mon
+      execution_phase: instrument_discovery
+      help_url: https://example.com/docs/etf-list
+  dto_schema:
+    dto_type: data_layer.dtos.instrument.etf_list_dto.ETFListDTO
+    columns:
+      - name: symbol
+        type: str
+        nullable: false
+      - name: name
+        type: str
+        nullable: true
+      - name: price
+        type: float
+        nullable: true
+      - name: exchange
+        type: str
+        nullable: true
+      - name: exchange_short_name
+        type: str
+        nullable: true
+      - name: ticker
+        type: str
+        nullable: true
+
+# ---- COMPANY DOMAIN ----
+- domain: company
+  source: fmp
+  dataset: company-profile
+  discriminator: ''
+  ticker_scope: per_ticker
+  silver_schema: silver
+  silver_table: company-profile
+  key_cols:
+    - ticker
+  row_date_col: null
+  recipes:
+    - plans:
+        - basic
+      data_source_path: fake/profile
+      query_vars:
+        symbol: __ticker__
+      date_key: null
+      cadence_mode: interval
+      min_age_days: 0
+      run_days:
+        - mon
+      help_url: https://example.com/docs/profile
+- domain: company
+  source: fmp
+  dataset: company-market-cap
+  discriminator: ''
+  ticker_scope: per_ticker
+  silver_schema: silver
+  silver_table: company-market-cap
+  key_cols:
+    - ticker
+    - date
+  row_date_col: date
+  recipes:
+    - plans:
+        - basic
+      data_source_path: fake/company-market-cap
+      query_vars:
+        symbol: __ticker__
+      date_key: date
+      cadence_mode: interval
+      min_age_days: 0
+      run_days:
+        - mon
+      help_url: https://example.com/docs/company-market-cap
+- domain: economics
+  source: fmp
+  dataset: economic-indicators
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: economic-indicators
+  key_cols:
+    - date
+  row_date_col: date
+  recipes:
+    - plans:
+        - basic
+      data_source_path: fake/economic-indicators
+      query_vars:
+        name: test-indicator
+        from: __from__
+        to: __to__
+      date_key: date
+      cadence_mode: interval
+      min_age_days: 0
+      run_days:
+        - mon
+      help_url: https://example.com/docs/economic-indicators
+- domain: fundamentals
+  source: fmp
+  dataset: income-statement
+  discriminator: FY
+  ticker_scope: per_ticker
+  silver_schema: silver
+  silver_table: income-statement
+  key_cols:
+    - ticker
+    - date
+  row_date_col: date
+  recipes:
+    - plans:
+        - basic
+      data_source_path: fake/income-statement
+      query_vars:
+        symbol: __ticker__
+        period: FY
+      date_key: date
+      cadence_mode: interval
+      min_age_days: 0
+      run_days:
+        - sun
+      help_url: https://example.com/docs/income-statement
+- domain: company
+  source: fmp
+  dataset: company-notes
+  discriminator: ''
+  ticker_scope: per_ticker
+  silver_schema: silver
+  silver_table: company-notes
+  key_cols:
+    - ticker
+  row_date_col: null
+  recipes:
+    - plans:
+        - basic
+      data_source_path: fake/error
+      query_vars:
+        symbol: __ticker__
+      date_key: date
+      cadence_mode: interval
+      min_age_days: 0
+      run_days:
+        - mon
+      help_url: https://example.com/docs/company-notes

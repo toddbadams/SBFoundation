@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Orchestrator",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/orchestration/orchestrator.py",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Dry run clear too soon",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/clear_req_too_soon.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": [
+        "--dry-run"
+      ]
+    },
+    {
+      "name": "clear too soon",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/clear_req_too_soon.py",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "reset_silver_gold",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/reset_silver_gold.py",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}

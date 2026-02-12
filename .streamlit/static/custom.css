@@ -1,0 +1,9 @@
+html,
+body,
+[class*="css"] {
+    font-size: 12px !important;
+}
+
+h3 {
+    font-size: 12px !important;
+}

@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="610" viewBox="0 0 980 610" role="img" aria-label="Overlay chart of GDP and Credit with Minsky Moment and financing regime labels: Hedge, Speculative, Ponzi.">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#111"></path>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.12"></feDropShadow>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="980" height="610" fill="#ffffff"></rect>
+
+  <!-- Plot area -->
+  <rect x="90" y="90" width="820" height="390" fill="#fff" stroke="#ddd"></rect>
+
+  <!-- Axes -->
+  <line x1="90" y1="480" x2="910" y2="480" stroke="#111" stroke-width="2" marker-end="url(#arrow)"></line>
+  <line x1="90" y1="480" x2="90" y2="90" stroke="#111" stroke-width="2" marker-end="url(#arrow)"></line>
+  <!-- Right axis for Credit -->
+  <line x1="910" y1="480" x2="910" y2="90" stroke="#111" stroke-width="2" marker-end="url(#arrow)"></line>
+
+  <!-- Axis labels -->
+  <text x="500" y="585" font-family="Inter, Arial, sans-serif" font-size="16" fill="#111" text-anchor="middle">Time</text>
+  <text x="26" y="285" font-family="Inter, Arial, sans-serif" font-size="16" fill="#111" text-anchor="middle" transform="rotate(-90 26 285)">GDP (Real)</text>
+  <text x="954" y="285" font-family="Inter, Arial, sans-serif" font-size="16" fill="#111" text-anchor="middle" transform="rotate(-90 954 285)">Credit (Growth/Leverage)</text>
+
+  <!-- Grid lines -->
+  <g stroke="#eee" stroke-width="1">
+    <line x1="90" y1="402" x2="910" y2="402"></line>
+    <line x1="90" y1="324" x2="910" y2="324"></line>
+    <line x1="90" y1="246" x2="910" y2="246"></line>
+    <line x1="90" y1="168" x2="910" y2="168"></line>
+    <line x1="254" y1="90" x2="254" y2="480"></line>
+    <line x1="418" y1="90" x2="418" y2="480"></line>
+    <line x1="582" y1="90" x2="582" y2="480"></line>
+    <line x1="746" y1="90" x2="746" y2="480"></line>
+  </g>
+
+  <!-- Financing regime bands (top of chart) -->
+  <g font-family="Inter, Arial, sans-serif" font-size="14" fill="#111">
+    <!-- Band baseline -->
+    <line x1="90" y1="78" x2="910" y2="78" stroke="#ddd" stroke-width="1"></line>
+
+    <!-- Hedge -->
+    <rect x="90" y="40" width="360" height="34" rx="10" ry="10" fill="#fff" stroke="#ddd"></rect>
+    <text x="270" y="62" text-anchor="middle">Hedge finance</text>
+
+    <!-- Speculative -->
+    <rect x="450" y="40" width="240" height="34" rx="10" ry="10" fill="#fff" stroke="#ddd"></rect>
+    <text x="570" y="62" text-anchor="middle">Speculative finance</text>
+
+    <!-- Ponzi -->
+    <rect x="690" y="40" width="220" height="34" rx="10" ry="10" fill="#fff" stroke="#ddd"></rect>
+    <text x="800" y="62" text-anchor="middle">Ponzi finance</text>
+
+    <!-- Band dividers aligned to phases -->
+    <line x1="450" y1="74" x2="450" y2="90" stroke="#bbb" stroke-width="2"></line>
+    <line x1="690" y1="74" x2="690" y2="90" stroke="#bbb" stroke-width="2"></line>
+  </g>
+
+  <!-- Minsky Moment marker -->
+  <line x1="760" y1="90" x2="760" y2="480" stroke="#d11" stroke-width="2" stroke-dasharray="7 6"></line>
+  <circle cx="760" cy="200" r="7" fill="#d11"></circle>
+  <text x="760" y="140" font-family="Inter, Arial, sans-serif" font-size="16" fill="#d11" text-anchor="middle">Minsky Moment</text>
+
+  <!-- GDP line (solid) -->
+  <path d="
+    M 120 440
+    C 220 422, 300 398, 370 370
+    C 450 338, 520 306, 585 272
+    C 640 245, 690 225, 730 212
+    C 748 206, 756 204, 760 204
+    C 770 204, 778 208, 786 218
+    C 800 238, 810 268, 820 308
+    C 830 350, 845 385, 865 410
+    C 885 435, 900 438, 908 434
+  " fill="none" stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" filter="url(#shadow)"></path>
+
+  <!-- CREDIT line (dashed) -->
+  <path d="
+    M 120 465
+    C 210 450, 290 420, 360 380
+    C 440 334, 505 285, 560 235
+    C 620 180, 675 140, 720 120
+    C 742 110, 754 108, 760 108
+    C 770 108, 782 115, 792 135
+    C 805 165, 812 205, 818 250
+    C 825 302, 835 362, 855 422
+    C 875 460, 895 468, 908 466
+  " fill="none" stroke="#555" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="10 8"></path>
+
+  <!-- Legend -->
+  <g font-family="Inter, Arial, sans-serif" font-size="13" fill="#111">
+    <rect x="110" y="105" width="270" height="70" rx="10" ry="10" fill="#fff" stroke="#ddd"></rect>
+    <line x1="130" y1="132" x2="200" y2="132" stroke="#111" stroke-width="4" stroke-linecap="round"></line>
+    <text x="215" y="136">GDP (Real)</text>
+
+    <line x1="130" y1="158" x2="200" y2="158" stroke="#555" stroke-width="4" stroke-linecap="round" stroke-dasharray="10 8"></line>
+    <text x="215" y="162">Credit (Growth/Leverage)</text>
+  </g>
+
+  <!-- Annotations -->
+  <g font-family="Inter, Arial, sans-serif" font-size="13" fill="#111">
+    <rect x="610" y="270" width="300" height="96" rx="10" ry="10" fill="#fff" stroke="#ddd"></rect>
+    <text x="760" y="298" text-anchor="middle">Credit accelerates ahead of GDP</text>
+    <text x="760" y="318" text-anchor="middle">→ fragility builds</text>
+    <text x="760" y="338" text-anchor="middle">At the break: credit contracts</text>
+    <text x="760" y="358" text-anchor="middle">→ GDP follows with a lag</text>
+  </g>
+
+  <!-- X-axis phase labels -->
+  <g font-family="Inter, Arial, sans-serif" font-size="14" fill="#111">
+    <text x="170" y="500" text-anchor="middle">Recovery</text>
+    <text x="335" y="500" text-anchor="middle">Expansion</text>
+    <text x="500" y="500" text-anchor="middle">Euphoria</text>
+    <text x="665" y="500" text-anchor="middle">Fragility</text>
+    <text x="835" y="500" text-anchor="middle">Deleveraging</text>
+  </g>
+
+  <!-- Subtitle -->
+  <g font-family="Inter, Arial, sans-serif" font-size="12" fill="#111">
+    <rect x="90" y="18" width="820" height="18" fill="#fff"></rect>
+    <text x="90" y="32">Stylized overlay: financing shifts Hedge → Speculative → Ponzi; the Minsky Moment marks the break where credit snaps back and GDP falls after.</text>
+  </g>
+</svg>

@@ -1,0 +1,53 @@
+{
+  // ---- Python / Poetry ----
+  "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+  "python.terminal.activateEnvironment": true,
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}\\src",
+    "${workspaceFolder}\\tests"
+  ],
+  // ---- Type checking / IntelliSense ----
+  "python.analysis.autoImportCompletions": true,
+  // ---- Testing ----
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": [
+    "-q"
+  ],
+  "python.testing.cwd": "${workspaceFolder}",
+  "terminal.integrated.env.windows": {
+    "PYTHONPATH": "${workspaceFolder}/src;${workspaceFolder}/tests"
+  },
+  // ---- Formatting ----
+  "editor.formatOnSave": true,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  // ---- Import sorting & Fix‑all on save ----
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit",
+    "source.fixAll": "explicit"
+  },
+  // ---- UI niceties ----
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    ".venv": true
+  },
+  "search.useIgnoreFiles": true,
+  // ---- Jupyter/Notebooks (optional) ----
+  "jupyter.askForKernelRestart": false,
+  // ---- Env files (optional) ----
+  "python.envFile": "${workspaceFolder}\\.env",
+  "sqltools.useNodeRuntime": true,
+  "sqltools.nodePath": "C:\\path\\to\\node18\\node.exe",
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "driver": "DuckDB",
+      "database": "${workspaceFolder:strawberry}data/duckdb/strawberry.duckdb",
+      "name": "strawberry2"
+    }
+  ],
+  "claudeCode.allowDangerouslySkipPermissions": true
+}

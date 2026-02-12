@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(grep:*)",
+      "Bash(pytest:*)",
+      "Bash(python:*)",
+      "Bash(PYTHONPATH=src python:*)",
+      "Bash(dir:*)",
+      "WebFetch(domain:site.financialmodelingprep.com)",
+      "Bash(..venvScriptspython.exe -c \"import yaml; yaml.safe_load\\(open\\(''config/dataset_keymap.yaml'', encoding=''utf-8''\\)\\); print\\(''YAML parsed successfully''\\)\")",
+      "Bash(c:/strawberry/.venv/Scripts/python.exe:*)",
+      "Bash(Get-ChildItem -Path \"C:\\\\sb\\SBFoundation\\\\data\\\\bronze\\\\instrument\" -Recurse -Filter \"*.json\")",
+      "Bash(ForEach-Object { $content = Get-Content $_FullName -Raw)",
+      "Bash($content = $content -replace '\"\"tue\"\"', '\"\"tues\"\"')",
+      "Bash($content = $content -replace '\"\"thu\"\"', '\"\"thurs\"\"')",
+      "Bash(Set-Content -Path $_FullName -Value $content -NoNewline })",
+      "Bash(set:*)",
+      "Bash($env:PYTHONPATH=\"src\")",
+      "Bash(powershell -c:*)",
+      "WebFetch(domain:mmfhgult8m.youware.app)",
+      "Bash(git mv:*)"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+name: Security Audit
+
+on:
+  pull_request:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Poetry and pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pipx
+          pipx install poetry
+          pipx inject poetry poetry-plugin-export
+          python -m pip install pip-audit
+      - name: Export requirements (incl. dev)
+        run: poetry export -f requirements.txt --with dev --without-hashes -o requirements.txt
+      - name: pip-audit
+        run: pip-audit -r requirements.txt

@@ -1,154 +1,130 @@
 # Strawberry Context
 
-**Version**: 2.1
+**Version**: 3.0
 **Last Updated**: 2026-02-12
-**Maintenance**: Update when adding/removing AI_context docs, changing architecture patterns, or modifying dataset_keymap.yaml structure
+**Maintenance**: Update when changing architecture patterns, modifying dataset_keymap.yaml structure, or adding new domains/contracts.
 
 ## Purpose
-This file is the **entry point** for all AI context in `docs/AI_context` and `docs/prompts`. Use it to find the authoritative document for any task and to resolve conflicts between documents.
-
-Strawberry Foundation is a **Bronze + Silver data acquisition and validation package**. It ingests raw vendor data (Bronze) and promotes it to validated, typed, conformed datasets (Silver). The pipeline is orchestrated via `src/data_layer/orchestrator.py` and configured declaratively in `config/dataset_keymap.yaml`. Start with the architecture and technology stack docs before making changes.
+Strawberry Foundation is a **Bronze + Silver data acquisition and validation package**. It ingests raw vendor data (Bronze) and promotes it to validated, typed, conformed datasets (Silver). The pipeline is orchestrated via `src/data_layer/orchestrator.py` and configured declaratively in `config/dataset_keymap.yaml`.
 
 ---
 
 ## Quick Reference
-For common tasks, start here:
 - **Adding new dataset?** → Edit `config/dataset_keymap.yaml` (see Section 5.3)
 - **Modifying data pipeline?** → `src/data_layer/orchestrator.py` + `config/dataset_keymap.yaml`
-- **Understanding recipe semantics?** → `docs/AI_context/recipe_contracts.md`
 - **Complex refactor?** → Section 7 (ExecPlans)
+- **Writing a DTO?** → Section 8 (DTO Contracts)
+- **Writing a recipe?** → Section 9 (Recipe Contracts)
+- **DuckDB schema?** → Section 10 (DuckDB Storage)
+- **Before modifying `/src`?** → Section 11 (DDD Review Checklist)
 
 ---
 
-## 1) Start here (primary sources)
-Use these documents first, in order, for **discovering relevant context** when implementing or updating code:
+## 1) Architecture
 
-1. **Architecture & layering**
-   - `docs/AI_context/architecture.md`
+Strawberry implements the first two layers of a medallion/lakehouse architecture:
 
-2. **Repo/runtime/tooling defaults**
-   - `docs/prompts/technology_stack.md`
+| Layer | Purpose | Description |
+|---|---|---|
+| **Bronze (Raw/Landing)** | Ingest & Preserve | Exact vendor payloads, append-only, immutable, fully traceable |
+| **Silver (Clean/Conformed)** | Clean & Standardize | Validated, normalized, deduplicated, schema-enforced datasets |
 
-3. **Structured storage (DuckDB)**
-   - `docs/AI_context/duckdb.md`
+**Ingested data domains**: fundamentals, market data, analytical data, alternative data (macro/economics).
 
-4. **Dataset configuration (Bronze -> Silver mappings)**
-   - `config/dataset_keymap.yaml` (authoritative configuration)
-   - `docs/AI_context/recipe_contracts.md` (recipe semantics)
-   - `docs/AI_context/bronze_to_silver_dto_contract.md` (legacy reference)
-
-5. **Strategy system behavior**
-   - `docs/prompts/trading_strategies.md`
+**Ticker-based execution order**: `instrument` → `company` → `fundamentals` → `technicals`
 
 ---
 
-## 2) Hard constraints (do not violate)
-1. **Bronze is append-only** and stores exact vendor payloads with required metadata; no "fixing" or business logic in Bronze. See `docs/AI_context/bronze_data_contracts.md`.
+## 2) Hard Constraints (do not violate)
 
-2. **All dataset mappings are declarative** and defined in `config/dataset_keymap.yaml`. This single source of truth defines:
-   - Dataset identity (domain/source/dataset/discriminator/ticker_scope)
-   - Bronze → Silver mappings (silver_schema/silver_table/key_cols)
-   - DTO schemas (columns, types, nullability)
-   - DatasetRecipe definitions (data_source_path, query_vars, cadence_mode, etc.)
+1. **Bronze is append-only**. Stores exact vendor payloads + required metadata. No business logic, interpretation, or correction in Bronze.
 
-3. **Ingestion runtime behavior** is driven by configurations in `dataset_keymap.yaml`. Do not invent alternate URL construction, placeholder substitution, base-date/from-date logic, or cadence gating. See `docs/AI_context/recipe_contracts.md` for recipe semantics.
+2. **All dataset mappings are declarative** and defined in `config/dataset_keymap.yaml` (authoritative). This defines dataset identity, Bronze→Silver mappings, DTO schemas, and DatasetRecipe definitions.
 
-**Enforcement mechanisms:**
-- `config/dataset_keymap.yaml` validation on load (via `DatasetService`)
-- Unit tests in `tests/unit/data_layer/dataset/` validate config parsing
-- Integration tests in `tests/e2e/` verify end-to-end behavior
-- Type checking via mypy ensures schema compliance
+3. **Ingestion runtime behavior** is driven by `dataset_keymap.yaml`. Do not invent alternate URL construction, placeholder substitution, base-date/from-date logic, or cadence gating.
+
+4. **DTOs are the only allowed boundary** between Bronze and Silver. Every Silver table is written and read via DTOs.
+
+5. **Silver writes are idempotent** via DuckDB UPSERT/MERGE using KEY_COLS from the YAML keymap. No dataset may promote to Silver without a keymap entry.
+
+**Enforcement**: `DatasetService` validates keymap on load; `tests/unit/data_layer/dataset/` validates config parsing; `tests/e2e/` verifies end-to-end behavior; mypy enforces types.
 
 ---
 
-## 3) Conflict resolution
-When documents appear to conflict, use these **resolution priorities** (distinct from Section 1's discovery order):
+## 3) Conflict Resolution
 
-1. **Configuration in `config/dataset_keymap.yaml`** is authoritative for all dataset definitions, schemas, and mappings.
-2. DatasetRecipe / ingestion contract docs (`recipe_contracts.md`) for recipe semantics and behavior.
-3. Bronze data contracts (`bronze_data_contracts.md`) for Bronze layer storage format.
-4. Technology stack for runtime/tooling defaults.
-5. Architecture doc for conceptual intent.
-
-**Example**: If `config/dataset_keymap.yaml` defines a dataset with `silver_table: "company-profile"` but documentation suggests a different table name, use the keymap configuration (Rule 1 - configuration is authoritative).
+When documents conflict, priority order:
+1. `config/dataset_keymap.yaml` — authoritative for all dataset definitions and mappings
+2. Recipe contracts (Section 9) — for recipe semantics and behavior
+3. Bronze contracts (Section 6) — for Bronze storage format
+4. `docs/prompts/technology_stack.md` — runtime/tooling defaults
+5. Architecture (Section 1) — conceptual intent
 
 ---
 
-## 4) Full context documentation index
+## 4) Canonical Definitions (Key Terms)
 
-### Core Configuration:
-- **`config/dataset_keymap.yaml`** - **AUTHORITATIVE** source for all dataset definitions, schemas, and Bronze→Silver mappings
+- **Asset**: tradable financial instrument (equity, ETF, bond, etc.)
+- **Instrument**: concrete tradeable representation of an asset (e.g., AAPL on NASDAQ)
+- **Universe**: defined, versioned set of instruments for a strategy
+- **Dataset**: structured collection of data with defined schema; immutable within a run
+- **Feature**: measured property of an instrument at a specific time (descriptive, not prescriptive)
+- **Factor**: hypothesis about expected returns (cross-sectional, directional, validated)
+- **Signal**: converts features into investment intent (encodes opinion)
+- **Screener**: binary eligibility filter (in/out gate, defensive not predictive)
+- **Strategy**: decision framework combining universe + screeners + signals + portfolio construction rules
+- **Run**: single execution of a pipeline with unique ID, immutable inputs/outputs
 
-### By Architecture Layer:
-**Bronze Layer**:
-- `docs/AI_context/bronze_data_contracts.md` - Storage format and metadata requirements
-- `docs/AI_context/recipe_contracts.md` - Recipe semantics and ingestion behavior
+**Canonical data flow**: Data → Datasets → Features → Screeners → Signals → Portfolio → Orders → Trades → Positions → Monitoring → Feedback
 
-**Silver Layer**:
-- `config/dataset_keymap.yaml` (datasets section) - Table mappings and DTO schemas
-- `docs/AI_context/silver_data_contracts.md` - Silver layer patterns
-- `docs/AI_context/bronze_to_silver_dto_contract.md` - Legacy DTO contract reference
-
-### Infrastructure & Cross-Cutting:
-- `docs/AI_context/architecture.md` - Overall system design
-- `docs/prompts/technology_stack.md` - Runtime, tooling, dependencies
-- `docs/AI_context/duckdb.md` - Database layer
-- `docs/AI_context/test_context.md` - Testing patterns
-- `docs/AI_context/hardware_ops.md` - Operational requirements
-- `docs/AI_context/PLANS.md` - ExecPlan methodology
-
-### Strategy & Domain Knowledge:
-- `docs/prompts/trading_strategies.md` - Strategy behavior rules
-- `docs/AI_context/hyman_minsky.md` - Economic framework
-- `docs/AI_context/quant_value.md` - Valuation methodology
-- `docs/AI_context/cononical_definitions.md` - Term definitions
+**Guiding principle**: Facts are not opinions. Opinions are not allocations. Allocations are not executions.
 
 ---
 
-## 5) Working rules for generated changes
-### 5.1 Style and typing
-- **Python**: `>=3.11,<3.14` (see `docs/prompts/technology_stack.md` for full stack)
+## 5) Working Rules for Generated Changes
+
+### 5.1 Style and Typing
+- **Python**: `>=3.11,<3.14`
 - **Packaging**: Poetry (primary), uv (local dev)
 - **Type system**: Built-in generics (`list[...]`, `dict[...]`), strict typing with mypy
 - **Code style**: Black (formatting), isort (imports), flake8 (linting)
 - **Testing**: pytest with fixtures in `tests/unit/` and `tests/e2e/`
 - Keep functions deterministic and testable; avoid hidden side effects
 
-### 5.2 Repo patterns
-- Keep layering boundaries clean:
-  - Bronze: raw results + metadata only
-  - Silver: validated, typed, conformed datasets (dedupe planned)
-- All layer mappings are defined in `config/dataset_keymap.yaml`
+### 5.2 Repo Patterns
+- Bronze: raw results + metadata only
+- Silver: validated, typed, conformed datasets
+- All layer mappings defined in `config/dataset_keymap.yaml`
 
-### 5.3 Adding a new dataset (configuration-based approach)
-All dataset definitions live in `config/dataset_keymap.yaml`. To add a new dataset, add an entry to the `datasets` section with:
+### 5.3 Adding a New Dataset
+All dataset definitions live in `config/dataset_keymap.yaml`:
 
 **Required fields**:
-- `domain`: Logical domain (company, economics, fundamentals, technicals)
+- `domain`: company | economics | fundamentals | technicals
 - `source`: Data source identifier (e.g., fmp, fred)
 - `dataset`: Internal dataset name (stable identifier)
 - `discriminator`: Empty string or unique discriminator for partitioning
-- `ticker_scope`: Either "per_ticker" or "global"
+- `ticker_scope`: per_ticker | global
 - `silver_schema`: Target Silver schema name
 - `silver_table`: Target Silver table name
-- `key_cols`: List of columns that form the unique key
+- `key_cols`: Columns forming the unique key
 - `row_date_col`: Column name for row-level dates (or null)
 
 **Recipe definition** (nested under `recipes`):
-- `plans`: List of FMP plans this recipe runs under (e.g., ["basic"])
-- `data_source_path`: Relative API path
-- `query_vars`: Query parameters (use `__ticker__`, `__from_date__`, `__to_date__` placeholders)
-- `date_key`: Field name for observation date (or null for snapshots)
-- `cadence_mode`: Usually "interval"
+- `plans`: List of FMP plans (e.g., ["basic"])
+- `data_source_path`: Relative API path (no base URL)
+- `query_vars`: Query params using `__ticker__`, `__from_date__`, `__to_date__` placeholders
+- `date_key`: Observation date field name (null for snapshots)
+- `cadence_mode`: "interval"
 - `min_age_days`: Minimum age before re-fetching
-- `run_days`: List of weekdays to run (e.g., ["sat"])
-- `help_url`: Link to vendor documentation
+- `run_days`: Weekdays to run (e.g., ["sat"])
+- `help_url`: Vendor documentation link
 
-**DTO Schema definition** (nested under `dto_schema`):
-- `dto_type`: Python import path to DTO class (e.g., "data_layer.dtos.company.company_dto.CompanyDTO")
-- `columns`: List of column definitions with `name`, `type`, `nullable`
+**DTO Schema** (nested under `dto_schema`):
+- `dto_type`: Python import path to DTO class
+- `columns`: List of `{name, type, nullable}` definitions
 
-**Example entry structure**:
+**Example**:
 ```yaml
 - domain: company
   source: fmp
@@ -175,32 +151,252 @@ All dataset definitions live in `config/dataset_keymap.yaml`. To add a new datas
       - {name: company_name, type: str, nullable: true}
 ```
 
+Also add the dataset to `DATASETS` and `DTO_TYPES` constants. If a new domain or source is introduced, add it to `DOMAINS` / `DATA_SOURCES`.
+
 ---
 
-## 6) What "done" looks like
-For code changes produced by Codex:
-- Changes compile/type-check at a reasonable baseline (mypy-friendly)
-- Formatting consistent with repo standards (Black/isort/flake8)
-- No contract violations (DTO purity, Bronze immutability, recipe semantics)
-- Where meaningful, include a small test fixture or example usage
+## 6) Bronze Layer Contracts
 
+### 6.1 RunResult JSON Contract
+Every stored Bronze file MUST contain:
+
+| Field | Type | Notes |
+|---|---|---|
+| `request` | dict | Serialized RunRequest |
+| `now` | str (ISO8601) | Processing timestamp |
+| `elapsed_microseconds` | int | Latency |
+| `headers` | str\|None | Response headers |
+| `status_code` | int | HTTP status |
+| `reason` | str | HTTP reason phrase |
+| `content` | list[dict] | Always a list (may be empty) |
+| `error` | str\|None | Populated for non-200 or invalid payloads |
+
+`RunResult` computes `hash`, `first_date`, `last_date` in memory but does **not** serialize them.
+
+### 6.2 File Naming & Partitioning
+```
+/bronze/<domain>/<source>/<dataset>/<ticker_or_none>/<injestion_date>-<uuid>.json
+```
+- One JSON file per API response, UTF-8, deterministic serialization (`sort_keys=True`)
+- Append-only: no overwrites; re-ingestion always creates a new file
+
+### 6.3 Promotion Gate
+Bronze → Silver promotion requires (checked in `RunResult.canPromoteToSilverWith`):
+- `status_code == 200`
+- `error is None`
+- `content` is non-empty OR dataset `allows_empty_content`
+
+### 6.4 Run Summary Manifest
+One manifest per run at: `/bronze/manifests/summary-<RUN_ID>-<YYYY-MM-DD>.json`
+
+Required fields: `run_id`, `started_at`, `finished_at`, `records_written`, `records_failed`, `filenames`, `failed_filenames`
+
+---
 
 ## 7) ExecPlans
 
-When writing complex features or significant refactors, use an ExecPlan (as described in `docs/AI_context/PLANS.md`) from design to implementation.
+Use an ExecPlan for complex features or significant refactors. An ExecPlan is a **self-contained, living document** that enables a complete novice to implement a feature end-to-end.
 
-**Use an ExecPlan when**:
-- Adding a new domain or layer to the architecture
+**Use when**:
+- Adding a new domain or layer
 - Changing core contracts (DTO, Recipe, Bronze storage format)
 - Multi-file refactors affecting 5+ modules
 - Adding new external integrations or data sources
-- Implementing new strategy logic or portfolio rules
-- Significant performance optimizations requiring proof-of-concept
+- Implementing new strategy or portfolio rules
 
-**Do NOT use ExecPlan for**:
-- Single-file bug fixes
-- Adding fields to existing DTOs
-- Simple test additions
-- Documentation updates
+**Do NOT use for**: single-file bug fixes, adding fields to DTOs, simple test additions, documentation updates.
+
+### ExecPlan Required Sections
+```
+## Purpose / Big Picture       — user-visible behavior enabled by this change
+## Progress                    — checkbox list, timestamped, always current state
+## Surprises & Discoveries     — unexpected behaviors, bugs, insights + evidence
+## Decision Log                — every decision with rationale and date/author
+## Outcomes & Retrospective    — what was achieved, gaps, lessons learned
+## Context and Orientation     — current state, key files, term definitions
+## Plan of Work                — prose sequence of edits (file + location + change)
+## Concrete Steps              — exact commands with expected output transcripts
+## Validation and Acceptance   — observable behavior to verify (not just "compiles")
+## Idempotence and Recovery    — safe retry/rollback instructions
+## Artifacts and Notes         — concise transcripts/diffs proving success
+## Interfaces and Dependencies — libraries, types, function signatures required
+```
+
+ExecPlans are stored as `.md` files under `docs/prompts/`. They are living documents — update all sections as work proceeds.
+
+---
+
+## 8) DTO Contracts (Bronze ↔ Silver Boundary)
+
+DTOs are the **only allowed contract surface** between Bronze and Silver. All DTOs inherit from `BronzeToSilverDTO`.
+
+### 8.1 Required Methods
+
+| Method | Direction | Notes |
+|---|---|---|
+| `from_row(cls, row: Mapping[str, Any], ticker: str \| None) -> Self` | Bronze → DTO | Parses one row; classmethod |
+| `to_dict(self) -> dict[str, Any]` | DTO → Silver | Emits JSON-serializable primitives only |
+| `key_date` (property) | — | Vendor date or `date.min` for snapshots |
+
+Optional: `from_series_row(cls, row: pd.Series) -> Self` for Silver → DTO round-trip.
+
+### 8.2 DTO Rules
+- **One endpoint → one DTO**; class name: `<DatasetNamePascalCase>DTO`
+- All attributes and `to_dict()` keys are **snake_case**
+- Declare `KEY_COLS: list[str]` (typically `["ticker"]`; composite for multi-key datasets)
+- `ticker` is passed in by the ingestion loop — DTOs must NOT fetch or compute it
+- `to_dict()` must emit: primitives, ISO 8601 strings for dates, `None` for missing values (not `"null"`)
+- Missing strings → `""`; missing booleans → `False`; numeric failures → `None`
+- Discriminator-based datasets set `is_ticker_based=False` in the recipe
+- `key_date`: return parsed vendor date if available; otherwise `date.min`
+
+### 8.3 Naming Convention
+`from_row` must match the call site exactly. Use `BronzeToSilverDTO` helper methods for safe type parsing — do not hand-cast inline.
+
+---
+
+## 9) Recipe Contracts (DatasetRecipe Semantics)
+
+A `DatasetRecipe` is a declarative spec for ingesting exactly one source endpoint.
+
+### 9.1 URL Construction (authoritative)
+```
+url = f"{DATA_SOURCES_CONFIG[source][BASE_URL]}{recipe.data_source_path}"
+```
+Never embed the base URL in `data_source_path`.
+
+### 9.2 Placeholder Substitution
+`RunProvider._get_query_vars()` substitutes in `recipe.query_vars`:
+- `TICKER_PLACEHOLDER` → current ticker
+- `FROM_DATE_PLACEHOLDER` → computed `from_date` (see §9.3)
+- `TO_DATE_PLACEHOLDER` → today
+- `apikey` → injected from config; `None`-valued params removed
+
+### 9.3 from_date / Base-Date Semantics
+`from_date` is computed from prior ingested data, not the recipe:
+- Stored as `RunDataDatesDTO.to_date` keyed by `"{domain}-{source}-{dataset}-{ticker}"`
+- If found: `from_date = stored to_date` (continue from last end date)
+- If not found: `from_date = universe.from_date`
+
+**Due-ness** (interval mode): `injestion_date >= base_date + min_age_days`
+
+### 9.4 Ticker-Based vs Global
+- `is_ticker_based=True`: `RunProvider` loops over `universe.tickers()`; include `"symbol": TICKER_PLACEHOLDER`
+- `is_ticker_based=False`: single request with `ticker=None` (e.g., economics indicators)
+
+### 9.5 Discriminators (Shared Datasets)
+When many logical series share one dataset (e.g., economics indicators), every recipe must define `discrimnator` (typo preserved in code for compatibility) to ensure deterministic filenames/partitions. Example: `{"name": "gdp"}`, `{"name": "cpi"}`.
+
+### 9.6 snapshot vs Timeseries `date_key`
+- Timeseries: set `date_key` to the row field containing the observation date (e.g., `"date"`, `"periodOfReport"`)
+- Snapshot/metadata endpoints (e.g., profile, peers): `date_key=None` → runtime falls back to today's date for cadence progression
+
+### 9.7 Failure Semantics
+A failed run request does NOT crash the run. A `RunResult` is still created with `error` set, written via `ResultFileAdapter`, and `RunContext` counters are updated. The system is "audit-first".
+
+---
+
+## 10) DuckDB Storage
+
+DuckDB is the canonical store for all structured data (Silver + Gold) plus manifests, watermarks, and operational metadata. Bronze remains immutable raw JSON files on disk.
+
+### 10.1 Configuration
+- `DUCKDB_FOLDER`: location of the DuckDB file (dev/prod differs)
+- `repo_root_path`: absolute path to repo root
+- `BRONZE_FOLDER`: repo-relative base folder for bronze files (e.g., `data/bronze`)
+- `MIGRATIONS_FOLDER`: repo-relative folder for SQL migrations (e.g., `db/migrations`)
+- `DATASET_KEYMAP_FOLDER`: repo-relative path to `config/dataset_keymap.yaml`
+
+All file paths stored in DuckDB are **repo-root-relative**. Single DuckDB file for dev and prod (copyable from Raspberry Pi to Windows).
+
+### 10.2 Schema Layout
+```
+ops     — manifests, watermarks, migrations, run summaries
+silver  — conformed datasets (one table per dataset)
+gold    — warehouse tables (dims/facts, curated analytics)
+```
+
+### 10.3 ops Tables
+
+**ops.bronze_manifest** (one row per Bronze JSON file):
+`bronze_file_id` (PK), `run_id`, `domain`, `source`, `dataset`, `discriminator`, `ticker`, `request_ts`, `response_ts`, `ingested_at`, `status_code`, `error_message`, `file_path_rel` (repo-relative), `payload_hash`, `coverage_from_date`, `coverage_to_date`, `content_length_bytes`, `is_promotable`
+
+**ops.dataset_watermarks** (composite PK on dataset identity):
+`domain`, `source`, `dataset`, `discriminator`, `ticker`, `coverage_from_date`, `coverage_to_date`, `last_success_at`, `last_run_id`, `last_bronze_file_id`, `notes`
+
+**ops.gold_build** (one row per Gold build):
+`gold_build_id` (PK), `run_id`, `model_version` (git SHA), `started_at`, `finished_at`, `status`, `error_message`, `input_watermarks` (LIST\<VARCHAR\>), `tables_built` (LIST\<VARCHAR\>), `row_counts`
+
+**ops.schema_migrations**: `version` (PK, e.g., `20260112_001`), `name`, `applied_at`, `checksum`
+
+**ops.file_ingestions**: per-step metrics for bronze/silver/gold (run_id, file_id, coverage, hashes, row counts, errors, timestamps)
+
+### 10.4 Silver Tables
+- One table per dataset in `silver` schema
+- Required columns on every silver row: `bronze_file_id`, `run_id`, `ingested_at`
+- Required row date: use DTO `date_key` field if defined; otherwise `as_of_date`
+- UPSERT/MERGE keyed by `KEY_COLS` from `config/dataset_keymap.yaml` — idempotent on replay
+
+### 10.5 Gold Tables
+- Star-schema modeling (dims/facts)
+- Every Gold table includes: `gold_build_id`, `model_version` (git SHA)
+- Gold outputs reproducible given: referenced input watermarks + git SHA
+
+### 10.6 Dataset Identity (for manifests and watermarks)
+Identity = `domain` + `source` + `dataset` + `discriminator` (empty string if unused) + `ticker` (empty string if unused)
+
+`input_watermarks` serialization format:
+`domain|source|dataset|discriminator|ticker@coverage_from=YYYY-MM-DD;coverage_to=YYYY-MM-DD`
+
+### 10.7 Transactions
+- Bronze: write file → insert manifest row (actionable error if manifest insert fails; leave file for replay)
+- Silver promotion: MERGE/UPSERT + watermark updates in one transaction
+- Gold build: write gold tables + `ops.gold_build` record in one transaction
+
+---
+
+## 11) DDD Review Checklist (Before Modifying `/src`)
+
+Before modifying production code, review the target classes against:
+
+1. **Aggregate boundaries** — Identify aggregate root(s); confirm they own transactional invariants while collaborators stay read-only
+2. **Invariants** — Enumerate explicit, testable runtime checks (config validation, identifier limits, timing)
+3. **Context map consistency** — Verify domain/source/dataset/cadence values come from shared constants, not redefined locally
+4. **Dependency direction** — Classes depend only on lower-level contracts (DTOs, config, helpers); no circular references
+5. **Entity vs. value-object** — Immutable data carriers (value objects) vs. stateful aggregates (entities)
+
+**Good Python Practices to check**: clear structure + comments; explicit type annotations + dataclasses; docstrings for behavior; context managers for resources; consistent naming.
+
+Record findings in the ExecPlan's `Surprises & Discoveries` and `Review Findings` sections before changing code. Save the resulting ExecPlan under `docs/prompts/`.
+
+---
+
+## 12) Hardware / Ops Telemetry Domain
+
+The `ops/telemetry` domain samples host performance metrics and persists them as Silver time-series and Gold rollups. Runs on **Raspberry Pi** (primary, Linux) and **Windows** (secondary dev).
+
+**Silver Dataset** (`OPS_HOST_METRICS_DATASET`): append-only, one row per sample per host.
+Required: `as_of` (UTC timestamp), `host_id`, `os`, `arch`, `cpu_pct`, `cpu_count_logical`, `ram_*_mb`, `swap_*_mb`, `disk_root_*_gb`, `net_rx_bytes`, `net_tx_bytes`
+Optional (nullable): `cpu_temp_c`, `throttle_flags` (Pi only), `cpu_freq_mhz`, `process_rss_mb`, `process_cpu_pct`
+
+**Gold Dataset** (`OPS_HOST_METRICS_5M_ROLLUP_DATASET`): 5-minute bucket rollups per host.
+
+**Implementation structure** (`src/strawberry/ops/telemetry/`):
+`config.py`, `providers/base.py`, `providers/portable_psutil.py`, `providers/linux_pi_sensors.py`, `schemas.py`, `writer.py`, `rollups.py`, `flow.py`
+
+**Cross-platform**: use `psutil` for portable metrics (CPU/RAM/disk/network). Temperature and throttle flags are Linux-only and optional; failures must degrade gracefully (return null, never raise).
+
+**Config**: `enabled`, `host_id` (default: hostname), `sample_interval_seconds` (default: 10), `rollup_interval_minutes` (default: 5), `disk_mount`, `network_interface`.
+
+---
+
+## 13) What "Done" Looks Like
+- Changes compile/type-check (mypy-friendly)
+- Formatting consistent with repo standards (Black/isort/flake8)
+- No contract violations (DTO purity, Bronze immutability, recipe semantics)
+- Silver writes are idempotent via UPSERT with KEY_COLS from keymap
+- Where meaningful, include a test fixture or example usage
+
+---
 
 END OF DOCUMENT

@@ -36,8 +36,8 @@ Raw API responses are never modified. One JSON file is written per request, pres
 ### 3. DTOs are the only Bronze → Silver boundary
 Every Silver table is written and read exclusively through `BronzeToSilverDTO` subclasses. Raw Bronze dicts are parsed via `from_row()`; Silver rows are emitted via `to_dict()`. This prevents Bronze quirks from leaking into Silver.
 
-### 4. DuckDB replaces Parquet for structured storage
-Silver and operational tables (manifests, watermarks, run history) are stored in a single DuckDB file. Parquet was the previous Silver store; the transition is complete for new datasets. Bronze remains filesystem JSON — DuckDB stores references and metadata, not raw payloads.
+### 4. DuckDB for structured storage
+Silver and operational tables (manifests, watermarks, run history) are stored in a single DuckDB file. Bronze remains filesystem JSON — DuckDB stores references and metadata, not raw payloads.
 
 ### 5. Silver writes are idempotent (MERGE/UPSERT)
 Silver promotion uses the dataset's `key_cols` from the keymap to MERGE rows. Replaying the same Bronze file produces no duplicates.
@@ -59,7 +59,7 @@ A failed ingestion request does not abort the run. A `RunResult` error record is
 
 ```bash
 # Clone and enter the repo
-git clone <repo-url>
+git clone https://github.com/toddbadams/SBFoundation
 cd SBFoundation
 
 # Install dependencies (Poetry manages the .venv)
@@ -108,11 +108,8 @@ The defaults (`DATA_ROOT_FOLDER=c:/strawberry/data`, `REPO_ROOT_FOLDER=c:/strawb
 SBFoundation/
 ├── config/
 │   └── dataset_keymap.yaml       # AUTHORITATIVE dataset/recipe/DTO/Silver-table definitions
-├── db/
-│   └── migrations/               # Versioned SQL migration files (ops/silver/gold schemas)
-├── docs/
-│   ├── AI_context/               # Architecture, contracts, DuckDB design docs
-│   └── prompts/                  # Technology stack, trading strategy context
+├── docs/                         # project documentation
+Architecture, contracts, DuckDB design docs
 ├── src/
 │   ├── settings.py               # All constants: domains, datasets, data sources, placeholders, paths
 │   ├── folders.py                # Path resolution helpers (bronze/duckdb/log/migration folders)
@@ -217,7 +214,7 @@ silver.<table_name>  (DuckDB)
   [Downstream: Gold layer, backtesting, strategy engine — separate packages]
 ```
 
-**Domain execution order:** `instrument` → `economics` → `company` → `fundamentals` → `technicals`
+**Ticker based domain execution order:** `instrument` → `company` → `fundamentals` → `technicals`
 
 Per-ticker recipes run in chunks of 10 tickers to bound memory and allow incremental Silver promotion between chunks.
 

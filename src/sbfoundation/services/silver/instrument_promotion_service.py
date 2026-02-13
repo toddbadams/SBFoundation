@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-import logging
 import uuid
 
 import duckdb
 
 from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
-from sbfoundation.infra.logger import LoggerFactory
+from sbfoundation.infra.logger import LoggerFactory, SBLogger
 
 
 class InstrumentPromotionService:
@@ -33,7 +32,7 @@ class InstrumentPromotionService:
     def __init__(
         self,
         bootstrap: DuckDbBootstrap | None = None,
-        logger: logging.Logger | None = None,
+        logger: SBLogger | None = None,
     ) -> None:
         self._bootstrap = bootstrap or DuckDbBootstrap()
         self._owns_bootstrap = bootstrap is None
@@ -54,7 +53,7 @@ class InstrumentPromotionService:
             Number of rows promoted (inserted or updated)
         """
         if source_dataset not in self.INSTRUMENT_SOURCE_TABLES:
-            self._logger.debug(f"Dataset {source_dataset} is not an instrument discovery endpoint")
+            self._logger.debug(f"Dataset {source_dataset} is not an instrument discovery endpoint", run_id=run_id)
             return 0
 
         source_table, instrument_type = self.INSTRUMENT_SOURCE_TABLES[source_dataset]
@@ -62,7 +61,7 @@ class InstrumentPromotionService:
 
         # Check if source table exists
         if not self._table_exists(conn, "silver", source_table):
-            self._logger.debug(f"Source table silver.{source_table} does not exist yet")
+            self._logger.debug(f"Source table silver.{source_table} does not exist yet", run_id=run_id)
             return 0
 
         # Build the MERGE statement
@@ -132,11 +131,12 @@ class InstrumentPromotionService:
             count = result.fetchone()
             rows_affected = count[0] if count else 0
             self._logger.info(
-                f"Promoted {rows_affected} instruments from {source_dataset} to unified instrument table"
+                f"Promoted {rows_affected} instruments from {source_dataset} to unified instrument table",
+                run_id=run_id,
             )
             return rows_affected
         except Exception as exc:
-            self._logger.error(f"Failed to promote instruments from {source_dataset}: {exc}")
+            self._logger.error(f"Failed to promote instruments from {source_dataset}: {exc}", run_id=run_id)
             raise
 
     def instrument_exists(self, symbol: str, instrument_type: str | None = None) -> bool:

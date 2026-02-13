@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-import logging
 from typing import Iterator
 
 import duckdb
 
-from sbfoundation.infra.logger import LoggerFactory
+from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbfoundation.folders import Folders
 from sbfoundation.settings import DUCKDB_FILENAME
 
@@ -106,7 +105,7 @@ class DuckDbBootstrap:
 
     Schema initialization is idempotent and uses CREATE IF NOT EXISTS, making it safe
     to call multiple times and compatible with existing databases."""
-    def __init__(self, logger: logging.Logger | None = None, conn: duckdb.DuckDBPyConnection | None = None) -> None:
+    def __init__(self, logger: SBLogger | None = None, conn: duckdb.DuckDBPyConnection | None = None) -> None:
         self._logger = logger or LoggerFactory().create_logger(self.__class__.__name__)
         duckdb_path = Folders.duckdb_absolute_path()
         duckdb_path.mkdir(parents=True, exist_ok=True)

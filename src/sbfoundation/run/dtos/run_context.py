@@ -38,7 +38,7 @@ class RunContext(BronzeToSilverDTO):
     @property
     def msg(self) -> str:
         return (
-            f"run_id={self.run_id} | elapsed_seconds={self.elapsed_seconds:.2f} | bronze_files_written={self.bronze_files_passed}"
+            f"elapsed_seconds={self.elapsed_seconds:.2f} | bronze_files_written={self.bronze_files_passed}"
             f" | bronze_files_failed={self.bronze_files_failed} | silver_dto_count={self.silver_dto_count}"
         )
 

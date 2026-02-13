@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 
+from sbfoundation.infra.logger import SBLogger
 from sbfoundation.dataset.loaders.dataset_keymap_loader import DatasetKeymapLoader
 from sbfoundation.dataset.models.dataset_keymap import DatasetKeymap
 from sbfoundation.dataset.models.dataset_keymap_entry import DatasetKeymapEntry
@@ -22,8 +23,8 @@ class DatasetService:
     serialized identity key before handing the `DatasetKeymap` to downstream
     services."""
 
-    def __init__(self, today: str, plan: str, *, logger: logging.Logger | None = None, strict_dto_registry: bool | None = None) -> None:
-        self._logger = logger or logging.getLogger(self.__class__.__name__)
+    def __init__(self, today: str, plan: str, *, logger: SBLogger | None = None, strict_dto_registry: bool | None = None) -> None:
+        self._logger = logger or logging.getLogger(self.__class__.__name__)  # type: ignore[assignment]
         if strict_dto_registry is None:
             strict_dto_registry = os.getenv("STRICT_DTO_REGISTRY", "").strip().lower() in {"1", "true", "yes"}
         self._strict_dto_registry = strict_dto_registry

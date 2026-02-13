@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import logging
 
 import duckdb
 
 from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
-from sbfoundation.infra.logger import LoggerFactory
+from sbfoundation.infra.logger import LoggerFactory, SBLogger
 
 
 class InstrumentResolutionService:
@@ -31,7 +30,7 @@ class InstrumentResolutionService:
     def __init__(
         self,
         bootstrap: DuckDbBootstrap | None = None,
-        logger: logging.Logger | None = None,
+        logger: SBLogger | None = None,
     ) -> None:
         self._bootstrap = bootstrap or DuckDbBootstrap()
         self._owns_bootstrap = bootstrap is None

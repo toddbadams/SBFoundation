@@ -1,7 +1,6 @@
 ﻿from __future__ import annotations
 
 from datetime import date
-import logging
 from pathlib import Path
 
 import duckdb
@@ -16,7 +15,7 @@ from sbfoundation.dataset.models.dataset_keymap import DatasetKeymap
 from sbfoundation.dataset.models.dataset_keymap_entry import DatasetKeymapEntry
 from sbfoundation.dataset.services.dataset_service import DatasetService
 from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
-from sbfoundation.infra.logger import LoggerFactory
+from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbfoundation.services.bronze.bronze_batch_reader import BronzeBatchReader
 from sbfoundation.run.services.chunk_engine import ChunkEngine
 from sbfoundation.run.services.dedupe_engine import DedupeEngine
@@ -34,7 +33,7 @@ class SilverService:
 
     def __init__(
         self,
-        logger: logging.Logger | None = None,
+        logger: SBLogger | None = None,
         bootstrap: DuckDbBootstrap | None = None,
         keymap_service: DatasetService | None = None,
         result_file_adapter: ResultFileAdapter | None = None,
@@ -90,6 +89,7 @@ class SilverService:
                     ingestion.file_id,
                     ingestion.dataset,
                     exc,
+                    run_id=ingestion.run_id,
                 )
                 self._ops_service.finish_silver_ingestion(
                     ingestion,
@@ -126,10 +126,10 @@ class SilverService:
                 self._instrument_promotion_service.promote_to_unified_instrument(dataset, run_id)
             except Exception as exc:
                 self._logger.warning(
-                    "Unified instrument promotion failed | dataset=%s | run_id=%s | error=%s",
+                    "Unified instrument promotion failed | dataset=%s | error=%s",
                     dataset,
-                    run_id,
                     exc,
+                    run_id=run_id,
                 )
 
         return promoted, promoted_rows

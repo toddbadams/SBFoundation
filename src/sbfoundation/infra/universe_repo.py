@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import logging
 
 from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
-from sbfoundation.infra.logger import LoggerFactory
+from sbfoundation.infra.logger import LoggerFactory, SBLogger
 
 
 class UniverseRepo:
@@ -17,7 +16,7 @@ class UniverseRepo:
 
     def __init__(
         self,
-        logger: logging.Logger | None = None,
+        logger: SBLogger | None = None,
         bootstrap: DuckDbBootstrap | None = None,
     ) -> None:
         self._logger = logger or LoggerFactory().create_logger(self.__class__.__name__)

@@ -42,7 +42,7 @@ class BronzeService:
         result.error = e
         filename = self._persist_bronze(result)
         self.summary.result_bronze_error(result, e, filename=filename)
-        self.logger.warning(f"{result.msg} | {result.error}")
+        self.logger.warning(f"{result.msg} | {result.error}", run_id=self.summary.run_id)
 
     def _process_run_request(self, request: RunRequest) -> None:
         """Execute a single request through Bronze write."""
@@ -63,7 +63,8 @@ class BronzeService:
         if last_ingestion_date and last_ingestion_date >= today:
             self.logger.debug(
                 "Skipping duplicate ingestion | dataset=%s | ticker=%s | last_ingestion=%s",
-                dataset, ticker, last_ingestion_date
+                dataset, ticker, last_ingestion_date,
+                run_id=self.summary.run_id,
             )
             return
 
@@ -75,7 +76,7 @@ class BronzeService:
             result.error = result.request.error
             # Skip file persistence and ops tracking for "too soon" requests
             if result.error == "REQUEST IS TOO SOON":
-                self.logger.warning(f"{result.msg} | {result.error}")
+                self.logger.warning(f"{result.msg} | {result.error}", run_id=self.summary.run_id)
                 return
             self._result_bronze_error(result, result.error)
             return
@@ -127,14 +128,14 @@ class BronzeService:
         try:
             self.result_file_adapter.write(result)
         except Exception as exc:
-            self.logger.error(f"Bronze persistence failed: {result.msg} | error={exc}")
+            self.logger.error(f"Bronze persistence failed: {result.msg} | error={exc}", run_id=self.summary.run_id)
             raise
 
         try:
             # Manifest insert must happen even when the blob was written so Ops can audit every run.
             self.ops_service.insert_bronze_manifest(result)
         except Exception as exc:
-            self.logger.error("Bronze manifest insert failed: %s", exc)
+            self.logger.error("Bronze manifest insert failed: %s", exc, run_id=self.summary.run_id)
             raise
 
         return str(Folders.duckdb_absolute_path)
@@ -175,7 +176,7 @@ class BronzeService:
             except Exception as e:
                 # we should never end up here
                 # todo: add this error to run summary
-                self.logger.error(f"run recipe failure: {e}")
+                self.logger.error(f"run recipe failure: {e}", run_id=self.summary.run_id)
 
         if self._owns_ops_service:
             self.ops_service.close()

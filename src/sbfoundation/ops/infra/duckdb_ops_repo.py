@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import logging
 from typing import Any
 
 import duckdb
@@ -9,14 +8,14 @@ import duckdb
 from sbfoundation.dataset.models.dataset_identity import DatasetIdentity
 from sbfoundation.dataset.models.dataset_watermark import DatasetWatermark
 from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
-from sbfoundation.infra.logger import LoggerFactory
+from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbfoundation.ops.dtos.file_injestion import DatasetInjestion
 
 
 class DuckDbOpsRepo:
     """Aggregate root for the ops metadata stored in `ops.file_ingestions`.  Maintaining a single run/file row prevents Bronze duplication."""
 
-    def __init__(self, logger: logging.Logger | None = None, bootstrap: DuckDbBootstrap | None = None) -> None:
+    def __init__(self, logger: SBLogger | None = None, bootstrap: DuckDbBootstrap | None = None) -> None:
         self._logger = logger or LoggerFactory().create_logger(self.__class__.__name__)
         self._bootstrap = bootstrap or DuckDbBootstrap()
         self._owns_bootstrap = bootstrap is None

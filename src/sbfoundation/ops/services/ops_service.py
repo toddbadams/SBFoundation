@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from datetime import date, datetime, timedelta
 
 import duckdb
@@ -9,14 +8,14 @@ import duckdb
 from sbfoundation.dataset.models.dataset_identity import DatasetIdentity
 from sbfoundation.ops.dtos.file_injestion import DatasetInjestion
 from sbfoundation.ops.infra.duckdb_ops_repo import DuckDbOpsRepo
-from sbfoundation.infra.logger import LoggerFactory
+from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbfoundation.run.dtos.run_result import RunResult
 from sbfoundation.run.dtos.run_context import RunContext
 from sbfoundation.services.universe_service import UniverseService
 
 
 class OpsService:
-    def __init__(self, ops_repo: DuckDbOpsRepo | None = None, universe: UniverseService | None = None, logger: logging.Logger | None = None) -> None:
+    def __init__(self, ops_repo: DuckDbOpsRepo | None = None, universe: UniverseService | None = None, logger: SBLogger | None = None) -> None:
         self._logger = logger or LoggerFactory().create_logger(self.__class__.__name__)
         self._ops_repo = ops_repo or DuckDbOpsRepo()
         self._owns_ops_repo = ops_repo is None
@@ -109,7 +108,7 @@ class OpsService:
         try:
             self._ops_repo.upsert_file_ingestion(ingestion)
         except Exception as exc:
-            self._logger.warning("Silver start persistence failed: %s", exc)
+            self._logger.warning("Silver start persistence failed: %s", exc, run_id=ingestion.run_id)
 
     def finish_silver_ingestion(
         self,
@@ -137,7 +136,7 @@ class OpsService:
         try:
             self._ops_repo.upsert_file_ingestion(ingestion)
         except Exception as exc:
-            self._logger.warning("Silver finish persistence failed: %s", exc)
+            self._logger.warning("Silver finish persistence failed: %s", exc, run_id=ingestion.run_id)
 
     def get_silver_watermark(
         self,
@@ -229,7 +228,7 @@ class OpsService:
                 gold_injest_end_time=gold_injest_end_time,
             )
         except Exception as exc:
-            self._logger.warning("Failed to persist gold ingestion timestamps: %s", exc)
+            self._logger.warning("Failed to persist gold ingestion timestamps: %s", exc, run_id=run_id)
 
     def load_dataset_ingestions(self, *, run_id: str, identity: DatasetIdentity, ticker_scope: str) -> list[DatasetInjestion]:
         try:
@@ -239,7 +238,7 @@ class OpsService:
                 ticker_scope=ticker_scope,
             )
         except Exception as exc:
-            self._logger.warning("Failed to load file ingestions for gold metadata: %s", exc)
+            self._logger.warning("Failed to load file ingestions for gold metadata: %s", exc, run_id=run_id)
             return []
 
     def ensure_dataset_ingestions(
@@ -280,14 +279,14 @@ class OpsService:
             tickers=tickers,
         )
         if not ingestions:
-            self._logger.warning("No ingestions found for gold start: %s", identity)
+            self._logger.warning("No ingestions found for gold start: %s", identity, run_id=run_id)
             return
         for ingestion in ingestions:
             ingestion.gold_injest_start_time = started_at
             try:
                 self._ops_repo.upsert_file_ingestion(ingestion)
             except Exception as exc:
-                self._logger.warning("Gold start persistence failed: %s", exc)
+                self._logger.warning("Gold start persistence failed: %s", exc, run_id=run_id)
 
     def finish_gold_ingestion(
         self,
@@ -315,7 +314,7 @@ class OpsService:
             tickers=tickers,
         )
         if not ingestions:
-            self._logger.warning("No ingestions found for gold finish: %s", identity)
+            self._logger.warning("No ingestions found for gold finish: %s", identity, run_id=run_id)
             return
         object_type_value = ", ".join(sorted(set(object_types))) if object_types else None
         table_name_value = ", ".join(sorted(set(table_names))) if table_names else None
@@ -333,7 +332,7 @@ class OpsService:
             try:
                 self._ops_repo.upsert_file_ingestion(ingestion)
             except Exception as exc:
-                self._logger.warning("Gold finish persistence failed: %s", exc)
+                self._logger.warning("Gold finish persistence failed: %s", exc, run_id=run_id)
 
     def _create_stub_ingestions(
         self,
@@ -359,7 +358,7 @@ class OpsService:
                 self._ops_repo.upsert_file_ingestion(ingestion)
                 ingestions.append(ingestion)
             except Exception as exc:
-                self._logger.warning("Stub ingestion persistence failed: %s", exc)
+                self._logger.warning("Stub ingestion persistence failed: %s", exc, run_id=run_id)
         return ingestions
 
     def _resolve_stub_tickers(

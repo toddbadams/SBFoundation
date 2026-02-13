@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
-import logging
 import typing
 import uuid
 
@@ -9,7 +8,7 @@ import pandas as pd
 from pandas.tseries.holiday import USFederalHolidayCalendar
 from pandas.tseries.offsets import CustomBusinessDay
 
-from sbfoundation.infra.logger import LoggerFactory
+from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbfoundation.infra.universe_repo import UniverseRepo
 from sbfoundation.settings import *
 
@@ -27,7 +26,7 @@ class UniverseService:
     - new_tickers: Returns tickers from instrument dimensions not yet ingested
     """
 
-    def __init__(self, logger: logging.Logger | None = None, repo: UniverseRepo | None = None) -> None:
+    def __init__(self, logger: SBLogger | None = None, repo: UniverseRepo | None = None) -> None:
         self._logger = logger or LoggerFactory().create_logger(self.__class__.__name__)
         self._repo = repo or UniverseRepo(logger=self._logger)
         self._owns_repo = repo is None

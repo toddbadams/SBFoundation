@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Callable, Iterable, Sequence
-import logging
-
+from sbfoundation.infra.logger import SBLogger
 from sbfoundation.dataset.models.dataset_recipe import DatasetRecipe
 from sbfoundation.run.dtos.run_context import RunContext
 
@@ -15,7 +14,7 @@ Promotion = Callable[[RunContext], RunContext]
 @dataclass
 class OrchestrationTickerChunkService:
     chunk_size: int
-    logger: logging.Logger
+    logger: SBLogger
     process_chunk: ChunkProcessor
     promote_silver: Promotion
     silver_enabled: bool

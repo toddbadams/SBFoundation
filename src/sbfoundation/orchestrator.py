@@ -75,7 +75,7 @@ class Orchestrator:
 
     def run(self) -> RunContext:
         # start the run summary to capture ops metrics during the run
-        run_summary = self.ops_service.start_run(
+        run = self.ops_service.start_run(
             update_ticker_limit=self.switches.update_ticker_limit,
             new_ticker_limit=self.switches.new_ticker_limit,
             enable_update_tickers=self.switches.enable_update_tickers,
@@ -83,27 +83,26 @@ class Orchestrator:
         )
 
         self.logger.info(
-            f"Starting orchestration: update_tickers={len(run_summary.update_tickers)}, "
-            f"new_tickers={len(run_summary.new_tickers)}, total={len(run_summary.tickers)}",
-            run_id=run_summary.run_id,
+            f"Starting orchestration: update_tickers={len(run.update_tickers)}, " f"new_tickers={len(run.new_tickers)}, total={len(run.tickers)}",
+            run_id=run.run_id,
         )
 
         # process each domain in order, completing Bronze -> Silver before next domain
         for domain in DOMAIN_EXECUTION_ORDER:
             if not self.switches.is_domain_enabled(domain):
-                self.logger.info(f"Skipping disabled domain: {domain}", run_id=run_summary.run_id)
+                self.logger.info(f"Skipping disabled domain: {domain}", run_id=run.run_id)
                 continue
 
-            self.logger.info(f"Processing domain: {domain}", run_id=run_summary.run_id)
-            run_summary = self._process_domain(domain, run_summary)
+            self.logger.info(f"Processing domain: {domain}", run_id=run.run_id)
+            run = self._process_domain(domain, run)
 
         # close out the ops metrics
-        self.ops_service.finish_run(run_summary)
-        self.logger.info(f"Orchestration complete. {run_summary.msg}  Elapsed time: {run_summary.formatted_elapsed_time}", run_id=run_summary.run_id)
+        self.ops_service.finish_run(run)
+        self.logger.info(f"Orchestration complete. {run.msg}  Elapsed time: {run.formatted_elapsed_time}", run_id=run.run_id)
 
-        return run_summary
+        return run
 
-    def _process_domain(self, domain: str, run_summary: RunContext) -> RunContext:
+    def _process_domain(self, domain: str, run: RunContext) -> RunContext:
         """Process all recipes for a single domain through Bronze -> Silver."""
         all_recipes = self._dataset_service.recipes
         domain_recipes = [r for r in all_recipes if r.domain == domain]
@@ -113,17 +112,17 @@ class Orchestrator:
 
         # Process non-ticker recipes for this domain
         if self.switches.enable_non_ticker_run and non_ticker_recipes:
-            run_summary = self._process_domain_non_ticker(domain, non_ticker_recipes, run_summary)
+            run = self._process_domain_non_ticker(domain, non_ticker_recipes, run)
 
         # Process ticker recipes for this domain
         if self.switches.enable_ticker_run and ticker_recipes:
-            run_summary = self._process_domain_ticker(domain, ticker_recipes, run_summary)
+            run = self._process_domain_ticker(domain, ticker_recipes, run)
 
-        return run_summary
+        return run
 
-    def _process_domain_non_ticker(self, domain: str, recipes: list[DatasetRecipe], run_summary: RunContext) -> RunContext:
+    def _process_domain_non_ticker(self, domain: str, recipes: list[DatasetRecipe], run: RunContext) -> RunContext:
         """Process non-ticker recipes for a domain with Bronze -> Silver."""
-        self.logger.info(f"Processing {len(recipes)} non-ticker recipes for domain: {domain}", run_id=run_summary.run_id)
+        self.logger.info(f"Processing {len(recipes)} non-ticker recipes for domain: {domain}", run_id=run.run_id)
 
         # Special handling for instrument domain: respect execution phases
         if domain == INSTRUMENT_DOMAIN:
@@ -131,37 +130,37 @@ class Orchestrator:
             discovery_recipes = [r for r in recipes if r.execution_phase == EXECUTION_PHASE_INSTRUMENT_DISCOVERY]
             if discovery_recipes and self.switches.enable_bronze:
                 limited = discovery_recipes[: self.switches.non_ticker_recipe_limit]
-                self.logger.info(f"Processing {len(limited)} instrument discovery recipes (phase 1)", run_id=run_summary.run_id)
-                run_summary = self._process_recipe_list(limited, run_summary)
+                self.logger.info(f"Processing {len(limited)} instrument discovery recipes (phase 1)", run_id=run.run_id)
+                run = self._process_recipe_list(limited, run)
                 if self.switches.enable_silver:
-                    run_summary = self._promote_silver(run_summary)
+                    run = self._promote_silver(run)
 
             # Phase 2: data_acquisition recipes
             acquisition_recipes = [r for r in recipes if r.execution_phase == EXECUTION_PHASE_DATA_ACQUISITION]
             if acquisition_recipes and self.switches.enable_bronze:
                 limited = acquisition_recipes[: self.switches.non_ticker_recipe_limit]
-                self.logger.info(f"Processing {len(limited)} instrument data acquisition recipes (phase 2)", run_id=run_summary.run_id)
-                run_summary = self._process_recipe_list(limited, run_summary)
+                self.logger.info(f"Processing {len(limited)} instrument data acquisition recipes (phase 2)", run_id=run.run_id)
+                run = self._process_recipe_list(limited, run)
         else:
             # Standard non-ticker processing for other domains
             if self.switches.enable_bronze:
                 limited = recipes[: self.switches.non_ticker_recipe_limit]
-                run_summary = self._process_recipe_list(limited, run_summary)
+                run = self._process_recipe_list(limited, run)
 
         # Silver promotion for this domain
         if self.switches.enable_silver:
-            run_summary = self._promote_silver(run_summary)
+            run = self._promote_silver(run)
 
-        self.logger.info(f"Completed non-ticker processing for domain: {domain}", run_id=run_summary.run_id)
-        return run_summary
+        self.logger.info(f"Completed non-ticker processing for domain: {domain}", run_id=run.run_id)
+        return run
 
-    def _process_domain_ticker(self, domain: str, recipes: list[DatasetRecipe], run_summary: RunContext) -> RunContext:
+    def _process_domain_ticker(self, domain: str, recipes: list[DatasetRecipe], run: RunContext) -> RunContext:
         """Process ticker recipes for a domain using chunking."""
-        self.logger.info(f"Processing {len(recipes)} ticker recipes for domain: {domain}", run_id=run_summary.run_id)
+        self.logger.info(f"Processing {len(recipes)} ticker recipes for domain: {domain}", run_id=run.run_id)
         limited = recipes[: self.switches.ticker_recipe_limit]
 
         if not limited:
-            return run_summary
+            return run
 
         chunk_service = OrchestrationTickerChunkService(
             chunk_size=self.TICKER_RECIPE_CHUNK_SIZE,
@@ -170,28 +169,28 @@ class Orchestrator:
             promote_silver=self._promote_silver,
             silver_enabled=self.switches.enable_silver,
         )
-        run_summary = chunk_service.process(limited, run_summary)
-        self.logger.info(f"Completed ticker processing for domain: {domain}", run_id=run_summary.run_id)
-        return run_summary
+        run = chunk_service.process(limited, run)
+        self.logger.info(f"Completed ticker processing for domain: {domain}", run_id=run.run_id)
+        return run
 
-    def _process_recipe_list(self, recipes: list[DatasetRecipe], run_summary: RunContext) -> RunContext:
+    def _process_recipe_list(self, recipes: list[DatasetRecipe], run: RunContext) -> RunContext:
         if not recipes:
-            return run_summary
+            return run
 
         bronze_service = BronzeService(ops_service=self.ops_service)
         try:
-            return bronze_service.register_recipes(recipes).process(run_summary)
+            return bronze_service.register_recipes(run, recipes).process(run)
         except Exception as exc:
-            self.logger.error("Bronze ingestion failed: %s", exc, run_id=run_summary.run_id)
+            self.logger.error("Bronze ingestion failed: %s", exc, run_id=run.run_id)
             traceback.print_exc()
-            return run_summary
+            return run
 
-    def _promote_silver(self, run_summary: RunContext) -> RunContext:
+    def _promote_silver(self, run: RunContext) -> RunContext:
         silver_service = SilverService(ops_service=self.ops_service, keymap_service=self._dataset_service)
         try:
-            promoted_ids, promoted_rows = silver_service.promote()
+            promoted_ids, promoted_rows = silver_service.promote(run)
         except Exception as e:
-            self.logger.error(f"Silver promotion: {e}", run_id=run_summary.run_id)
+            self.logger.error(f"Silver promotion: {e}", run_id=run.run_id)
             promoted_ids = []
             promoted_rows = 0
             traceback.print_exc()
@@ -199,12 +198,12 @@ class Orchestrator:
             silver_service.close()
 
         if promoted_ids:
-            self.logger.info("Silver promotion complete. bronze_files=%s | rows=%s", len(promoted_ids), promoted_rows, run_id=run_summary.run_id)
-            run_summary.silver_dto_count += promoted_rows
+            self.logger.info("Silver promotion complete. bronze_files=%s | rows=%s", len(promoted_ids), promoted_rows, run_id=run.run_id)
+            run.silver_dto_count += promoted_rows
         else:
-            self.logger.info("Silver promotion skipped (no promotable Bronze rows).", run_id=run_summary.run_id)
+            self.logger.info("Silver promotion skipped (no promotable Bronze rows).", run_id=run.run_id)
 
-        return run_summary
+        return run
 
 
 if __name__ == "__main__":

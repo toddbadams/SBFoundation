@@ -27,14 +27,14 @@ class SBLogger(Protocol):
 
 
 class _FixedWidthFormatter(logging.Formatter):
-    """Formatter that normalises levelname to 7 chars and name to 30 chars.
+    """Formatter that normalises levelname to 7 chars and name to 15 chars.
 
     Using ljust in Python code is more reliable than relying on %-7s in the
     format string, which can be bypassed by loggers created outside LoggerFactory.
     """
 
     _LEVELNAME_WIDTH = 7
-    _NAME_WIDTH = 30
+    _NAME_WIDTH = 15
 
     def format(self, record: logging.LogRecord) -> str:
         r = copy.copy(record)
@@ -84,7 +84,7 @@ class LoggerFactory:
             file_handler.stream = file_handler._open()
 
         def _log_section(self: logging.Logger, run_id: str, section: str) -> None:
-            self.info(f"========== {section} | run_id={run_id} ==========")
+            self.info(f"run_id={run_id} | ========== {section} ==========")
 
         logging.Logger.log_section = _log_section  # type: ignore[attr-defined]
 

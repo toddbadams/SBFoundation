@@ -36,13 +36,14 @@ class BronzeService:
         self._owns_ops_service = ops_service is None
         self.recipes: list[DatasetRecipe] = []
         self.request_executor = request_executor or RunRequestExecutor(self.logger)
+        self.run: RunContext = None
 
     def _result_bronze_error(self, result: RunResult, e: str) -> None:
         """Persist a Bronze failure and update summary counters/items."""
         result.error = e
         filename = self._persist_bronze(result)
-        self.summary.result_bronze_error(result, e, filename=filename)
-        self.logger.warning(f"{result.msg} | {result.error}", run_id=self.summary.run_id)
+        self.run.result_bronze_error(result, e, filename=filename)
+        self.logger.warning(f"{result.msg} | {result.error}", run_id=self.run.run_id)
 
     def _process_run_request(self, request: RunRequest) -> None:
         """Execute a single request through Bronze write."""
@@ -63,8 +64,10 @@ class BronzeService:
         if last_ingestion_date and last_ingestion_date >= today:
             self.logger.debug(
                 "Skipping duplicate ingestion | dataset=%s | ticker=%s | last_ingestion=%s",
-                dataset, ticker, last_ingestion_date,
-                run_id=self.summary.run_id,
+                dataset,
+                ticker,
+                last_ingestion_date,
+                run_id=self.run.run_id,
             )
             return
 
@@ -76,7 +79,7 @@ class BronzeService:
             result.error = result.request.error
             # Skip file persistence and ops tracking for "too soon" requests
             if result.error == "REQUEST IS TOO SOON":
-                self.logger.warning(f"{result.msg} | {result.error}", run_id=self.summary.run_id)
+                self.logger.warning(f"{result.msg} | {result.error}", run_id=self.run.run_id)
                 return
             self._result_bronze_error(result, result.error)
             return
@@ -115,12 +118,12 @@ class BronzeService:
         filename = self._persist_bronze(result)
 
         # Update the summary report
-        self.summary.result_bronze_pass(result, filename=filename)
+        self.run.result_bronze_pass(result, filename=filename)
 
-    def register_recipes(self, recipes: list[DatasetRecipe]) -> "BronzeService":
+    def register_recipes(self, run: RunContext, recipes: list[DatasetRecipe]) -> "BronzeService":
         """Register recipes to be processed in the current run."""
         self.recipes.extend(recipes)
-        self.logger.info(f"Recipes registered: count={len(recipes)}")
+        self.logger.info(f"Recipes registered: count={len(recipes)}", run_id=run.run_id)
         return self
 
     def _persist_bronze(self, result: RunResult) -> str:
@@ -128,14 +131,14 @@ class BronzeService:
         try:
             self.result_file_adapter.write(result)
         except Exception as exc:
-            self.logger.error(f"Bronze persistence failed: {result.msg} | error={exc}", run_id=self.summary.run_id)
+            self.logger.error(f"Bronze persistence failed: {result.msg} | error={exc}", run_id=self.run.run_id)
             raise
 
         try:
             # Manifest insert must happen even when the blob was written so Ops can audit every run.
-            self.ops_service.insert_bronze_manifest(result)
+            self.ops_service.insert_bronze_manifest(result, self.run)
         except Exception as exc:
-            self.logger.error("Bronze manifest insert failed: %s", exc, run_id=self.summary.run_id)
+            self.logger.error("Bronze manifest insert failed: %s", exc, run_id=self.run.run_id)
             raise
 
         return str(Folders.duckdb_absolute_path)
@@ -143,13 +146,13 @@ class BronzeService:
     def _process_dataset_recipe(self, recipe: DatasetRecipe):
         """Process a recipe for each ticker, or once if not ticker-based."""
         if recipe.is_ticker_based:
-            for ticker in self.summary.tickers:
+            for ticker in self.run.tickers:
                 self._process_run_request(
                     RunRequest.from_recipe(
                         recipe=recipe,
-                        run_id=self.summary.run_id,
+                        run_id=self.run.run_id,
                         from_date=self.universe.from_date,
-                        today=self.summary.today,
+                        today=self.run.today,
                         api_key=self.fmp_api_key,
                         ticker=ticker,
                     )
@@ -158,17 +161,17 @@ class BronzeService:
             self._process_run_request(
                 RunRequest.from_recipe(
                     recipe=recipe,
-                    run_id=self.summary.run_id,
+                    run_id=self.run.run_id,
                     from_date=self.universe.from_date,
-                    today=self.summary.today,
+                    today=self.run.today,
                     api_key=self.fmp_api_key,
                 )
             )
 
-    def process(self, summary: RunContext) -> RunContext:
+    def process(self, run: RunContext) -> RunContext:
         """Run registered recipes, updating and returning the summary."""
-        self.summary = summary
-        self.request_executor.set_summary(summary)
+        self.run = run
+        self.request_executor.set_summary(self.run)
 
         for recipe in self.recipes:
             try:
@@ -176,9 +179,9 @@ class BronzeService:
             except Exception as e:
                 # we should never end up here
                 # todo: add this error to run summary
-                self.logger.error(f"run recipe failure: {e}", run_id=self.summary.run_id)
+                self.logger.error(f"run recipe failure: {e}", run_id=self.run.run_id)
 
         if self._owns_ops_service:
             self.ops_service.close()
 
-        return self.summary
+        return self.run

@@ -7,6 +7,7 @@ import duckdb
 import pandas as pd
 
 from sbfoundation.dtos.bronze_to_silver_dto import BronzeToSilverDTO
+from sbfoundation.run.dtos.run_context import RunContext
 from sbfoundation.run.dtos.run_result import RunResult
 from sbfoundation.folders import Folders
 from sbfoundation.settings import *
@@ -67,10 +68,10 @@ class SilverService:
         if self._owns_ops_service:
             self._ops_service.close()
 
-    def promote(self) -> tuple[list[str], int]:
+    def promote(self, run: RunContext) -> tuple[list[str], int]:
         ingestions = self._ops_service.load_promotable_file_ingestions()
         if not ingestions:
-            self._logger.info("No promotable Bronze rows found.")
+            self._logger.info("No promotable Bronze rows found.", run_id=run.run_id)
             return [], 0
 
         promoted: list[str] = []

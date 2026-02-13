@@ -25,7 +25,7 @@ class OpsService:
         if self._owns_ops_repo:
             self._ops_repo.close()
 
-    # --- Run Summary ---#
+    # --- Run run ---#
     def start_run(
         self,
         *,
@@ -68,19 +68,19 @@ class OpsService:
             today=today.isoformat(),
         )
 
-    def finish_run(self, summary: RunContext) -> None:
-        if summary is None:
+    def finish_run(self, run: RunContext) -> None:
+        if run is None:
             return
-        summary.finished_at = self._universe.now()
+        run.finished_at = self._universe.now()
         self.close()
 
     # --- BRONZE MANIFEST ---#
-    def insert_bronze_manifest(self, result: RunResult) -> None:
+    def insert_bronze_manifest(self, result: RunResult, run: RunContext) -> None:
         ingestion = DatasetInjestion.from_bronze(result=result)
         try:
             self._ops_repo.upsert_file_ingestion(ingestion)
         except Exception as exc:
-            self._logger.error("File ingestion persistence failed: %s", exc)
+            self._logger.error("File ingestion persistence failed: %s", exc, run_id=run.run_id)
             raise
 
     def get_watermark_date(self, domain: str, source: str, dataset: str, discriminator: str, ticker: str) -> date | None:

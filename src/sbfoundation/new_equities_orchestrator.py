@@ -312,7 +312,7 @@ class NewEquitiesOrchestrationService:
 
         bronze_service = BronzeService(ops_service=self.ops_service)
         try:
-            return bronze_service.register_recipes(recipes).process(run)
+            return bronze_service.register_recipes(run, recipes).process(run)
         except Exception as exc:
             self.logger.error("Bronze ingestion failed: %s", exc, run_id=run.run_id)
             traceback.print_exc()
@@ -326,7 +326,7 @@ class NewEquitiesOrchestrationService:
             instrument_resolver=self._instrument_resolver,
         )
         try:
-            promoted_ids, promoted_rows = silver_service.promote()
+            promoted_ids, promoted_rows = silver_service.promote(run)
         except Exception as e:
             self.logger.error(f"Silver promotion: {e}", run_id=run.run_id)
             promoted_ids = []
@@ -351,7 +351,7 @@ if __name__ == "__main__":
         settings=NewEquitiesOrchestrationSettings(
             enable_bronze=True,
             enable_silver=True,
-            ticker_limit=1,
+            ticker_limit=5,
             fmp_plan=FMP_PREMIUM_PLAN,
             exchanges=["NASDAQ"],
         ),

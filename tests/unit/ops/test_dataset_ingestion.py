@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from sbfoundation.ops.dtos.file_injestion import DatasetInjestion
-from tests.unit.helpers import make_run_result
+from tests.unit.helpers import make_bronze_result
 
 
 def test_from_bronze_captures_bronze_metadata() -> None:
-    result = make_run_result()
+    result = make_bronze_result()
     ingestion = DatasetInjestion.from_bronze(result=result)
 
     assert ingestion.run_id == result.request.run_id
@@ -16,7 +16,7 @@ def test_from_bronze_captures_bronze_metadata() -> None:
 
 
 def test_to_dict_includes_required_fields() -> None:
-    result = make_run_result()
+    result = make_bronze_result()
     ingestion = DatasetInjestion.from_bronze(result=result)
     payload = ingestion.to_dict()
     assert payload["run_id"] == ingestion.run_id

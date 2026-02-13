@@ -8,7 +8,7 @@ from httpx import request
 
 from sbfoundation.dtos.models import BronzeManifestRow
 from sbfoundation.run.dtos.run_request import RunRequest
-from sbfoundation.run.dtos.run_result import RunResult
+from sbfoundation.run.dtos.bronze_result import BronzeResult
 
 
 @dataclass
@@ -55,7 +55,7 @@ class DatasetInjestion:
     gold_can_promote: bool | None = None
 
     @classmethod
-    def from_bronze(cls, result: RunResult) -> "DatasetInjestion":
+    def from_bronze(cls, result: BronzeResult) -> "DatasetInjestion":
         request = result.request
         start_time = cls._normalize_datetime(result.now)
         end_time = cls._calculate_end_time(start_time, result.elapsed_microseconds)

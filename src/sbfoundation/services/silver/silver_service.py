@@ -8,7 +8,7 @@ import pandas as pd
 
 from sbfoundation.dtos.bronze_to_silver_dto import BronzeToSilverDTO
 from sbfoundation.run.dtos.run_context import RunContext
-from sbfoundation.run.dtos.run_result import RunResult
+from sbfoundation.run.dtos.bronze_result import BronzeResult
 from sbfoundation.folders import Folders
 from sbfoundation.settings import *
 from sbfoundation.dataset.models.dataset_identity import DatasetIdentity
@@ -265,17 +265,17 @@ class SilverService:
             raise ValueError(f"Dataset keymap requires ticker for {identity}")
         return entry
 
-    def _load_bronze_payload(self, row: BronzeManifestRow) -> RunResult:
+    def _load_bronze_payload(self, row: BronzeManifestRow) -> BronzeResult:
         rel_path = Path(row.file_path_rel)
         abs_path = (Folders.data_absolute_path() / rel_path).resolve()
         if not abs_path.exists():
             raise FileNotFoundError(f"Bronze payload missing: {abs_path}")
         result = self._result_file_adapter.read(abs_path)
-        if not isinstance(result, RunResult):
-            raise ValueError(f"Bronze payload is not a RunResult: {abs_path}")
+        if not isinstance(result, BronzeResult):
+            raise ValueError(f"Bronze payload is not a BronzeResult: {abs_path}")
         return result
 
-    def _resolve_dto_type(self, row: BronzeManifestRow, result: RunResult) -> type[BronzeToSilverDTO]:
+    def _resolve_dto_type(self, row: BronzeManifestRow, result: BronzeResult) -> type[BronzeToSilverDTO]:
         dto_type = None
         request = getattr(result, "request", None)
         if request is not None:

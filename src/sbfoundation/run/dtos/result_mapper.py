@@ -3,7 +3,7 @@ from __future__ import annotations
 from requests.structures import CaseInsensitiveDict
 from typing import Any
 
-from sbfoundation.run.dtos.run_result import RunResult
+from sbfoundation.run.dtos.bronze_result import BronzeResult
 
 
 class FMPResultMapper:
@@ -13,7 +13,7 @@ class FMPResultMapper:
     # needs (not just FMP) as outlined in docs/AI_context/architecture.md.md.
 
     @staticmethod
-    def to_serializable_dict(result: RunResult, *, include_payload: bool = True) -> dict[str, Any]:
+    def to_serializable_dict(result: BronzeResult, *, include_payload: bool = True) -> dict[str, Any]:
         record = {
             "elapsed_microseconds": result.elapsed_microseconds,
             "headers": FMPResultMapper.headers_to_string(result.headers),
@@ -35,13 +35,13 @@ class FMPResultMapper:
         return record
 
     @staticmethod
-    def to_storage_record(result: RunResult) -> dict[str, Any]:
+    def to_storage_record(result: BronzeResult) -> dict[str, Any]:
         """Representation used for Bronze JSON storage (no payload)."""
         return FMPResultMapper.to_serializable_dict(result, include_payload=False)
 
     @staticmethod
-    def from_serializable_dict(record: dict[str, Any]) -> RunResult:
-        result = RunResult.__new__(RunResult)  # type: ignore[call-arg]
+    def from_serializable_dict(record: dict[str, Any]) -> BronzeResult:
+        result = BronzeResult.__new__(BronzeResult)  # type: ignore[call-arg]
 
         # Core fields
         result.elapsed_microseconds = record.get("elapsed_microseconds", 0)

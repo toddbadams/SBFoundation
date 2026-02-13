@@ -8,7 +8,7 @@ from sbfoundation.dtos.dto_registry import DTO_REGISTRY
 from sbfoundation.dataset.models.dataset_recipe import DatasetRecipe
 from sbfoundation.run.dtos.run_request import RunRequest
 from sbfoundation.run.dtos.run_context import RunContext
-from sbfoundation.run.dtos.run_result import RunResult
+from sbfoundation.run.dtos.bronze_result import BronzeResult
 from sbfoundation.settings import (
     BASE_URL,
     CADENCES,
@@ -66,7 +66,7 @@ def make_run_request(*, recipe: DatasetRecipe | None = None, overrides: dict[str
     return RunRequest(**base)
 
 
-def make_run_result(*, request: RunRequest | None = None, overrides: dict[str, object] | None = None) -> RunResult:
+def make_bronze_result(*, request: RunRequest | None = None, overrides: dict[str, object] | None = None) -> BronzeResult:
     request = request or make_run_request()
     base = {
         "request": request,
@@ -82,7 +82,7 @@ def make_run_result(*, request: RunRequest | None = None, overrides: dict[str, o
     }
     if overrides:
         base.update(overrides)
-    return RunResult(**base)
+    return BronzeResult(**base)
 
 
 def make_run_context(**overrides: object) -> RunContext:

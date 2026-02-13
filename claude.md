@@ -157,7 +157,7 @@ Also add the dataset to `DATASETS` and `DTO_TYPES` constants. If a new domain or
 
 ## 6) Bronze Layer Contracts
 
-### 6.1 RunResult JSON Contract
+### 6.1 BronzeResult JSON Contract
 Every stored Bronze file MUST contain:
 
 | Field | Type | Notes |
@@ -171,7 +171,7 @@ Every stored Bronze file MUST contain:
 | `content` | list[dict] | Always a list (may be empty) |
 | `error` | str\|None | Populated for non-200 or invalid payloads |
 
-`RunResult` computes `hash`, `first_date`, `last_date` in memory but does **not** serialize them.
+`BronzeResult` computes `hash`, `first_date`, `last_date` in memory but does **not** serialize them.
 
 ### 6.2 File Naming & Partitioning
 ```
@@ -181,7 +181,7 @@ Every stored Bronze file MUST contain:
 - Append-only: no overwrites; re-ingestion always creates a new file
 
 ### 6.3 Promotion Gate
-Bronze → Silver promotion requires (checked in `RunResult.canPromoteToSilverWith`):
+Bronze → Silver promotion requires (checked in `BronzeResult.canPromoteToSilverWith`):
 - `status_code == 200`
 - `error is None`
 - `content` is non-empty OR dataset `allows_empty_content`
@@ -292,7 +292,7 @@ When many logical series share one dataset (e.g., economics indicators), every r
 - Snapshot/metadata endpoints (e.g., profile, peers): `date_key=None` → runtime falls back to today's date for cadence progression
 
 ### 9.7 Failure Semantics
-A failed run request does NOT crash the run. A `RunResult` is still created with `error` set, written via `ResultFileAdapter`, and `RunContext` counters are updated. The system is "audit-first".
+A failed run request does NOT crash the run. A `BronzeResult` is still created with `error` set, written via `ResultFileAdapter`, and `RunContext` counters are updated. The system is "audit-first".
 
 ---
 

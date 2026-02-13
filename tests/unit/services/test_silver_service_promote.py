@@ -18,7 +18,7 @@ from sbfoundation.dataset.models.dataset_keymap_entry import DatasetKeymapEntry
 from sbfoundation.dataset.models.dataset_schema import DatasetDtoSchema, SchemaColumn
 from sbfoundation.services.silver.silver_service import SilverService
 from sbfoundation.services.bronze.bronze_batch_reader import BronzeBatchItem
-from sbfoundation.run.dtos.run_result import RunResult
+from sbfoundation.run.dtos.bronze_result import BronzeResult
 from sbfoundation.run.services.chunk_engine import Chunk
 
 
@@ -237,10 +237,12 @@ class TestEnsureKeyColsDf:
 
 class TestApplyWatermark:
     def test_filters_rows_older_than_watermark(self) -> None:
-        df = pd.DataFrame({
-            "as_of_date": ["2026-01-01", "2026-01-10", "2026-01-15"],
-            "value": [1, 2, 3],
-        })
+        df = pd.DataFrame(
+            {
+                "as_of_date": ["2026-01-01", "2026-01-10", "2026-01-15"],
+                "value": [1, 2, 3],
+            }
+        )
 
         result = SilverService._apply_watermark(df, "as_of_date", date(2026, 1, 10))
 
@@ -248,10 +250,12 @@ class TestApplyWatermark:
         assert result.iloc[0]["value"] == 3
 
     def test_returns_empty_when_all_filtered(self) -> None:
-        df = pd.DataFrame({
-            "as_of_date": ["2026-01-01", "2026-01-05"],
-            "value": [1, 2],
-        })
+        df = pd.DataFrame(
+            {
+                "as_of_date": ["2026-01-01", "2026-01-05"],
+                "value": [1, 2],
+            }
+        )
 
         result = SilverService._apply_watermark(df, "as_of_date", date(2026, 1, 10))
 
@@ -271,9 +275,11 @@ class TestApplyWatermark:
 
 class TestCoverageDates:
     def test_extracts_min_max_dates(self) -> None:
-        df = pd.DataFrame({
-            "as_of_date": ["2026-01-05", "2026-01-15", "2026-01-10"],
-        })
+        df = pd.DataFrame(
+            {
+                "as_of_date": ["2026-01-05", "2026-01-15", "2026-01-10"],
+            }
+        )
 
         min_date, max_date = SilverService._coverage_dates(df, "as_of_date")
 
@@ -356,10 +362,12 @@ class TestMergeRows:
         conn = duckdb.connect(":memory:")
         conn.execute("CREATE SCHEMA silver")
 
-        df = pd.DataFrame({
-            "ticker": ["AAPL"],
-            "company_name": ["Apple Inc"],
-        })
+        df = pd.DataFrame(
+            {
+                "ticker": ["AAPL"],
+                "company_name": ["Apple Inc"],
+            }
+        )
         entry = _make_keymap_entry(key_cols=("ticker",))
 
         service = object.__new__(SilverService)
@@ -376,10 +384,12 @@ class TestMergeRows:
         conn.execute('CREATE TABLE silver."company_profile" (ticker VARCHAR, company_name VARCHAR)')
         conn.execute("INSERT INTO silver.company_profile VALUES ('AAPL', 'Apple Old')")
 
-        df = pd.DataFrame({
-            "ticker": ["AAPL", "MSFT"],
-            "company_name": ["Apple New", "Microsoft"],
-        })
+        df = pd.DataFrame(
+            {
+                "ticker": ["AAPL", "MSFT"],
+                "company_name": ["Apple New", "Microsoft"],
+            }
+        )
         entry = _make_keymap_entry(key_cols=("ticker",))
 
         service = object.__new__(SilverService)
@@ -410,7 +420,7 @@ class TestResolveDtoType:
     def test_gets_dto_from_request(self) -> None:
         request_mock = MagicMock()
         request_mock.dto_type = _TestDTO
-        result_mock = MagicMock(spec=RunResult)
+        result_mock = MagicMock(spec=BronzeResult)
         result_mock.request = request_mock
 
         row = _make_manifest_row()
@@ -420,7 +430,7 @@ class TestResolveDtoType:
         assert dto_type is _TestDTO
 
     def test_falls_back_to_registry(self) -> None:
-        result_mock = MagicMock(spec=RunResult)
+        result_mock = MagicMock(spec=BronzeResult)
         result_mock.request = None
 
         row = _make_manifest_row(dataset="company-profile")
@@ -432,7 +442,7 @@ class TestResolveDtoType:
             assert dto_type is _TestDTO
 
     def test_raises_for_missing_dto(self) -> None:
-        result_mock = MagicMock(spec=RunResult)
+        result_mock = MagicMock(spec=BronzeResult)
         result_mock.request = None
 
         row = _make_manifest_row(dataset="unknown-dataset")
@@ -516,19 +526,23 @@ class TestPromoteRowIntegration:
 
         # Setup mocks
         batch_item = MagicMock(spec=BronzeBatchItem)
-        batch_item.df_content = pd.DataFrame({
-            "ticker": ["AAPL"],
-            "companyName": ["Apple Inc"],
-            "asOfDate": ["2026-01-15"],
-        })
+        batch_item.df_content = pd.DataFrame(
+            {
+                "ticker": ["AAPL"],
+                "companyName": ["Apple Inc"],
+                "asOfDate": ["2026-01-15"],
+            }
+        )
         batch_item.result = MagicMock()
         mock_silver_service._bronze_batch_reader.read.return_value = batch_item
 
-        projected_df = pd.DataFrame({
-            "ticker": ["AAPL"],
-            "company_name": ["Apple Inc"],
-            "as_of_date": pd.to_datetime(["2026-01-15"]),
-        })
+        projected_df = pd.DataFrame(
+            {
+                "ticker": ["AAPL"],
+                "company_name": ["Apple Inc"],
+                "as_of_date": pd.to_datetime(["2026-01-15"]),
+            }
+        )
         mock_silver_service._dto_projection.project.return_value = projected_df
 
         mock_silver_service._ops_service.get_silver_watermark.return_value = None

@@ -7,12 +7,12 @@ from pathlib import Path
 import pytest
 
 from sbfoundation.infra.result_file_adaptor import ResultFileAdapter
-from tests.unit.helpers import make_run_result
+from tests.unit.helpers import make_bronze_result
 
 
 def test_write_and_read_roundtrip(patch_folders) -> None:
     adapter = ResultFileAdapter()
-    result = make_run_result()
+    result = make_bronze_result()
     file_path = adapter.write(result)
     assert file_path.exists()
     rehydrated = adapter.read(file_path)
@@ -53,7 +53,7 @@ def test_files_to_date_dict_filters(patch_folders, tmp_path: Path) -> None:
 def test_write_requires_request(patch_folders) -> None:
     """Validate that write() raises ValueError when result or request is None."""
     adapter = ResultFileAdapter()
-    result = make_run_result()
+    result = make_bronze_result()
     result.request = None
     with pytest.raises(ValueError):
         adapter.write(result)
@@ -62,10 +62,11 @@ def test_write_requires_request(patch_folders) -> None:
 def test_write_persists_payload(patch_folders) -> None:
     """Verify JSON payload is correctly persisted with expected structure."""
     adapter = ResultFileAdapter()
-    result = make_run_result()
+    result = make_bronze_result()
     file_path = adapter.write(result)
 
     from sbfoundation.folders import Folders
+
     target = Folders.data_absolute_path() / result.request.bronze_relative_filename
     assert target.exists()
     assert file_path == target

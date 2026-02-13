@@ -15,7 +15,7 @@ from sbfoundation.settings import *
 
 
 @dataclass(slots=True, kw_only=True)
-class RunResult(BronzeToSilverDTO):
+class BronzeResult(BronzeToSilverDTO):
     request: RunRequest
     now: datetime
 
@@ -248,7 +248,7 @@ class RunResult(BronzeToSilverDTO):
         )
 
     @classmethod
-    def from_row(cls, row: typing.Mapping[str, typing.Any], ticker: typing.Optional[str] = None) -> "RunResult":
+    def from_row(cls, row: typing.Mapping[str, typing.Any], ticker: typing.Optional[str] = None) -> "BronzeResult":
         row = cls._normalize_row(row)
         return cls(
             request=cls.dto(row, "request", RunRequest),

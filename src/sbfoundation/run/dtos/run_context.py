@@ -7,7 +7,7 @@ import typing
 from sbfoundation.dtos.bronze_to_silver_dto import BronzeToSilverDTO
 from sbfoundation.ops.dtos.bronze_injest_item import BronzeInjestItem
 from sbfoundation.ops.dtos.silver_injest_item import SilverInjestItem
-from sbfoundation.run.dtos.run_result import RunResult
+from sbfoundation.run.dtos.bronze_result import BronzeResult
 
 
 @dataclass(slots=True, kw_only=True, order=True)
@@ -57,7 +57,7 @@ class RunContext(BronzeToSilverDTO):
         minutes, seconds = divmod(remainder, 60)
         return f"{hours}h {minutes}m {seconds}s"
 
-    def result_bronze_error(self, result: RunResult, e: str, filename: str | None = None) -> BronzeInjestItem:
+    def result_bronze_error(self, result: BronzeResult, e: str, filename: str | None = None) -> BronzeInjestItem:
         self.bronze_files_failed += 1
         filename = filename or result.request.bronze_absolute_filename
         item = BronzeInjestItem(
@@ -75,7 +75,7 @@ class RunContext(BronzeToSilverDTO):
         self.bronze_injest_items.append(item)
         return item
 
-    def result_bronze_pass(self, result: RunResult, filename: str | None = None) -> BronzeInjestItem:
+    def result_bronze_pass(self, result: BronzeResult, filename: str | None = None) -> BronzeInjestItem:
         self.bronze_files_passed += 1
         filename = filename or result.request.bronze_absolute_filename
         item = BronzeInjestItem(
@@ -93,7 +93,7 @@ class RunContext(BronzeToSilverDTO):
         self.bronze_injest_items.append(item)
         return item
 
-    def result_silver_pass(self, result: RunResult, dto: BronzeToSilverDTO) -> SilverInjestItem:
+    def result_silver_pass(self, result: BronzeResult, dto: BronzeToSilverDTO) -> SilverInjestItem:
         item = SilverInjestItem(
             domain=result.request.recipe.domain,
             source=result.request.recipe.source,
@@ -109,7 +109,7 @@ class RunContext(BronzeToSilverDTO):
         self.silver_injest_items.append(item)
         return item
 
-    def result_silver_error(self, result: RunResult, e: str) -> SilverInjestItem:
+    def result_silver_error(self, result: BronzeResult, e: str) -> SilverInjestItem:
         self.silver_failed_count += 1
         silver_date = result.last_date or result.request.to_date
         item = SilverInjestItem(

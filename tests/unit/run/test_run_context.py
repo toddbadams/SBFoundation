@@ -1,11 +1,11 @@
 from datetime import timedelta
 
-from tests.unit.helpers import make_run_context, make_run_result
+from tests.unit.helpers import make_run_context, make_bronze_result
 
 
 def test_run_context_bronze_counters_and_status() -> None:
     ctx = make_run_context()
-    result = make_run_result()
+    result = make_bronze_result()
     ctx.result_bronze_pass(result)
     ctx.result_bronze_error(result, e="FAILED")
     ctx.silver_dto_count = 1

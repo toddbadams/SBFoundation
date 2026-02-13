@@ -9,7 +9,7 @@ from sbfoundation.dataset.models.dataset_identity import DatasetIdentity
 from sbfoundation.ops.dtos.file_injestion import DatasetInjestion
 from sbfoundation.ops.infra.duckdb_ops_repo import DuckDbOpsRepo
 from sbfoundation.infra.logger import LoggerFactory, SBLogger
-from sbfoundation.run.dtos.run_result import RunResult
+from sbfoundation.run.dtos.bronze_result import BronzeResult
 from sbfoundation.run.dtos.run_context import RunContext
 from sbfoundation.services.universe_service import UniverseService
 
@@ -75,12 +75,13 @@ class OpsService:
         self.close()
 
     # --- BRONZE MANIFEST ---#
-    def insert_bronze_manifest(self, result: RunResult, run: RunContext) -> None:
+    def insert_bronze_manifest(self, result: BronzeResult, run: RunContext | None = None) -> None:
         ingestion = DatasetInjestion.from_bronze(result=result)
         try:
             self._ops_repo.upsert_file_ingestion(ingestion)
         except Exception as exc:
-            self._logger.error("File ingestion persistence failed: %s", exc, run_id=run.run_id)
+            run_id = run.run_id if run is not None else "unknown"
+            self._logger.error("File ingestion persistence failed: %s", exc, run_id=run_id)
             raise
 
     def get_watermark_date(self, domain: str, source: str, dataset: str, discriminator: str, ticker: str) -> date | None:

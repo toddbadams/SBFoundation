@@ -49,7 +49,7 @@ The `RunProvider` computes `from_date` from the last successfully ingested `to_d
 The `instrument` domain always runs first to populate the ticker universe before per-ticker domains (company, fundamentals, technicals) execute.
 
 ### 8. Failures are audit-first, not crash-first
-A failed ingestion request does not abort the run. A `RunResult` error record is written to Bronze, counters are updated, and the run continues. Every run produces a manifest (`ops.bronze_manifest`) regardless of outcome.
+A failed ingestion request does not abort the run. A `BronzeResult` error record is written to Bronze, counters are updated, and the run continues. Every run produces a manifest (`ops.bronze_manifest`) regardless of outcome.
 
 ---
 
@@ -142,7 +142,7 @@ Architecture, contracts, DuckDB design docs
 │       │   ├── requests/             # PromotionConfig
 │       │   └── services/             # OpsService (run lifecycle, manifest writes)
 │       ├── run/
-│       │   ├── dtos/                 # RunContext, RunRequest, RunResult, ResultMapper
+│       │   ├── dtos/                 # RunContext, RunRequest, BronzeResult, ResultMapper
 │       │   └── services/             # RunRequestExecutor, ChunkEngine, DedupeEngine,
 │       │                             #   OrchestrationTickerChunkService
 │       └── services/
@@ -164,8 +164,8 @@ Architecture, contracts, DuckDB design docs
 | `orchestrator.py` | Entry point. Iterates domains in order, calls Bronze ingestion then Silver promotion per domain. Manages `OrchestrationSettings` feature switches. |
 | `dataset/services/dataset_service.py` | Loads `dataset_keymap.yaml`, validates entries, exposes filtered recipe lists by plan/domain. |
 | `run/dtos/run_request.py` | Encapsulates a single API call spec: URL, query vars (placeholders expanded), cadence metadata, `from_date`/`to_date`. |
-| `run/dtos/run_result.py` | Wraps the HTTP response + metadata. Computes `is_valid_bronze` and `canPromoteToSilverWith` gates. |
-| `run/services/run_request_executor.py` | Executes HTTP requests with retry + throttle. Writes `RunResult` to Bronze JSON via `ResultFileAdaptor`. |
+| `run/dtos/bronze_result.py` | Wraps the HTTP response + metadata. Computes `is_valid_bronze` and `canPromoteToSilverWith` gates. |
+| `run/services/run_request_executor.py` | Executes HTTP requests with retry + throttle. Writes `BronzeResult` to Bronze JSON via `ResultFileAdaptor`. |
 | `services/bronze/bronze_service.py` | Orchestrates Bronze ingestion for a list of recipes: builds `RunRequest` objects, calls executor, records manifest rows. |
 | `services/silver/silver_service.py` | Reads promotable Bronze manifest rows, instantiates DTOs via `from_row`, MERGEs into Silver DuckDB tables, updates watermarks. |
 | `ops/services/ops_service.py` | Manages run lifecycle in DuckDB: `start_run`, `finish_run`, manifest writes, watermark upserts. |
@@ -187,7 +187,7 @@ External API (FMP)
 RunRequestExecutor
   ├── Retry (3x, exponential backoff)
   ├── Throttle (≤50 calls/min for FMP)
-  └── → RunResult (raw response + metadata)
+  └── → BronzeResult (raw response + metadata)
        │
        ▼
 ResultFileAdaptor
@@ -347,7 +347,7 @@ OrchestrationSettings(
 
 ### Inspecting Bronze files
 
-Bronze JSON files are written to `$DATA_ROOT_FOLDER/bronze/<domain>/<source>/<dataset>/<ticker>/<date>-<uuid>.json`. Each file is a self-describing `RunResult` containing the full request spec and raw API response.
+Bronze JSON files are written to `$DATA_ROOT_FOLDER/bronze/<domain>/<source>/<dataset>/<ticker>/<date>-<uuid>.json`. Each file is a self-describing `BronzeResult` containing the full request spec and raw API response.
 
 ### Inspecting Silver / ops tables
 

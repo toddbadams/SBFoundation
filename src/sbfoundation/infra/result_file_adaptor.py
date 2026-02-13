@@ -6,7 +6,7 @@ import re
 import typing
 
 from sbfoundation.run.dtos.result_mapper import FMPResultMapper
-from sbfoundation.run.dtos.run_result import RunResult
+from sbfoundation.run.dtos.bronze_result import BronzeResult
 from sbfoundation.run.dtos.run_request import RunRequest
 from sbfoundation.dataset.models.dataset_recipe import DatasetRecipe
 from sbfoundation.settings import *
@@ -18,7 +18,7 @@ class ResultFileAdapter:
     def __init__(self, logger_factory: typing.Optional[LoggerFactory] = None):
         self.logger = (logger_factory or LoggerFactory()).create_logger(self.__class__.__name__)
 
-    def write(self, result: RunResult) -> Path:
+    def write(self, result: BronzeResult) -> Path:
         """Persist a result to Bronze layer following append-only semantics."""
         # Add validation from BronzeFileWriter
         if result is None or result.request is None:
@@ -41,17 +41,17 @@ class ResultFileAdapter:
 
         return abs_path
 
-    def read(self, file: Path) -> RunResult:
+    def read(self, file: Path) -> BronzeResult:
         with file.open("r", encoding="utf-8") as fh:
             payload = json.load(fh)
         if isinstance(payload, dict) and "request" in payload:
-            return self._read_run_result_payload(payload, file)
+            return self._read_bronze_result_payload(payload, file)
 
         result = FMPResultMapper.from_serializable_dict(payload)
         result.request = None
         return result
 
-    def _read_run_result_payload(self, payload: dict[str, typing.Any], file: Path) -> RunResult:
+    def _read_bronze_result_payload(self, payload: dict[str, typing.Any], file: Path) -> BronzeResult:
         # Bronze files are append-only; tolerate bad payloads so replay can resume safely.
         request_payload = payload.get("request")
         request: RunRequest | None = None
@@ -70,7 +70,7 @@ class ResultFileAdapter:
         else:
             self.logger.warning(f"bronze request missing | filename={file}")
 
-        result = RunResult(now=self._parse_now(payload.get("now")), request=request)
+        result = BronzeResult(now=self._parse_now(payload.get("now")), request=request)
         result.elapsed_microseconds = payload.get("elapsed_microseconds") or 0
         result.headers = FMPResultMapper.headers_from_string(payload.get("headers"))
         result.status_code = payload.get("status_code") or 0

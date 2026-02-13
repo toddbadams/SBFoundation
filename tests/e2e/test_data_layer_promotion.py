@@ -19,7 +19,7 @@ from sbfoundation.orchestrator import Orchestrator, OrchestrationSettings
 from tests.e2e.test_data import TestData
 from sbfoundation.settings import *
 from tests.e2e.fake_api import FakeApiServer
-from sbfoundation.run.dtos.run_result import RunResult
+from sbfoundation.run.dtos.bronze_result import BronzeResult
 
 
 pytestmark = pytest.mark.xdist_group(name="data_layer_promotion")
@@ -79,7 +79,7 @@ def _test_setup(port: str, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(UniverseService, "new_tickers", _new_tickers)
     monkeypatch.setattr(Folders, "_data_root", staticmethod(lambda: data_root_path))
     monkeypatch.setattr(DatasetRecipe, "create_file_id", _create_file_id)
-    monkeypatch.setattr(RunResult, "_hash", _hash)
+    monkeypatch.setattr(BronzeResult, "_hash", _hash)
 
 
 def test_01_data_layer_promotion_full_run(fake_api_server: tuple[str, FakeApiServer], monkeypatch: pytest.MonkeyPatch):
@@ -325,8 +325,8 @@ def assert_bronze_contract(domain: str, source: str, dataset: str, expected_dict
     text = path.read_text(encoding="utf-8")
     payload = json.loads(text)
     try:
-        actual = RunResult.from_row(payload)
-        expected = RunResult.from_row(expected_dict)
+        actual = BronzeResult.from_row(payload)
+        expected = BronzeResult.from_row(expected_dict)
     except Exception as e:
         pytest.fail("Exception reading payload")
 

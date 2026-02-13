@@ -4,7 +4,7 @@ import requests
 
 from sbfoundation.dataset.models.dataset_recipe import DatasetRecipe
 from sbfoundation.run.dtos.run_request import RunRequest
-from sbfoundation.run.dtos.run_result import RunResult
+from sbfoundation.run.dtos.bronze_result import BronzeResult
 from sbfoundation.run.dtos.run_context import RunContext
 from sbfoundation.services.universe_service import UniverseService
 from sbfoundation.folders import Folders
@@ -38,7 +38,15 @@ class BronzeService:
         self.request_executor = request_executor or RunRequestExecutor(self.logger)
         self.run: RunContext = None
 
-    def _result_bronze_error(self, result: RunResult, e: str) -> None:
+    @property
+    def summary(self) -> RunContext:
+        return self.run
+
+    @summary.setter
+    def summary(self, value: RunContext) -> None:
+        self.run = value
+
+    def _result_bronze_error(self, result: BronzeResult, e: str) -> None:
         """Persist a Bronze failure and update summary counters/items."""
         result.error = e
         filename = self._persist_bronze(result)
@@ -50,7 +58,7 @@ class BronzeService:
         # Capture the Bronze payload and related metadata to support the
         # reproducibility and auditability properties of the medallion
         # architecture.
-        result = RunResult(now=self.universe.now(), request=request)
+        result = BronzeResult(now=self.universe.now(), request=request)
 
         # Run request acceptance criteria to reject malformed upstream
         # definitions before attempting any network IO.
@@ -84,7 +92,7 @@ class BronzeService:
             self._result_bronze_error(result, result.error)
             return
 
-        # Call source endpoint and create a RunResult
+        # Call source endpoint and create a BronzeResult
         try:
             response = self.request_executor.execute(
                 lambda: requests.get(request.url, params=request.query_vars, timeout=(CONNECT_TIMEOUT, READ_TIMEOUT)),
@@ -126,7 +134,7 @@ class BronzeService:
         self.logger.info(f"Recipes registered: count={len(recipes)}", run_id=run.run_id)
         return self
 
-    def _persist_bronze(self, result: RunResult) -> str:
+    def _persist_bronze(self, result: BronzeResult) -> str:
         """Write the Bronze payload and still record a manifest row so audits remain intact."""
         try:
             self.result_file_adapter.write(result)
@@ -136,7 +144,7 @@ class BronzeService:
 
         try:
             # Manifest insert must happen even when the blob was written so Ops can audit every run.
-            self.ops_service.insert_bronze_manifest(result, self.run)
+            self.ops_service.insert_bronze_manifest(result)
         except Exception as exc:
             self.logger.error("Bronze manifest insert failed: %s", exc, run_id=self.run.run_id)
             raise

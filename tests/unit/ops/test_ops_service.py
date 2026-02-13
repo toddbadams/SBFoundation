@@ -7,7 +7,7 @@ from sbfoundation.ops.dtos.file_injestion import DatasetInjestion
 from sbfoundation.ops.services.ops_service import OpsService
 import pytest
 
-from tests.unit.helpers import make_run_context, make_run_result
+from tests.unit.helpers import make_run_context, make_bronze_result
 
 
 class _StubUniverse:
@@ -105,14 +105,14 @@ def test_start_run_with_new_tickers() -> None:
 def test_insert_bronze_manifest_surfaces_repo_errors() -> None:
     service = OpsService(ops_repo=_FailingRepo(), universe=_StubUniverse())
     with pytest.raises(RuntimeError, match="boom"):
-        service.insert_bronze_manifest(make_run_result())
+        service.insert_bronze_manifest(make_bronze_result())
 
 
 def test_silver_ingestion_flags_toggle() -> None:
     universe = _StubUniverse()
     repo = _StubRepo()
     service = OpsService(ops_repo=repo, universe=universe)
-    ingestion = DatasetInjestion.from_bronze(make_run_result())
+    ingestion = DatasetInjestion.from_bronze(make_bronze_result())
     service.start_silver_ingestion(ingestion)
     assert ingestion.silver_injest_start_time == universe.now()
     service.finish_silver_ingestion(
@@ -134,7 +134,7 @@ def test_silver_finish_without_force_promote() -> None:
     universe = _StubUniverse()
     repo = _StubRepo()
     service = OpsService(ops_repo=repo, universe=universe)
-    ingestion = DatasetInjestion.from_bronze(make_run_result())
+    ingestion = DatasetInjestion.from_bronze(make_bronze_result())
     ingestion.bronze_can_promote = True
     service.finish_silver_ingestion(
         ingestion,
@@ -162,7 +162,7 @@ def test_start_gold_ingestion_sets_start_time() -> None:
     universe = _StubUniverse()
     repo = _StubRepo()
     service = OpsService(ops_repo=repo, universe=universe)
-    ingestion = DatasetInjestion.from_bronze(make_run_result())
+    ingestion = DatasetInjestion.from_bronze(make_bronze_result())
     repo.file_ingestions = [ingestion]
     identity = DatasetIdentity(
         domain=ingestion.domain,
@@ -191,7 +191,7 @@ def test_finish_gold_ingestion_sets_gold_fields() -> None:
     universe = _StubUniverse()
     repo = _StubRepo()
     service = OpsService(ops_repo=repo, universe=universe)
-    ingestion = DatasetInjestion.from_bronze(make_run_result())
+    ingestion = DatasetInjestion.from_bronze(make_bronze_result())
     repo.file_ingestions = [ingestion]
     identity = DatasetIdentity(
         domain=ingestion.domain,

@@ -107,7 +107,15 @@ class SBFoundationAPI:
     def _handle_equities(self, command: RunCommand, run: RunContext) -> RunResult:
         match command.action:
             case Action.LOAD_NEW:
-                return None  # todo: add method to handle
+                # Step 1: Load instrument via stock-list recipe
+                run = self._load_instrument(command, run)
+
+                # Step 2: Run company-profile recipes
+                run = self._company_profile(command, run)
+
+                # Step 3: Run domain recipes (company, fundamentals, technicals)
+                run = self._domain_recipes(command, run)
+                return run
             case Action.REFRESH:
                 return None  # todo: add method to handle
 
@@ -156,7 +164,7 @@ class SBFoundationAPI:
         )
         self.logger.log_section("Run Start", run_id=run.run_id)
         self.logger.info(f"new_tickers={len(run.new_tickers)}", run_id=run.run_id)
-        self.logger.info(f"{self.settings.msg}", run_id=run.run_id)
+        self.logger.info(f"{command.msg}", run_id=run.run_id)
 
     def _close_run(self, run: RunContext):
         # Close out the run
@@ -191,9 +199,9 @@ class SBFoundationAPI:
             case DataCategory.CRYPTO:
                 return None
 
-    def _load_instrument(self, run: RunContext) -> RunContext:
+    def _load_instrument(self, command: RunCommand, run: RunContext) -> RunContext:
         """Load instrument via stock-list recipe to bronze → silver."""
-        self.logger.log_section(run.run_id, "Step 1: Loading instrument data via stock-list recipe")
+        self.logger.log_section(run.run_id, "Loading instrument data via stock-list recipe")
 
         # Find the stock-list recipe (domain: instrument, source: fmp, dataset: stock-list)
         stock_list_recipes = [r for r in self._dataset_service.recipes if r.domain == INSTRUMENT_DOMAIN and r.dataset == STOCK_LIST_DATASET]
@@ -203,30 +211,30 @@ class SBFoundationAPI:
             return run
 
         # Process bronze
-        if self.settings.enable_bronze:
+        if command.enable_bronze:
             self.logger.info(f"Processing {len(stock_list_recipes)} stock-list recipes for bronze", run_id=run.run_id)
             run = self._process_recipe_list(stock_list_recipes, run)
 
         # Promote to silver
-        if self.settings.enable_silver:
+        if command.enable_silver:
             run = self._promote_silver(run)
 
         self.logger.info("Step 1 complete: Instrument data loaded", run_id=run.run_id)
         return run
 
-    def _step2_company_profile(self, run: RunContext) -> RunContext:
-        """Step 2: Run company-profile recipes with instrument_sk linkage.
+    def _company_profile(self, command: RunCommand, run: RunContext) -> RunContext:
+        """Run company-profile recipes with instrument_sk linkage.
 
         This populates company profile data and links to instruments via instrument_sk.
         Tickers that previously failed with "INVALID TICKER" are excluded and replaced
         with additional tickers to maintain the ticker_limit.
         """
-        self.logger.log_section(run.run_id, "Step 2: Loading company-profile data")
+        self.logger.log_section(run.run_id, "Loading company-profile data")
 
         # Refresh tickers from the newly populated dim_instrument
         if not run.new_tickers:
             new_tickers = self._universe_service.new_tickers(
-                limit=self.settings.ticker_limit,
+                limit=command.ticker_limit,
                 instrument_type=INSTRUMENT_TYPE_EQUITY,
                 is_active=True,
             )
@@ -247,10 +255,10 @@ class SBFoundationAPI:
                 self.logger.info(f"Filtered {removed_count} tickers with previous INVALID TICKER errors", run_id=run.run_id)
 
                 # Backfill with additional tickers to reach ticker_limit
-                if len(valid_tickers) < self.settings.ticker_limit:
+                if len(valid_tickers) < command.ticker_limit:
                     # Get more tickers, excluding both already selected and invalid ones
                     exclude_tickers = set(valid_tickers) | invalid_tickers
-                    additional_needed = self.settings.ticker_limit - len(valid_tickers)
+                    additional_needed = command.ticker_limit - len(valid_tickers)
                     additional_tickers = self._universe_service.new_tickers(
                         limit=additional_needed + len(exclude_tickers),  # Request extra to account for exclusions
                         instrument_type=INSTRUMENT_TYPE_EQUITY,
@@ -280,32 +288,32 @@ class SBFoundationAPI:
         # Process ticker-based recipes for company-profile
         run = self._process_ticker_recipes(company_profile_recipes, run, "company-profile")
 
-        self.logger.info("Step 2 complete: Company-profile data loaded", run_id=run.run_id)
+        self.logger.info("Company-profile data loaded", run_id=run.run_id)
         return run
 
-    def _step3_domain_recipes(self, run: RunContext) -> RunContext:
-        """Step 3: Run domain recipes (company, fundamentals, technicals).
+    def _domain_recipes(self, command: RunCommand, run: RunContext) -> RunContext:
+        """Run domain recipes (company, fundamentals, technicals).
 
         These all relate back to the instrument via instrument_sk.
         If settings.exchanges is specified, tickers are filtered to only include
         instruments on those exchanges.
         """
-        self.logger.log_section(run.run_id, "Step 3: Loading domain data (company, fundamentals, technicals)")
+        self.logger.log_section(run.run_id, "Loading domain data (company, fundamentals, technicals)")
 
         # Filter tickers by exchange if exchanges filter is specified
-        if self.settings.exchanges:
-            self.logger.info(f"Filtering tickers by exchanges: {self.settings.exchanges}", run_id=run.run_id)
+        if command.exchanges:
+            self.logger.info(f"Filtering tickers by exchanges: {command.exchanges}", run_id=run.run_id)
             exchange_tickers = self._instrument_resolver.get_tickers_by_exchanges(
-                exchanges=self.settings.exchanges,
+                exchanges=command.exchanges,
                 instrument_type=INSTRUMENT_TYPE_EQUITY,
-                limit=self.settings.ticker_limit,
+                limit=command.ticker_limit,
             )
             if exchange_tickers:
                 filtered_tickers = [ticker for ticker, _ in exchange_tickers]
-                self.logger.info(f"Found {len(filtered_tickers)} tickers on exchanges {self.settings.exchanges}", run_id=run.run_id)
+                self.logger.info(f"Found {len(filtered_tickers)} tickers on exchanges {command.exchanges}", run_id=run.run_id)
                 run.tickers = filtered_tickers
             else:
-                self.logger.warning(f"No tickers found for exchanges {self.settings.exchanges}", run_id=run.run_id)
+                self.logger.warning(f"No tickers found for exchanges {command.exchanges}", run_id=run.run_id)
                 run.tickers = []
 
         if not run.tickers:
@@ -318,10 +326,10 @@ class SBFoundationAPI:
         for domain in domains_to_process:
             run = self._process_domain(domain, run)
 
-        self.logger.info("Step 3 complete: Domain data loaded", run_id=run.run_id)
+        self.logger.info("Domain data loaded", run_id=run.run_id)
         return run
 
-    def _process_domain(self, domain: str, run: RunContext) -> RunContext:
+    def _process_domain(self, domain: str, command: RunCommand, run: RunContext) -> RunContext:
         """Process all recipes for a single domain through Bronze → Silver.
 
         This excludes company-profile which is handled in step 2.
@@ -340,9 +348,9 @@ class SBFoundationAPI:
 
         # Process non-ticker recipes for this domain
         if non_ticker_recipes:
-            if self.settings.enable_bronze:
+            if command.enable_bronze:
                 run = self._process_recipe_list(non_ticker_recipes, run)
-            if self.settings.enable_silver:
+            if command.enable_silver:
                 run = self._promote_silver(run)
 
         # Process ticker recipes for this domain
@@ -352,12 +360,7 @@ class SBFoundationAPI:
         self.logger.info(f"Completed domain processing for: {domain}", run_id=run.run_id)
         return run
 
-    def _process_ticker_recipes(
-        self,
-        recipes: list[DatasetRecipe],
-        run: RunContext,
-        label: str,
-    ) -> RunContext:
+    def _process_ticker_recipes(self, recipes: list[DatasetRecipe], command: RunCommand, run: RunContext, label: str) -> RunContext:
         """Process ticker-based recipes using chunking for bronze → silver."""
         if not recipes:
             return run
@@ -366,11 +369,11 @@ class SBFoundationAPI:
 
         # Use chunk service for ticker processing
         chunk_service = OrchestrationTickerChunkService(
-            chunk_size=self.TICKER_RECIPE_CHUNK_SIZE,
+            chunk_size=command.ticker_recipe_chunk_size,
             logger=self.logger,
             process_chunk=self._process_recipe_list,
             promote_silver=self._promote_silver,
-            silver_enabled=self.settings.enable_silver,
+            silver_enabled=command.enable_silver,
         )
         run = chunk_service.process(recipes, run)
 

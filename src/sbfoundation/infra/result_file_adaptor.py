@@ -77,6 +77,12 @@ class ResultFileAdapter:
         result.reason = payload.get("reason")
         result.content = payload.get("content") or []
         result.error = payload.get("error")
+        result.first_date = payload.get("first_date")
+        result.last_date = payload.get("last_date")
+        # hash is never serialized by BronzeResult.to_dict(); recompute from content
+        # so canPromoteToSilverWith() evaluates correctly when reading files back.
+        if result.content:
+            result.hash = result._hash(result.content)
         return result
 
     def _parse_now(self, value: typing.Any) -> datetime:

@@ -7,6 +7,7 @@ from sbfoundation.dataset.services.dataset_service import DatasetService
 from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
 from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbfoundation.ops.services.ops_service import OpsService
+from sbfoundation.recovery.bronze_recovery_service import BronzeRecoveryService
 from sbfoundation.run.dtos.run_context import RunContext
 from sbfoundation.run.services.orchestration_ticker_chunk_service import OrchestrationTickerChunkService
 from sbfoundation.services.bronze.bronze_service import BronzeService
@@ -43,18 +44,24 @@ class SBFoundationAPI:
         dataset_service: DatasetService | None = None,
         universe_service: UniverseService | None = None,
         instrument_service: InstrumentResolutionService | None = None,
+        recovery_service: BronzeRecoveryService | None = None,
     ) -> None:
         self.logger = logger or LoggerFactory().create_logger(__name__)
         self.ops_service = ops_service or OpsService()
         self._dataset_service = dataset_service or DatasetService(today=today)
         self._universe_service = universe_service or UniverseService()
         self._instrument_resolver = instrument_service or InstrumentResolutionService()
+        self._recovery_service = recovery_service or BronzeRecoveryService()
         self._today = today or self._universe_service.today().isoformat()
 
     def run(self, command: RunCommand) -> RunContext:
         """
         Executes a domain-action command through the ingestion engine.
         """
+        if self._recovery_service.needs_recovery():
+            self.logger.info("ops.file_ingestions is empty — recovering from bronze files")
+            self._recovery_service.recover()
+
         self._enable_silver = command.enable_silver
         run = self._start_run(command)
         domain = command.domain

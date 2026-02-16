@@ -89,6 +89,13 @@ class SilverService:
         instrument_promotions: set[tuple[str, str]] = set()  # (dataset, run_id)
 
         for ingestion in ingestions:
+            self._logger.info(
+                "PROCESSING SILVER | promoting | dataset=%s | ticker=%s | file_id=%s",
+                ingestion.dataset,
+                ingestion.ticker or "",
+                ingestion.file_id,
+                run_id=ingestion.run_id,
+            )
             self._ops_service.start_silver_ingestion(ingestion)
             manifest_row = ingestion.to_bronze_manifest_row()
             try:
@@ -132,6 +139,11 @@ class SilverService:
 
         # Promote to unified instrument table for CREATE behavior datasets
         for dataset, run_id in instrument_promotions:
+            self._logger.info(
+                "PROCESSING SILVER | unified instrument promotion | dataset=%s",
+                dataset,
+                run_id=run_id,
+            )
             try:
                 self._instrument_promotion_service.promote_to_unified_instrument(dataset, run_id)
             except Exception as exc:

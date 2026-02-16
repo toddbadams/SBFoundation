@@ -155,7 +155,7 @@ class RunRequest(BronzeToSilverDTO):
     def from_row(cls, row: typing.Mapping[str, typing.Any], ticker: typing.Optional[str] = None) -> "RunRequest":
         row = cls._normalize_row(row)
         return cls(
-            ticker=ticker if ticker is not None else (cls.s(row, "ticker") or "_none_"),
+            ticker=ticker if ticker is not None else (cls.s(row, "ticker") or None),
             recipe=cls.dto(row, "recipe", DatasetRecipe),
             injestion_date=cls.s(row, "injestion_date"),
             run_id=cls.s(row, "run_id"),

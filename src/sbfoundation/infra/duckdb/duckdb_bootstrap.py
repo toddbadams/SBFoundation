@@ -14,7 +14,6 @@ from sbfoundation.settings import DUCKDB_FILENAME
 SCHEMA_DDL = """
 CREATE SCHEMA IF NOT EXISTS ops;
 CREATE SCHEMA IF NOT EXISTS silver;
-CREATE SCHEMA IF NOT EXISTS gold;
 """
 
 OPS_FILE_INGESTIONS_DDL = """
@@ -45,31 +44,7 @@ CREATE TABLE IF NOT EXISTS ops.file_ingestions (
     silver_injest_start_time TIMESTAMP,
     silver_injest_end_time TIMESTAMP,
     silver_can_promote BOOLEAN,
-    gold_object_type VARCHAR,
-    gold_tablename VARCHAR,
-    gold_errors VARCHAR,
-    gold_rows_created BIGINT,
-    gold_rows_updated BIGINT,
-    gold_rows_failed BIGINT,
-    gold_from_date DATE,
-    gold_to_date DATE,
-    gold_injest_start_time TIMESTAMP,
-    gold_injest_end_time TIMESTAMP,
-    gold_can_promote BOOLEAN,
     PRIMARY KEY (run_id, file_id)
-);
-"""
-
-OPS_GOLD_BUILDS_DDL = """
-CREATE TABLE IF NOT EXISTS ops.gold_builds (
-    gold_build_id INTEGER PRIMARY KEY,
-    run_id VARCHAR NOT NULL,
-    model_version VARCHAR NOT NULL,
-    started_at TIMESTAMP NOT NULL,
-    finished_at TIMESTAMP,
-    status VARCHAR NOT NULL,
-    error_message VARCHAR,
-    row_counts JSON
 );
 """
 
@@ -100,7 +75,7 @@ class DuckDbBootstrap:
     """Manages a single DuckDB connection, initializes schema on first connect, and exposes scoped transactions.
 
     The bootstrap is responsible for creating the DuckDB file, initializing the schema
-    (ops/silver/gold schemas and core ops tables) on the first connect, and managing
+    (ops/silver schemas and core ops tables) on the first connect, and managing
     the connection lifecycle.
 
     Schema initialization is idempotent and uses CREATE IF NOT EXISTS, making it safe
@@ -132,9 +107,9 @@ class DuckDbBootstrap:
         single transaction for atomicity.
 
         Creates:
-        - ops, silver, gold schemas
+        - ops, silver schemas
         - ops.file_ingestions table (core metadata table)
-        - ops.gold_builds table (gold build tracking and lineage)
+        - silver.instrument table
 
         Raises:
             Exception: If schema creation fails (transaction is rolled back)
@@ -143,7 +118,6 @@ class DuckDbBootstrap:
             self._conn.execute("BEGIN")
             self._conn.execute(SCHEMA_DDL)
             self._conn.execute(OPS_FILE_INGESTIONS_DDL)
-            self._conn.execute(OPS_GOLD_BUILDS_DDL)
             self._conn.execute(SILVER_INSTRUMENT_DDL)
             self._conn.execute("COMMIT")
             self._logger.debug("Schema initialization complete")
@@ -186,10 +160,5 @@ class DuckDbBootstrap:
 
     @contextmanager
     def silver_transaction(self) -> Iterator[duckdb.DuckDBPyConnection]:
-        with self.transaction() as conn:
-            yield conn
-
-    @contextmanager
-    def gold_transaction(self) -> Iterator[duckdb.DuckDBPyConnection]:
         with self.transaction() as conn:
             yield conn

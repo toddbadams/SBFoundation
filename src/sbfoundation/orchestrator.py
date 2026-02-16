@@ -71,7 +71,7 @@ class Orchestrator:
         self.logger = logger or LoggerFactory().create_logger(__name__)
         self.ops_service = ops_service or OpsService()
         self._today = today
-        self._dataset_service = DatasetService(today=today, plan=switches.fmp_plan, logger=self.logger)
+        self._dataset_service = DatasetService(today=today, logger=self.logger)
 
     def run(self) -> RunContext:
         # start the run summary to capture ops metrics during the run

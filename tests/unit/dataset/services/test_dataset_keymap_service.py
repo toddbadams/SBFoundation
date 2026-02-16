@@ -35,7 +35,7 @@ def test_missing_ticker_scope_rejected(patch_folders: tuple[Path, Path]) -> None
     payload = {"version": 1, "datasets": [dict(_base_dataset_entry("company-profile"), **{"ticker_scope": None})]}
     _write_keymap(repo_root, payload)
     with pytest.raises(ValueError, match="ticker_scope"):
-        DatasetService(today="2026-01-01", plan="basic")
+        DatasetService(today="2026-01-01")
 
 
 def test_duplicate_entries_raise(patch_folders: tuple[Path, Path]) -> None:
@@ -44,7 +44,7 @@ def test_duplicate_entries_raise(patch_folders: tuple[Path, Path]) -> None:
     payload = {"version": 1, "datasets": [entry, entry]}
     _write_keymap(repo_root, payload)
     with pytest.raises(ValueError, match="Duplicate dataset mapping"):
-        DatasetService(today="2026-01-01", plan="basic")
+        DatasetService(today="2026-01-01")
 
 
 def test_strict_registry_mismatch_bubbles(monkeypatch: pytest.MonkeyPatch, patch_folders: tuple[Path, Path]) -> None:
@@ -56,7 +56,7 @@ def test_strict_registry_mismatch_bubbles(monkeypatch: pytest.MonkeyPatch, patch
         "sbfoundation.dtos.dto_registry.DTO_REGISTRY",
         DTORegistry({}),
     )
-    service = DatasetService(today="2026-01-01", plan="basic")
+    service = DatasetService(today="2026-01-01")
     with pytest.raises(ValueError, match="DTO registry mismatch"):
         service.validate_dto_registry()
 
@@ -75,7 +75,7 @@ def test_load_returns_expected_entries(patch_folders: tuple[Path, Path]) -> None
         ],
     }
     _write_keymap(repo_root, payload)
-    keymap = DatasetService(today="2026-01-01", plan="basic").load_dataset_keymap()
+    keymap = DatasetService(today="2026-01-01").load_dataset_keymap()
     assert keymap.version == 2
     assert len(keymap.entries) == 1
     assert keymap.entries[0].dataset == "company-profile"

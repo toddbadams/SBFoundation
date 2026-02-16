@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from sbfoundation.dtos.bronze_to_silver_dto import BronzeToSilverDTO
+from sbfoundation.dtos.dto_registry import DTO_REGISTRY
 from sbfoundation.dataset.models.dataset_recipe import DatasetRecipe
 from sbfoundation.folders import Folders
 from sbfoundation.settings import *
@@ -116,7 +117,7 @@ class RunRequest(BronzeToSilverDTO):
         return self.recipe.domain, self.recipe.source, self.recipe.dataset, discriminator, ticker
 
     @classmethod
-    def from_recipe(cls, *, recipe: DatasetRecipe, run_id: str, from_date: str, today: str, api_key: str, ticker: str = None, instrument_sk: int = None) -> "RunRequest":
+    def from_recipe(cls, *, recipe: DatasetRecipe, run_id: str, from_date: str, today: str, api_key: str, ticker: str = None, instrument_sk: int = None, snapshot_date: str | None = None) -> "RunRequest":
         data_source_config = DATA_SOURCES_CONFIG[recipe.source]
         r = RunRequest(
             recipe=recipe,
@@ -131,6 +132,7 @@ class RunRequest(BronzeToSilverDTO):
                 ticker=ticker,
                 to_date=today,
                 api_key=api_key,
+                snapshot_date=snapshot_date,
             ),
             date_key=recipe.date_key,
             from_date=from_date,

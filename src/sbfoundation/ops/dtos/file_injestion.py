@@ -42,18 +42,6 @@ class DatasetInjestion:
     silver_injest_end_time: datetime | None = None
     silver_can_promote: bool | None = None
 
-    gold_object_type: str | None = None
-    gold_from_date: date | None = None
-    gold_to_date: date | None = None
-    gold_tablename: str | None = None
-    gold_errors: str | None = None
-    gold_rows_created: int = 0
-    gold_rows_updated: int = 0
-    gold_rows_failed: int = 0
-    gold_injest_start_time: datetime | None = None
-    gold_injest_end_time: datetime | None = None
-    gold_can_promote: bool | None = None
-
     @classmethod
     def from_bronze(cls, result: BronzeResult) -> "DatasetInjestion":
         request = result.request
@@ -108,17 +96,6 @@ class DatasetInjestion:
             "silver_injest_start_time": self.silver_injest_start_time,
             "silver_injest_end_time": self.silver_injest_end_time,
             "silver_can_promote": self.silver_can_promote,
-            "gold_object_type": self.gold_object_type,
-            "gold_from_date": self.gold_from_date,
-            "gold_to_date": self.gold_to_date,
-            "gold_tablename": self.gold_tablename,
-            "gold_errors": self.gold_errors,
-            "gold_rows_created": self.gold_rows_created,
-            "gold_rows_updated": self.gold_rows_updated,
-            "gold_rows_failed": self.gold_rows_failed,
-            "gold_injest_start_time": self.gold_injest_start_time,
-            "gold_injest_end_time": self.gold_injest_end_time,
-            "gold_can_promote": self.gold_can_promote,
         }
 
     @classmethod
@@ -150,17 +127,6 @@ class DatasetInjestion:
             silver_injest_start_time=row.get("silver_injest_start_time"),
             silver_injest_end_time=row.get("silver_injest_end_time"),
             silver_can_promote=row.get("silver_can_promote"),
-            gold_object_type=row.get("gold_object_type"),
-            gold_from_date=row.get("gold_from_date"),
-            gold_to_date=row.get("gold_to_date"),
-            gold_tablename=row.get("gold_tablename"),
-            gold_errors=row.get("gold_errors"),
-            gold_rows_created=row.get("gold_rows_created") or 0,
-            gold_rows_updated=row.get("gold_rows_updated") or 0,
-            gold_rows_failed=row.get("gold_rows_failed") or 0,
-            gold_injest_start_time=row.get("gold_injest_start_time"),
-            gold_injest_end_time=row.get("gold_injest_end_time"),
-            gold_can_promote=row.get("gold_can_promote"),
         )
 
     def to_bronze_manifest_row(self) -> BronzeManifestRow:

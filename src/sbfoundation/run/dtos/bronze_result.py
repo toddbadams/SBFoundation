@@ -63,6 +63,9 @@ class BronzeResult(BronzeToSilverDTO):
                     raise e
             else:
                 self.content = response.json()
+                # Normalize list[str] payloads (e.g. available-countries) to list[dict]
+                if isinstance(self.content, list) and self.content and isinstance(self.content[0], str):
+                    self.content = [{"value": item} for item in self.content]
         else:
             self.content = response.text
 

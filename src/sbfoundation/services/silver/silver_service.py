@@ -34,6 +34,7 @@ class SilverService:
 
     def __init__(
         self,
+        enabled: bool = True,
         logger: SBLogger | None = None,
         bootstrap: DuckDbBootstrap | None = None,
         keymap_service: DatasetService | None = None,
@@ -46,6 +47,7 @@ class SilverService:
         ops_service: OpsService | None = None,
         instrument_resolver: InstrumentResolutionService | None = None,
     ) -> None:
+        self._enabled = enabled
         self._logger = logger or LoggerFactory().create_logger(self.__class__.__name__)
         self._bootstrap = bootstrap or DuckDbBootstrap()
         self._owns_bootstrap = bootstrap is None
@@ -69,10 +71,17 @@ class SilverService:
             self._ops_service.close()
 
     def promote(self, run: RunContext) -> tuple[list[str], int]:
+        prefix = "PROCESSING SILVER" if self._enabled else "DRY-RUN SILVER"
         ingestions = self._ops_service.load_promotable_file_ingestions()
         if not ingestions:
-            self._logger.info("No promotable Bronze rows found.", run_id=run.run_id)
+            self._logger.info("%s | No promotable Bronze rows found.", prefix, run_id=run.run_id)
             return [], 0
+
+        if not self._enabled:
+            self._logger.info("%s | %s files eligible (skipped)", prefix, len(ingestions), run_id=run.run_id)
+            return [], 0
+
+        self._logger.info("%s | %s files to promote", prefix, len(ingestions), run_id=run.run_id)
 
         promoted: list[str] = []
         promoted_rows = 0
@@ -133,6 +142,12 @@ class SilverService:
                     run_id=run_id,
                 )
 
+        self._logger.info(
+            "PROCESSING SILVER | complete | bronze_files=%s | rows=%s",
+            len(promoted),
+            promoted_rows,
+            run_id=run.run_id,
+        )
         return promoted, promoted_rows
 
     def _resolve_keymap_entry_safe(self, row: BronzeManifestRow, keymap: DatasetKeymap) -> DatasetKeymapEntry | None:
@@ -249,6 +264,17 @@ class SilverService:
             ticker=row.ticker or "",
         )
         entry = keymap.find(identity)
+        # Fallback 1: strip runtime discriminator (e.g. snapshot date written by date-loop)
+        if entry is None and row.discriminator:
+            identity = DatasetIdentity(
+                domain=row.domain,
+                source=row.source,
+                dataset=row.dataset,
+                discriminator="",
+                ticker=row.ticker or "",
+            )
+            entry = keymap.find(identity)
+        # Fallback 2: strip ticker
         if entry is None and row.ticker:
             identity = DatasetIdentity(
                 domain=row.domain,

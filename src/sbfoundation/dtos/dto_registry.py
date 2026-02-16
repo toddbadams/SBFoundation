@@ -51,6 +51,17 @@ from sbfoundation.dtos.instrument.cryptocurrency_list_dto import CryptocurrencyL
 from sbfoundation.dtos.instrument.forex_list_dto import ForexListDTO
 from sbfoundation.dtos.instrument.etf_holdings_dto import ETFHoldingsDTO
 
+from sbfoundation.dtos.market.market_countries_dto import MarketCountriesDTO
+from sbfoundation.dtos.market.market_exchanges_dto import MarketExchangesDTO
+from sbfoundation.dtos.market.market_sectors_dto import MarketSectorsDTO
+from sbfoundation.dtos.market.market_industries_dto import MarketIndustriesDTO
+from sbfoundation.dtos.market.market_sector_performance_dto import MarketSectorPerformanceDTO
+from sbfoundation.dtos.market.market_industry_performance_dto import MarketIndustryPerformanceDTO
+from sbfoundation.dtos.market.market_sector_pe_dto import MarketSectorPeDTO
+from sbfoundation.dtos.market.market_industry_pe_dto import MarketIndustryPeDTO
+from sbfoundation.dtos.market.market_hours_dto import MarketHoursDTO
+from sbfoundation.dtos.market.market_holidays_dto import MarketHolidaysDTO
+
 
 class DTORegistry:
     def __init__(self, mapping: dict[str, type[BronzeToSilverDTO]]) -> None:
@@ -148,6 +159,17 @@ DTO_REGISTRY = DTORegistry(
         "cryptocurrency-list": CryptocurrencyListDTO,
         "forex-list": ForexListDTO,
         "etf-holdings": ETFHoldingsDTO,
+        # Market domain
+        "market-countries": MarketCountriesDTO,
+        "market-exchanges": MarketExchangesDTO,
+        "market-sectors": MarketSectorsDTO,
+        "market-industries": MarketIndustriesDTO,
+        "market-sector-performance": MarketSectorPerformanceDTO,
+        "market-industry-performance": MarketIndustryPerformanceDTO,
+        "market-sector-pe": MarketSectorPeDTO,
+        "market-industry-pe": MarketIndustryPeDTO,
+        "market-hours": MarketHoursDTO,
+        "market-holidays": MarketHolidaysDTO,
     }
 )
 

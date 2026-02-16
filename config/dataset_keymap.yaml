@@ -8342,3 +8342,460 @@ datasets:
     - name: eps
       type: float | None
       nullable: true
+
+
+# ---- MARKET DOMAIN ----
+
+- domain: market
+  source: fmp
+  dataset: market-countries
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_market_countries
+  key_cols:
+  - value
+  row_date_col: null
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: available-countries
+    query_vars: {}
+    date_key: null
+    cadence_mode: interval
+    min_age_days: 365
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#available-countries
+  dto_schema:
+    dto_type: sbfoundation.dtos.market.market_countries_dto.MarketCountriesDTO
+    columns:
+    - name: value
+      type: str
+      nullable: false
+
+- domain: market
+  source: fmp
+  dataset: market-exchanges
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_market_exchanges
+  key_cols:
+  - exchange
+  row_date_col: null
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: available-exchanges
+    query_vars: {}
+    date_key: null
+    cadence_mode: interval
+    min_age_days: 365
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#available-exchanges
+  dto_schema:
+    dto_type: sbfoundation.dtos.market.market_exchanges_dto.MarketExchangesDTO
+    columns:
+    - name: exchange
+      type: str
+      nullable: false
+    - name: name
+      type: str
+      nullable: true
+    - name: country
+      type: str | None
+      nullable: true
+    - name: currency
+      type: str | None
+      nullable: true
+    - name: timezone
+      type: str | None
+      nullable: true
+
+- domain: market
+  source: fmp
+  dataset: market-sectors
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_market_sectors
+  key_cols:
+  - value
+  row_date_col: null
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: available-sectors
+    query_vars: {}
+    date_key: null
+    cadence_mode: interval
+    min_age_days: 365
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#available-sectors
+  dto_schema:
+    dto_type: sbfoundation.dtos.market.market_sectors_dto.MarketSectorsDTO
+    columns:
+    - name: value
+      type: str
+      nullable: false
+
+- domain: market
+  source: fmp
+  dataset: market-industries
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_market_industries
+  key_cols:
+  - value
+  row_date_col: null
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: available-industries
+    query_vars: {}
+    date_key: null
+    cadence_mode: interval
+    min_age_days: 365
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#available-industries
+  dto_schema:
+    dto_type: sbfoundation.dtos.market.market_industries_dto.MarketIndustriesDTO
+    columns:
+    - name: value
+      type: str
+      nullable: false
+
+- domain: market
+  source: fmp
+  dataset: market-sector-performance
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_market_sector_performance
+  key_cols:
+  - date
+  - sector
+  - exchange
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: sector-performance-snapshot
+    query_vars:
+      date: __date__
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#sector-performance-snapshot
+  dto_schema:
+    dto_type: sbfoundation.dtos.market.market_sector_performance_dto.MarketSectorPerformanceDTO
+    columns:
+    - name: date
+      type: date | None
+      nullable: true
+    - name: sector
+      type: str
+      nullable: false
+    - name: exchange
+      type: str
+      nullable: false
+    - name: changes_percentage
+      type: float | None
+      nullable: true
+
+- domain: market
+  source: fmp
+  dataset: market-industry-performance
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_market_industry_performance
+  key_cols:
+  - date
+  - industry
+  - exchange
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: industry-performance-snapshot
+    query_vars:
+      date: __date__
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#industry-performance-snapshot
+  dto_schema:
+    dto_type: sbfoundation.dtos.market.market_industry_performance_dto.MarketIndustryPerformanceDTO
+    columns:
+    - name: date
+      type: date | None
+      nullable: true
+    - name: industry
+      type: str
+      nullable: false
+    - name: exchange
+      type: str
+      nullable: false
+    - name: changes_percentage
+      type: float | None
+      nullable: true
+
+- domain: market
+  source: fmp
+  dataset: market-sector-pe
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_market_sector_pe
+  key_cols:
+  - date
+  - sector
+  - exchange
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: sector-pe-snapshot
+    query_vars:
+      date: __date__
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#sector-pe-snapshot
+  dto_schema:
+    dto_type: sbfoundation.dtos.market.market_sector_pe_dto.MarketSectorPeDTO
+    columns:
+    - name: date
+      type: date | None
+      nullable: true
+    - name: sector
+      type: str
+      nullable: false
+    - name: exchange
+      type: str
+      nullable: false
+    - name: pe
+      type: float | None
+      nullable: true
+
+- domain: market
+  source: fmp
+  dataset: market-industry-pe
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_market_industry_pe
+  key_cols:
+  - date
+  - industry
+  - exchange
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: industry-pe-snapshot
+    query_vars:
+      date: __date__
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#industry-pe-snapshot
+  dto_schema:
+    dto_type: sbfoundation.dtos.market.market_industry_pe_dto.MarketIndustryPeDTO
+    columns:
+    - name: date
+      type: date | None
+      nullable: true
+    - name: industry
+      type: str
+      nullable: false
+    - name: exchange
+      type: str
+      nullable: false
+    - name: pe
+      type: float | None
+      nullable: true
+
+- domain: market
+  source: fmp
+  dataset: market-hours
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_market_hours
+  key_cols:
+  - exchange
+  - as_of_date
+  row_date_col: as_of_date
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: all-exchange-market-hours
+    query_vars: {}
+    date_key: null
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#all-exchange-market-hours
+  dto_schema:
+    dto_type: sbfoundation.dtos.market.market_hours_dto.MarketHoursDTO
+    columns:
+    - name: exchange
+      type: str
+      nullable: false
+    - name: name
+      type: str
+      nullable: true
+    - name: opening_hour
+      type: str
+      nullable: true
+    - name: closing_hour
+      type: str
+      nullable: true
+    - name: timezone
+      type: str
+      nullable: true
+    - name: is_market_open
+      type: bool
+      nullable: false
+    - name: opening_additional
+      type: str | None
+      nullable: true
+    - name: closing_additional
+      type: str | None
+      nullable: true
+    - name: as_of_date
+      type: date
+      nullable: false
+
+- domain: market
+  source: fmp
+  dataset: market-holidays
+  discriminator: ''
+  ticker_scope: per_ticker
+  silver_schema: silver
+  silver_table: fmp_market_holidays
+  key_cols:
+  - exchange
+  - date
+  - holiday
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: holidays-by-exchange
+    query_vars:
+      exchange: __ticker__
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 365
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#holidays-by-exchange
+  dto_schema:
+    dto_type: sbfoundation.dtos.market.market_holidays_dto.MarketHolidaysDTO
+    columns:
+    - name: exchange
+      type: str
+      nullable: false
+    - name: date
+      type: date | None
+      nullable: true
+    - name: holiday
+      type: str
+      nullable: false

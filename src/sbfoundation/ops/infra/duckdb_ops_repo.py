@@ -19,8 +19,6 @@ class DuckDbOpsRepo:
         self._logger = logger or LoggerFactory().create_logger(self.__class__.__name__)
         self._bootstrap = bootstrap or DuckDbBootstrap()
         self._owns_bootstrap = bootstrap is None
-        self._gold_build_counter = 0
-
     def close(self) -> None:
         if self._owns_bootstrap:
             self._bootstrap.close()
@@ -34,10 +32,7 @@ class DuckDbOpsRepo:
             "? AS bronze_to_date, ? AS bronze_injest_start_time, ? AS bronze_injest_end_time, ? AS bronze_can_promote, "
             "? AS bronze_payload_hash, ? AS silver_tablename, ? AS silver_errors, "
             "? AS silver_rows_created, ? AS silver_rows_updated, ? AS silver_rows_failed, ? AS silver_from_date, "
-            "? AS silver_to_date, ? AS silver_injest_start_time, ? AS silver_injest_end_time, ? AS silver_can_promote, "
-            "? AS gold_object_type, ? AS gold_tablename, ? AS gold_errors, ? AS gold_rows_created, ? AS gold_rows_updated, "
-            "? AS gold_rows_failed, ? AS gold_from_date, ? AS gold_to_date, ? AS gold_injest_start_time, ? AS gold_injest_end_time, "
-            "? AS gold_can_promote"
+            "? AS silver_to_date, ? AS silver_injest_start_time, ? AS silver_injest_end_time, ? AS silver_can_promote"
             ") AS src "
             "ON target.run_id = src.run_id AND target.file_id = src.file_id "
             "WHEN MATCHED THEN UPDATE SET "
@@ -51,29 +46,21 @@ class DuckDbOpsRepo:
             "silver_rows_updated = src.silver_rows_updated, silver_rows_failed = src.silver_rows_failed, "
             "silver_from_date = src.silver_from_date, silver_to_date = src.silver_to_date, "
             "silver_injest_start_time = src.silver_injest_start_time, silver_injest_end_time = src.silver_injest_end_time, "
-            "silver_can_promote = src.silver_can_promote, gold_object_type = src.gold_object_type, "
-            "gold_tablename = src.gold_tablename, gold_errors = src.gold_errors, gold_rows_created = src.gold_rows_created, "
-            "gold_rows_updated = src.gold_rows_updated, gold_rows_failed = src.gold_rows_failed, "
-            "gold_from_date = src.gold_from_date, gold_to_date = src.gold_to_date, "
-            "gold_injest_start_time = src.gold_injest_start_time, gold_injest_end_time = src.gold_injest_end_time, "
-            "gold_can_promote = src.gold_can_promote "
+            "silver_can_promote = src.silver_can_promote "
             "WHEN NOT MATCHED THEN INSERT ("
             "run_id, file_id, domain, source, dataset, discriminator, ticker, "
             "bronze_filename, bronze_error, bronze_rows, bronze_from_date, bronze_to_date, "
             "bronze_injest_start_time, bronze_injest_end_time, bronze_can_promote, bronze_payload_hash, "
             "silver_tablename, silver_errors, silver_rows_created, silver_rows_updated, "
             "silver_rows_failed, silver_from_date, silver_to_date, silver_injest_start_time, silver_injest_end_time, "
-            "silver_can_promote, gold_object_type, gold_tablename, gold_errors, gold_rows_created, gold_rows_updated, "
-            "gold_rows_failed, gold_from_date, gold_to_date, gold_injest_start_time, gold_injest_end_time, gold_can_promote"
+            "silver_can_promote"
             ") VALUES ("
             "src.run_id, src.file_id, src.domain, src.source, src.dataset, src.discriminator, src.ticker, "
             "src.bronze_filename, src.bronze_error, src.bronze_rows, src.bronze_from_date, src.bronze_to_date, "
             "src.bronze_injest_start_time, src.bronze_injest_end_time, src.bronze_can_promote, src.bronze_payload_hash, "
             "src.silver_tablename, src.silver_errors, src.silver_rows_created, "
             "src.silver_rows_updated, src.silver_rows_failed, src.silver_from_date, src.silver_to_date, "
-            "src.silver_injest_start_time, src.silver_injest_end_time, src.silver_can_promote, src.gold_object_type, "
-            "src.gold_tablename, src.gold_errors, src.gold_rows_created, src.gold_rows_updated, src.gold_rows_failed, "
-            "src.gold_from_date, src.gold_to_date, src.gold_injest_start_time, src.gold_injest_end_time, src.gold_can_promote"
+            "src.silver_injest_start_time, src.silver_injest_end_time, src.silver_can_promote"
             ")"
         )
         params = [
@@ -103,40 +90,7 @@ class DuckDbOpsRepo:
             ingestion.silver_injest_start_time,
             ingestion.silver_injest_end_time,
             ingestion.silver_can_promote,
-            ingestion.gold_object_type,
-            ingestion.gold_tablename,
-            ingestion.gold_errors,
-            ingestion.gold_rows_created,
-            ingestion.gold_rows_updated,
-            ingestion.gold_rows_failed,
-            ingestion.gold_from_date,
-            ingestion.gold_to_date,
-            ingestion.gold_injest_start_time,
-            ingestion.gold_injest_end_time,
-            ingestion.gold_can_promote,
         ]
-        with self._bootstrap.ops_transaction() as conn:
-            conn.execute(sql, params)
-
-    def update_gold_ingestion_times(
-        self,
-        *,
-        run_id: str,
-        gold_injest_start_time: datetime.datetime | None = None,
-        gold_injest_end_time: datetime.datetime | None = None,
-    ) -> None:
-        set_clauses = []
-        params: list[Any] = []
-        if gold_injest_start_time is not None:
-            set_clauses.append("gold_injest_start_time = ?")
-            params.append(gold_injest_start_time)
-        if gold_injest_end_time is not None:
-            set_clauses.append("gold_injest_end_time = ?")
-            params.append(gold_injest_end_time)
-        if not set_clauses:
-            return
-        sql = f"UPDATE ops.file_ingestions SET {', '.join(set_clauses)} WHERE run_id = ?"
-        params.append(run_id)
         with self._bootstrap.ops_transaction() as conn:
             conn.execute(sql, params)
 
@@ -290,94 +244,6 @@ class DuckDbOpsRepo:
         sql = f"SELECT * FROM ops.file_ingestions WHERE {where}"
         rows = self._fetch_dicts(sql, params)
         return [DatasetInjestion.from_row(row) for row in rows]
-
-    # --- BRONZE MANIFEST ---#
-    # --- GOLD BUILD ---#
-    def next_gold_build_id(self, conn: duckdb.DuckDBPyConnection) -> int:
-        """Get next gold_build_id by querying max from ops.gold_builds table."""
-        result = conn.execute("SELECT COALESCE(MAX(gold_build_id), 0) + 1 FROM ops.gold_builds").fetchone()
-        return result[0] if result else 1
-
-    def insert_gold_build(
-        self,
-        conn: duckdb.DuckDBPyConnection,
-        *,
-        gold_build_id: int,
-        run_id: str,
-        model_version: str,
-        started_at: datetime.datetime,
-        finished_at: datetime.datetime,
-        status: str,
-        error_message: str | None,
-        input_watermarks: list[str],
-        row_counts: dict[str, int],
-    ) -> None:
-        """Insert gold build record into ops.gold_builds for lineage tracking."""
-        import json
-
-        conn.execute(
-            """
-            INSERT INTO ops.gold_builds (
-                gold_build_id, run_id, model_version, started_at, finished_at,
-                status, error_message, row_counts
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            [
-                gold_build_id,
-                run_id,
-                model_version,
-                started_at,
-                finished_at,
-                status,
-                error_message,
-                json.dumps(row_counts),
-            ],
-        )
-
-    # --- GOLD MANIFEST ---#
-    def start_gold_manifest(self, conn: duckdb.DuckDBPyConnection, *, gold_build_id: int, table_name: str) -> None:
-        pass
-
-    def finish_gold_manifest(
-        self,
-        conn: duckdb.DuckDBPyConnection,
-        *,
-        gold_build_id: int,
-        table_name: str,
-        status: str,
-        rows_seen: int,
-        rows_written: int,
-        error_message: str | None,
-    ) -> None:
-        pass
-
-    # --- GOLD WATERMARK ---#
-    def get_gold_watermark(self, conn: duckdb.DuckDBPyConnection, *, table_name: str) -> datetime.date | None:
-        """Query max(gold_to_date) from ops.file_ingestions for incremental processing."""
-        result = conn.execute(
-            """
-            SELECT MAX(gold_to_date)
-            FROM ops.file_ingestions
-            WHERE gold_tablename LIKE ?
-            """,
-            [f"%{table_name}%"],
-        ).fetchone()
-        return result[0] if result and result[0] else None
-
-    def upsert_gold_watermark(self, conn: duckdb.DuckDBPyConnection, *, table_name: str, watermark_date: datetime.date | None) -> None:
-        """Update gold_to_date in ops.file_ingestions for watermark tracking."""
-        if watermark_date is None:
-            return
-
-        conn.execute(
-            """
-            UPDATE ops.file_ingestions
-            SET gold_to_date = ?
-            WHERE gold_tablename LIKE ?
-              AND (gold_to_date IS NULL OR gold_to_date < ?)
-            """,
-            [watermark_date, f"%{table_name}%", watermark_date],
-        )
 
     # ---- PRIVATE METHODS ---#
 

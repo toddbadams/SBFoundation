@@ -23,13 +23,13 @@ class DatasetService:
     serialized identity key before handing the `DatasetKeymap` to downstream
     services."""
 
-    def __init__(self, today: str, plan: str, *, logger: SBLogger | None = None, strict_dto_registry: bool | None = None) -> None:
+    def __init__(self, today: str, *, logger: SBLogger | None = None, strict_dto_registry: bool | None = None) -> None:
         self._logger = logger or logging.getLogger(self.__class__.__name__)  # type: ignore[assignment]
         if strict_dto_registry is None:
             strict_dto_registry = os.getenv("STRICT_DTO_REGISTRY", "").strip().lower() in {"1", "true", "yes"}
         self._strict_dto_registry = strict_dto_registry
         self._today = date.fromisoformat(today)
-        self._plan = plan
+        self._plan = os.getenv("FMP_PLAN", "").strip()
 
         # Load and cache keymap and recipes on init
         self._keymap = self.load_dataset_keymap()

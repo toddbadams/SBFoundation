@@ -90,7 +90,13 @@ class DatasetRecipe(BronzeToSilverDTO):
         return day.lower() in (self.run_days or DAYS_OF_WEEK)
 
     def get_query_vars(
-        self, *, from_date: str | None = None, ticker: str | None = None, to_date: str | None = None, api_key: str | None = None
+        self,
+        *,
+        from_date: str | None = None,
+        ticker: str | None = None,
+        to_date: str | None = None,
+        api_key: str | None = None,
+        snapshot_date: str | None = None,
     ) -> dict[str, typing.Any]:
         # Copy so we don't mutate the recipe's template dict while expanding
         # placeholders for ticker and date ranges.
@@ -108,6 +114,8 @@ class DatasetRecipe(BronzeToSilverDTO):
                 q[k] = d.date().isoformat()
             elif v == TO_DATE_PLACEHOLDER:
                 q[k] = to_date
+            elif v == DATE_PLACEHOLDER:
+                q[k] = snapshot_date
             elif v == LIMIT_PLACEHOLDER:
                 q[k] = DEFAULT_LIMIT
             elif v == PERIOD_PLACEHOLDER:

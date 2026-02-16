@@ -31,7 +31,14 @@
       "Bash(findstr:*)",
       "Bash(del \"C:\\\\sb\\\\SBFoundation\\\\src\\\\data_layer\\\\services\\\\gold\\\\gold_service.py\" \"C:\\\\sb\\\\SBFoundation\\\\src\\\\data_layer\\\\services\\\\gold\\\\__init__.py\" \"C:\\\\sb\\\\SBFoundation\\\\src\\\\data_layer\\\\dataset\\\\models\\\\gold_config.py\")",
       "Bash(python3:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "WebFetch(domain:financialmodelingprep.com)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:rando-brando.github.io)",
+      "WebFetch(domain:thinh-vu.github.io)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl:*)"
     ]
   }
 }

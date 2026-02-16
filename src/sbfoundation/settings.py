@@ -1,435 +1,29 @@
 import os
 
-from sbfoundation.dtos.dto_registry import DTO_REGISTRY
-
-DEFAULT_LINE_PARAMETER = "line"
 DEFAULT_LIMIT: int = 5
-DEFAULT_PERIOD: str = "quarter"
 
-
-# ---- TRADING STRATEGY SETTINGS (docs/AI_context/trading_strategies.md) ---- #
-STRATEGY_ASSET_CLASSES = ["equities", "etfs", "bonds", "options"]
-STRATEGY_PRIMARY_GEOGRAPHY = "united_states"
-STRATEGY_MULTI_GEOGRAPHY_SUPPORTED = True
-STRATEGY_UNIVERSE_SHARED = True
-
-CORE_LAYER = "core"
-SATELLITE_LAYER = "satellite"
-SWING_LAYER = "swing"
-STRATEGY_LAYERS = [CORE_LAYER, SATELLITE_LAYER, SWING_LAYER]
-LAYER_HORIZONS = {
-    CORE_LAYER: "years",
-    SATELLITE_LAYER: "months",
-    SWING_LAYER: "days-weeks",
-}
-
-LAYER_TARGET_ALLOCATIONS = {
-    CORE_LAYER: 0.60,
-    SATELLITE_LAYER: 0.30,
-    SWING_LAYER: 0.10,
-}
-LAYER_MIN_FLOORS = {
-    CORE_LAYER: 0.35,
-    SATELLITE_LAYER: 0.05,
-    SWING_LAYER: 0.0,
-}
-LAYER_REBALANCE_CADENCE = {
-    CORE_LAYER: "quarterly",
-    SATELLITE_LAYER: "weekly",
-    SWING_LAYER: "daily",
-}
-
-REGIME_HEDGE = "hedge"
-REGIME_SPECULATIVE = "speculative"
-REGIME_PONZI = "ponzi"
-REGIME_MINSKY_MOMENT = "minsky_moment"
-MINSKY_REGIMES = [REGIME_HEDGE, REGIME_SPECULATIVE, REGIME_PONZI, REGIME_MINSKY_MOMENT]
-REGIME_CONFIRMATION_WINDOW_DEFAULT = "multi-week"
-REGIME_PROBABILITY_EVALUATION_FREQUENCY = "daily"
-REGIME_OUTPUT_IS_PROBABILISTIC = True
-
-
-REGIME_ALLOCATION_POLICY = {
-    REGIME_HEDGE: {CORE_LAYER: "overweight", SATELLITE_LAYER: "enabled", SWING_LAYER: "enabled"},
-    REGIME_SPECULATIVE: {CORE_LAYER: "neutral", SATELLITE_LAYER: "capped", SWING_LAYER: "reduced"},
-    REGIME_PONZI: {CORE_LAYER: "defensive", SATELLITE_LAYER: "min_floor", SWING_LAYER: "optional"},
-    REGIME_MINSKY_MOMENT: {CORE_LAYER: "min_floor", SATELLITE_LAYER: "min_floor", SWING_LAYER: "disabled"},
-}
-
-SCREENER_QUANT_VALUE = "quant_value"
-SCREENERS = [SCREENER_QUANT_VALUE]
-SCREENER_LAYER_SUPPORT = {
-    SCREENER_QUANT_VALUE: [CORE_LAYER, SATELLITE_LAYER],
-}
-
-SELECTION_SHAPING_STEPS = [
-    "fitness_scoring",
-    "regime_adjustment",
-    "correlation_pruning",
-    "volatility_normalization",
-]
-SELECTION_CANDIDATE_SET_SIZE_RANGE = (20, 60)
-
-STRATEGY_TYPES = [
-    "trend_following_etf",
-    "factor_value_equity",
-    "quality_dividend",
-    "mean_reversion_swing",
-    "momentum_breakout_swing",
-    "volatility_targeting",
-    "crash_hedge_overlay",
-]
-
-MAX_SINGLE_NAME_BY_LAYER = {
-    CORE_LAYER: 0.05,
-    SATELLITE_LAYER: 0.07,
-    SWING_LAYER: 0.03,
-}
-MAX_POSITIONS_BY_LAYER = {
-    CORE_LAYER: (20, 40),
-    SATELLITE_LAYER: (10, 25),
-    SWING_LAYER: (5, 15),
-}
-PORTFOLIO_MAX_SECTOR_EXPOSURE = 0.25
-PORTFOLIO_MAX_GROSS_EXPOSURE = 1.10
-
-EXECUTION_END_OF_DAY_ONLY = True
-EXECUTION_ALLOW_INTRADAY = False
-EXECUTION_SLIPPAGE_MODELED_EXTERNALLY = True
-INDUSTRY_VALUES: list = [
-    "Entertainment",
-    "Oil & Gas Midstream",
-    "Semiconductors",
-    "Specialty Industrial Machinery",
-    "Banks Diversified",
-    "Consumer Electronics",
-    "Software Infrastructure",
-    "Broadcasting",
-    "Computer Hardware",
-    "Building Materials",
-    "Resorts & Casinos",
-    "Auto Manufacturers",
-    "Internet Content & Information",
-    "Insurance Diversified",
-    "Telecom Services",
-    "Metals & Mining",
-    "Capital Markets",
-    "Steel",
-    "Footwear & Accessories",
-    "Household & Personal Products",
-    "Other Industrial Metals & Mining",
-    "Oil & Gas E&P",
-    "Banks Regional",
-    "Drug Manufacturers General",
-    "Internet Retail",
-    "Communication Equipment",
-    "Semiconductor Equipment & Materials",
-    "Oil & Gas Services",
-    "Chemicals",
-    "Electronic Gaming & Multimedia",
-    "Oil & Gas Integrated",
-    "Credit Services",
-    "Online Media",
-    "Business Services",
-    "Biotechnology",
-    "Grocery Stores",
-    "Oil & Gas Equipment & Services",
-    "REITs",
-    "Copper",
-    "Software Application",
-    "Home Improvement Retail",
-    "Pharmaceutical Retailers",
-    "Communication Services",
-    "Oil & Gas Drilling",
-    "Electronic Components",
-    "Packaged Foods",
-    "Information Technology Services",
-    "Leisure",
-    "Specialty Retail",
-    "Oil & Gas Refining & Marketing",
-    "Tobacco",
-    "Financial Data & Stock Exchanges",
-    "Insurance Specialty",
-    "Beverages Non-Alcoholic",
-    "Asset Management",
-    "REIT Diversified",
-    "Residential Construction",
-    "Travel & Leisure",
-    "Gold",
-    "Discount Stores",
-    "Confectioners",
-    "Medical Devices",
-    "Banks",
-    "Independent Oil & Gas",
-    "Airlines",
-    "Travel Services",
-    "Aerospace & Defense",
-    "Retail Apparel & Specialty",
-    "Diagnostics & Research",
-    "Trucking",
-    "Insurance Property & Casualty",
-    "Health Care Plans",
-    "Consulting Services",
-    "Aluminum",
-    "Beverages Brewers",
-    "REIT Residential",
-    "Education & Training Services",
-    "Apparel Retail",
-    "Railroads",
-    "Apparel Manufacturing",
-    "Staffing & Employment Services",
-    "Utilities Diversified",
-    "Agricultural Inputs",
-    "Restaurants",
-    "Drug Manufacturers General Specialty & Generic",
-    "Financial Conglomerates",
-    "Personal Services",
-    "Thermal Coal",
-    "REIT Office",
-    "Advertising Agencies",
-    "Farm & Heavy Construction Machinery",
-    "Consumer Packaged Goods",
-    "Publishing",
-    "Specialty Chemicals",
-    "Engineering & Construction",
-    "Utilities Independent Power Producers",
-    "Utilities Regulated Electric",
-    "Medical Instruments & Supplies",
-    "Building Products & Equipment",
-    "Packaging & Containers",
-    "REIT Mortgage",
-    "Department Stores",
-    "Insurance Life",
-    "Luxury Goods",
-    "Auto Parts",
-    "Autos",
-    "REIT Specialty",
-    "Integrated Freight & Logistics",
-    "Security & Protection Services",
-    "Utilities Regulated Gas",
-    "Airports & Air Services",
-    "Farm Products",
-    "REIT Healthcare Facilities",
-    "REIT Industrial",
-    "Metal Fabrication",
-    "Scientific & Technical Instruments",
-    "Solar",
-    "REIT Hotel & Motel",
-    "Medical Distribution",
-    "Medical Care Facilities",
-    "Agriculture",
-    "Food Distribution",
-    "Health Information Services",
-    "Industrial Products",
-    "REIT Retail",
-    "Conglomerates",
-    "Health Care Providers",
-    "Waste Management",
-    "Beverages Wineries & Distilleries",
-    "Marine Shipping",
-    "Real Estate Services",
-    "Tools & Accessories",
-    "Auto & Truck Dealerships",
-    "Industrial Distribution",
-    "Uranium",
-    "Lodging",
-    "Electrical Equipment & Parts",
-    "Gambling",
-    "Specialty Business Services",
-    "Recreational Vehicles",
-    "Furnishings",
-    "Fixtures & Appliances",
-    "Forest Products",
-    "Silver",
-    "Business Equipment & Supplies",
-    "Medical Instruments & Equipment",
-    "Utilities Regulated",
-    "Coking Coal",
-    "Insurance Brokers",
-    "Rental & Leasing Services",
-    "Lumber & Wood Production",
-    "Medical Diagnostics & Research",
-    "Pollution & Treatment Controls",
-    "Transportation & Logistics",
-    "Other Precious Metals & Mining",
-    "Brokers & Exchanges",
-    "Beverages Alcoholic",
-    "Mortgage Finance",
-    "Utilities Regulated Water",
-    "Manufacturing Apparel & Furniture",
-    "Retail Defensive",
-    "Real Estate Development",
-    "Paper & Paper Products",
-    "Insurance Reinsurance",
-    "Homebuilding & Construction",
-    "Coal",
-    "Electronics & Computer Distribution",
-    "Health Care Equipment & Services",
-    "Education",
-    "Employment Services",
-    "Textile Manufacturing",
-    "Real Estate Diversified",
-    "Consulting & Outsourcing",
-    "Utilities Renewable",
-    "Tobacco Products",
-    "Farm & Construction Machinery",
-    "Shell Companies",
-    "N/A",
-    "Advertising & Marketing Services",
-    "Capital Goods",
-    "Insurance",
-    "Industrial Electrical Equipment",
-    "Utilities",
-    "Pharmaceuticals",
-    "Biotechnology & Life Sciences",
-    "Infrastructure Operations",
-    "Energy",
-    "NULL",
-    "Property Management",
-    "Auto Dealerships",
-    "Apparel Stores",
-    "Mortgage Investment",
-    "Software & Services",
-    "Industrial Metals & Minerals",
-    "Media & Entertainment",
-    "Diversified Financials",
-    "Consumer Services",
-    "Commercial  & Professional Services",
-    "Electronics Wholesale",
-    "Retailing",
-    "Automobiles & Components",
-    "Materials",
-    "Real Estate",
-    "Food",
-    "Beverage & Tobacco",
-    "Closed-End Fund Debt",
-    "Transportation",
-    "Food & Staples Retailing",
-    "Consumer Durables & Apparel",
-    "Technology Hardware & Equipment",
-    "Telecommunication Services",
-    "Semiconductors & Semiconductor Equipment",
-]
-SECTOR_VALUES: list = [
-    "Communication Services",
-    "Energy",
-    "Technology",
-    "Industrials",
-    "Financial Services",
-    "Basic Materials",
-    "Consumer Cyclical",
-    "Consumer Defensive",
-    "Healthcare",
-    "Real Estate",
-    "Utilities",
-    "Financial",
-    "Building",
-    "Industrial Goods",
-    "Pharmaceuticals",
-    "Services",
-    "Conglomerates",
-    "Media",
-    "Banking",
-    "Airlines",
-    "Retail",
-    "Metals & Mining",
-    "Textiles",
-    "Apparel & Luxury Goods",
-    "Chemicals",
-    "Biotechnology",
-    "Electrical Equipment",
-    "Aerospace & Defense",
-    "Telecommunication",
-    "Machinery",
-    "Food Products",
-    "Insurance",
-    "Logistics & Transportation",
-    "Health Care",
-    "Beverages",
-    "Consumer products",
-    "Semiconductors",
-    "Automobiles",
-    "Trading Companies & Distributors",
-    "Commercial Services & Supplies",
-    "Construction",
-    "Auto Components",
-    "Hotels",
-    "Restaurants & Leisure",
-    "Life Sciences Tools & Services",
-    "Communications",
-    "Industrial Conglomerates",
-    "Professional Services",
-    "Road & Rail",
-    "Tobacco",
-    "Paper & Forest",
-    "Packaging",
-    "Leisure Products",
-    "Transportation Infrastructure",
-    "Distributors",
-    "Marine",
-    "Diversified Consumer Services",
-]
-
-# --- reporting periods ---
-PERIOD_ANNUAL = "annual"
-PERIOD_QUARTER = "quarter"
-PERIOD_Q1 = "Q1"
-PERIOD_Q2 = "Q2"
-PERIOD_Q3 = "Q3"
-PERIOD_Q4 = "Q4"
-PERIOD_FY = "FY"
-PERIOD_VALUES: list = [PERIOD_ANNUAL, PERIOD_QUARTER, PERIOD_Q1, PERIOD_Q2, PERIOD_Q3, PERIOD_Q4, PERIOD_FY]
-
-# --- to be determine ---
-TIME_DELTA_VALUES: list = ["1min", "5min", "15min", "30min", "1hour", "4hour"]
-TECHNICAL_INDICATORS_TIME_DELTA_VALUES: list = ["1min", "5min", "15min", "30min", "1hour", "4hour", "daily"]
-SERIES_TYPE_VALUES: list = ["line"]
-STATISTICS_TYPE_VALUES: list = [
-    "sma",
-    "ema",
-    "wma",
-    "dema",
-    "tema",
-    "williams",
-    "rsi",
-    "adx",
-    "standardDeviation",
-]
-ECONOMIC_INDICATOR_VALUES: list = [
-    "GDP",
-    "realGDP",
-    "nominalPotentialGDP",
-    "realGDPPerCapita",
-    "federalFunds",
-    "CPI",
-    "inflationRate",
-    "inflation",
-    "retailSales",
-    "consumerSentiment",
-    "durableGoods",
-    "unemploymentRate",
-    "totalNonfarmPayroll",
-    "initialClaims",
-    "industrialProductionTotalIndex",
-    "newPrivatelyOwnedHousingUnitsStartedTotalUnits",
-    "totalVehicleSales",
-    "retailMoneyFunds",
-    "smoothedUSRecessionProbabilities",
-    "3MonthOr90DayRatesAndYieldsCertificatesOfDeposit",
-    "commercialBankInterestRateOnCreditCardPlansAllAccounts",
-    "30YearFixedRateMortgageAverage",
-    "tradeBalanceGoodsAndServices",
-    "15YearFixedRateMortgageAverage",
-]
-TREASURY_TENORS: list = ["month1", "month2", "month3", "month6", "year1", "year2", "year3", "year5", "year7", "year10", "year20", "year30"]
 
 # ---- DOMAINS ---- #
+MARKET_DOMAIN = "market"
 ECONOMICS_DOMAIN = "economics"
+INSTRUMENT_DOMAIN = "instrument"
 FUNDAMENTALS_DOMAIN = "fundamentals"
 TECHNICALS_DOMAIN = "technicals"
 COMPANY_DOMAIN = "company"
-INSTRUMENT_DOMAIN = "instrument"
-DOMAINS: list = [ECONOMICS_DOMAIN, FUNDAMENTALS_DOMAIN, TECHNICALS_DOMAIN, COMPANY_DOMAIN, INSTRUMENT_DOMAIN]
+COMMODITIES_DOMAIN = "commodities"
+FX_DOMAIN = "fx"
+CRYPTO_DOMAIN = "crypto"
+DOMAINS: list = [
+    MARKET_DOMAIN,
+    ECONOMICS_DOMAIN,
+    INSTRUMENT_DOMAIN,
+    FUNDAMENTALS_DOMAIN,
+    TECHNICALS_DOMAIN,
+    COMPANY_DOMAIN,
+    COMMODITIES_DOMAIN,
+    FX_DOMAIN,
+    CRYPTO_DOMAIN,
+]
 
 # Domain execution order for orchestration (instrument must run first to populate universe)
 DOMAIN_EXECUTION_ORDER: tuple[str, ...] = (
@@ -466,7 +60,6 @@ ALPACA_DATA_SOURCE = "alpaca"
 SCHWAB_DATA_SOURCE = "schwab"
 BIS_DATA_SOURCE = "bis"
 FRED_DATA_SOURCE = "fred"
-REGIME_DATA_SOURCES = [FMP_DATA_SOURCE, BIS_DATA_SOURCE, FRED_DATA_SOURCE]
 DATA_SOURCES: list = [FMP_DATA_SOURCE, AV_DATA_SOURCE, ALPACA_DATA_SOURCE, SCHWAB_DATA_SOURCE, BIS_DATA_SOURCE, FRED_DATA_SOURCE]
 
 # ---- DATA SOURCE CONFIGURATION (used to configure settings for a given data source) ----#
@@ -608,10 +201,6 @@ DATASETS: list = [
     ETF_HOLDINGS_DATASET,
 ]
 
-# ---- DTO REGISTRY (used to convert json raw object into a DTO to store at the silver layer) ----#
-# Backwards compatibility for older call sites.
-DTO_TYPES = DTO_REGISTRY
-
 # ---- CADENCE MODE ---- #
 INTERVAL_CADENCE_MODE = "interval"
 CALENDAR_CADENCE_MODE = "calendar"
@@ -652,16 +241,17 @@ FROM_ONE_MONTH_AGO_PLACEHOLDER = "__from_one_month_ago__"
 LIMIT_PLACEHOLDER = "__limit__"
 PERIOD_PLACEHOLDER = "__period__"
 
+# --- reporting periods ---
+PERIOD_ANNUAL = "annual"
+
 # --- DATA FOLDERS ---
 DATA_ROOT_FOLDER = os.environ.get("DATA_ROOT_FOLDER", "c:/sb/SBFoundation/data")
 REPO_ROOT_FOLDER = os.environ.get("REPO_ROOT_FOLDER", "c:/sb/SBFoundation")
-MANIFEST_FOLDER = "manifests"
 BRONZE_FOLDER = "bronze"
 DUCKDB_FOLDER = "duckdb"
 DUCKDB_FILENAME = "SBFoundation.duckdb"
 MIGRATIONS_FOLDER = "db/migrations"
 LOG_FOLDER = "logs"
-CHARTS_DATA_FOLDER = "charts"
 DATASET_KEYMAP_FOLDER = "config"
 DATASET_KEYMAP_FILENAME = os.environ.get("DATASET_KEYMAP_FILENAME", "dataset_keymap.yaml")
 
@@ -671,96 +261,6 @@ FMP_STARTER_PLAN = "starter"
 FMP_PREMIUM_PLAN = "premium"
 FMP_ULTIMATE_PLAN = "ultimate"
 FMP_PLANS = [FMP_BASIC_PLAN, FMP_STARTER_PLAN, FMP_PREMIUM_PLAN, FMP_ULTIMATE_PLAN]
-FREE_TIER_SYMBOLS = [
-    "AAL",
-    "AAPL",
-    "ABBV",
-    "ADBE",
-    "AMD",
-    "AMZN",
-    "ATVI",
-    "BA",
-    "BAC",
-    "BABA",
-    "BIDU",
-    "BILI",
-    "C",
-    "CARR",
-    "CCL",
-    "COIN",
-    "COST",
-    "CPRX",
-    "CSCO",
-    "CVX",
-    "DAL",
-    "DIS",
-    "DOCU",
-    "ET",
-    "ETSY",
-    "F",
-    "FDX",
-    "FUBO",
-    "GE",
-    "GM",
-    "GOOGL",
-    "GS",
-    "HCA",
-    "HOOD",
-    "INTC",
-    "JNJ",
-    "JPM",
-    "KO",
-    "LCID",
-    "LMT",
-    "META",
-    "MGM",
-    "MRO",
-    "MRNA",
-    "MSFT",
-    "NFLX",
-    "NIO",
-    "NKE",
-    "NOK",
-    "NVDA",
-    "PEP",
-    "PFE",
-    "PINS",
-    "PLTR",
-    "PYPL",
-    "RBLX",
-    "RIOT",
-    "RIVN",
-    "RKT",
-    "ROKU",
-    "SBUX",
-    "SHOP",
-    "SIRI",
-    "SNAP",
-    "SOFI",
-    "SONY",
-    "SPY",
-    "SPYG",
-    "SQ",
-    "T",
-    "TGT",
-    "TLRY",
-    "TSLA",
-    "TSM",
-    "TWTR",
-    "UAL",
-    "UBER",
-    "UNH",
-    "V",
-    "VIAC",
-    "VWO",
-    "VZ",
-    "WBA",
-    "WFC",
-    "WMT",
-    "XOM",
-    "ZM",
-]
-
 
 FROM_DATE = "1980-01-01"
 

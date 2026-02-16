@@ -15,25 +15,10 @@ from sbfoundation.services.universe_service import UniverseService
 from sbfoundation.settings import *
 
 
-class DataCategory(StrEnum):
-    EQUITIES = "equities"
-    ECONOMICS = "economics"
-    MARKET = "market"
-    COMMODITIES = "commodities"
-    FX = "fx"
-    CRYPTO = "crypto"
-
-
-class Action(StrEnum):
-    LOAD_NEW = "load_new"
-    REFRESH = "refresh"
-
-
 @dataclass(slots=True)
 class RunCommand:
 
-    domain: DataCategory  # Allows running a specific data category
-    action: Action  # LOAD_NEW to bring in historic data for new tickers or global endpoints, REFRESH for daily updates of existing
+    domain: str  # Allows running a specific data category
 
     concurent_requests: int  # the max number of concurrent requests, set to 1 to debug in sync mode
     enable_bronze: bool  # True to load source APIs into json files, else logs a dry run of requests
@@ -50,8 +35,7 @@ class RunCommand:
 @dataclass(slots=True)
 class RunResult:
     run_id: str
-    domain: DataCategory
-    action: Action
+    domain: str
     started_at: str
     completed_at: str | None
     status: str
@@ -84,75 +68,56 @@ class SBFoundationAPI:
         run = self._start_run(command)
         match command.domain:
 
-            case DataCategory.EQUITIES:
-                return self._handle_equities(command, run)
+            case INSTRUMENT_DOMAIN:
+                run = self._handle_instruments(command, run)
 
-            case DataCategory.ECONOMICS:
-                return self._handle_economics(command, run)
+            case ECONOMICS_DOMAIN:
+                run = self._handle_economics(command, run)
 
-            case DataCategory.MARKET:
-                return self._handle_market(command, run)
+            case MARKET_DOMAIN:
+                run = self._handle_market(command, run)
 
-            case DataCategory.COMMODITIES:
-                return self._handle_commodities(command, run)
+            case COMMODITIES_DOMAIN:
+                run = self._handle_commodities(command, run)
 
-            case DataCategory.FX:
-                return self._handle_fx(command, run)
+            case FX_DOMAIN:
+                run = self._handle_fx(command, run)
 
-            case DataCategory.CRYPTO:
-                return self._handle_crypto(command, run)
+            case CRYPTO_DOMAIN:
+                run = self._handle_crypto(command, run)
+
+            case _:
+                pass
 
         self._close_run(run)
+        return run
 
-    def _handle_equities(self, command: RunCommand, run: RunContext) -> RunResult:
-        match command.action:
-            case Action.LOAD_NEW:
-                # Step 1: Load instrument via stock-list recipe
-                run = self._load_instrument(command, run)
+    def _handle_instruments(self, command: RunCommand, run: RunContext) -> RunResult:
 
-                # Step 2: Run company-profile recipes
-                run = self._company_profile(command, run)
+        # Step 1: Load instrument via stock-list recipe
+        run = self._load_instrument(command, run)
 
-                # Step 3: Run domain recipes (company, fundamentals, technicals)
-                run = self._domain_recipes(command, run)
-                return run
-            case Action.REFRESH:
-                return None  # todo: add method to handle
+        # Step 2: Run company-profile recipes
+        run = self._company_profile(command, run)
+
+        # Step 3: Run domain recipes (company, fundamentals, technicals)
+        run = self._domain_recipes(command, run)
+        return run
 
     def _handle_economics(self, command: RunCommand, run: RunContext) -> RunResult:
-        match command.action:
-            case Action.LOAD_NEW:
-                return None  # todo: add method to handle
-            case Action.REFRESH:
-                return None  # todo: add method to handle
+        return run  # todo: add method to handle
 
     def _handle_market(self, command: RunCommand, run: RunContext) -> RunResult:
-        match command.action:
-            case Action.LOAD_NEW:
-                return None  # todo: add method to handle
-            case Action.REFRESH:
-                return None  # todo: add method to handle
+        return run  # todo: add method to handle
 
     def _handle_commodities(self, command: RunCommand, run: RunContext) -> RunResult:
-        match command.action:
-            case Action.LOAD_NEW:
-                return None  # todo: add method to handle
-            case Action.REFRESH:
-                return None  # todo: add method to handle
+        return run  # todo: add method to handle
 
     def _handle_fx(self, command: RunCommand, run: RunContext) -> RunResult:
-        match command.action:
-            case Action.LOAD_NEW:
-                return None  # todo: add method to handle
-            case Action.REFRESH:
-                return None  # todo: add method to handle
+        return run  # todo: add method to handle
 
     def _handle_crypto(self, command: RunCommand, run: RunContext) -> RunResult:
-        match command.action:
-            case Action.LOAD_NEW:
-                return None  # todo: add method to handle
-            case Action.REFRESH:
-                return None  # todo: add method to handle
+        return run  # todo: add method to handle
 
     def _start_run(self, command: RunCommand) -> RunContext:
         run = RunContext(
@@ -175,29 +140,14 @@ class SBFoundationAPI:
         self.logger.info(f"Run context: {run.msg}  Elapsed time: {run.formatted_elapsed_time}", run_id=run.run_id)
 
     def _get_tickers(self, command: RunCommand) -> list[str]:
-        match command.domain:
+        if command.domain == INSTRUMENT_DOMAIN:
+            return self._universe_service.new_tickers(
+                limit=command.ticker_limit,
+                instrument_type=INSTRUMENT_TYPE_EQUITY,
+                is_active=True,
+            )
 
-            case DataCategory.EQUITIES:
-                return self._universe_service.new_tickers(
-                    limit=command.ticker_limit,
-                    instrument_type=INSTRUMENT_TYPE_EQUITY,
-                    is_active=True,
-                )
-
-            case DataCategory.ECONOMICS:
-                return None
-
-            case DataCategory.MARKET:
-                return None
-
-            case DataCategory.COMMODITIES:
-                return None
-
-            case DataCategory.FX:
-                return None
-
-            case DataCategory.CRYPTO:
-                return None
+        return None
 
     def _load_instrument(self, command: RunCommand, run: RunContext) -> RunContext:
         """Load instrument via stock-list recipe to bronze → silver."""

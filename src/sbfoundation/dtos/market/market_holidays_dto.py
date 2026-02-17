@@ -17,7 +17,7 @@ class MarketHolidaysDTO(BronzeToSilverDTO):
 
     exchange: str = field(default="", metadata={"api": "exchange"})
     date: _date | None = field(default=None, metadata={"api": "date"})
-    holiday: str = field(default="", metadata={"api": "holiday"})
+    holiday: str = field(default="", metadata={"api": "name"})
 
     @property
     def key_date(self) -> _date:

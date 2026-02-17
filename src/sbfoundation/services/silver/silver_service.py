@@ -89,13 +89,7 @@ class SilverService:
         instrument_promotions: set[tuple[str, str]] = set()  # (dataset, run_id)
 
         for ingestion in ingestions:
-            self._logger.info(
-                "PROCESSING SILVER | promoting | dataset=%s | ticker=%s | file_id=%s",
-                ingestion.dataset,
-                ingestion.ticker or "",
-                ingestion.file_id,
-                run_id=ingestion.run_id,
-            )
+            self._logger.info(f"{prefix} | promoting | {ingestion.msg}", run_id=ingestion.run_id)
             self._ops_service.start_silver_ingestion(ingestion)
             manifest_row = ingestion.to_bronze_manifest_row()
             try:

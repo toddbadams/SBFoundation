@@ -15,8 +15,7 @@ class MarketSectorPerformanceDTO(BronzeToSilverDTO):
     date: _date | None = field(default=None, metadata={"api": "date"})
     sector: str = field(default="", metadata={"api": "sector"})
     exchange: str = field(default="", metadata={"api": "exchange"})
-    # FMP may return either changesPercentage or averageChange
-    changes_percentage: float | None = field(default=None, metadata={"api": "changesPercentage"})
+    average_change: float | None = field(default=None, metadata={"api": "averageChange"})
 
     @property
     def key_date(self) -> _date:
@@ -24,16 +23,7 @@ class MarketSectorPerformanceDTO(BronzeToSilverDTO):
 
     @classmethod
     def from_row(cls, row: typing.Mapping[str, Any], ticker: typing.Optional[str] = None) -> "MarketSectorPerformanceDTO":
-        dto = cls.build_from_row(row)
-        # Fallback alias: some FMP responses use averageChange instead of changesPercentage
-        if dto.changes_percentage is None:
-            raw = row.get("averageChange") or row.get("average_change")
-            if raw is not None:
-                try:
-                    dto.changes_percentage = float(raw)
-                except (TypeError, ValueError):
-                    pass
-        return dto
+        return cls.build_from_row(row)
 
     def to_dict(self) -> dict[str, Any]:
         return self.build_to_dict()

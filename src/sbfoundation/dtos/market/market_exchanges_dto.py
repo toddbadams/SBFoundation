@@ -14,9 +14,7 @@ class MarketExchangesDTO(BronzeToSilverDTO):
 
     exchange: str = field(default="", metadata={"api": "exchange"})
     name: str = field(default="", metadata={"api": "name"})
-    country: str | None = field(default=None, metadata={"api": "country"})
-    currency: str | None = field(default=None, metadata={"api": "currency"})
-    timezone: str | None = field(default=None, metadata={"api": "timezone"})
+    country: str | None = field(default=None, metadata={"api": "countryCode"})
 
     @property
     def key_date(self) -> date:

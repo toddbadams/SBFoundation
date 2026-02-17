@@ -10,9 +10,9 @@ from sbfoundation.dtos.bronze_to_silver_dto import BronzeToSilverDTO
 class MarketSectorsDTO(BronzeToSilverDTO):
     """DTO for FMP available-sectors endpoint (list[str] normalized to list[dict])."""
 
-    KEY_COLS = ["value"]
+    KEY_COLS = ["sector"]
 
-    value: str = field(default="", metadata={"api": "value"})
+    sector: str = field(default="", metadata={"api": "sector"})
 
     @property
     def key_date(self) -> date:

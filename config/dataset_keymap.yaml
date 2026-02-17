@@ -39,21 +39,6 @@ datasets:
     - name: name
       type: str
       nullable: true
-    - name: price
-      type: float
-      nullable: true
-    - name: exchange
-      type: str
-      nullable: true
-    - name: exchange_short_name
-      type: str
-      nullable: true
-    - name: type
-      type: str
-      nullable: true
-    - name: ticker
-      type: str
-      nullable: true
 
 - domain: instrument
   source: fmp
@@ -8354,7 +8339,7 @@ datasets:
   silver_schema: silver
   silver_table: fmp_market_countries
   key_cols:
-  - value
+  - country
   row_date_col: null
   recipes:
   - plans:
@@ -8378,7 +8363,7 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.market.market_countries_dto.MarketCountriesDTO
     columns:
-    - name: value
+    - name: country
       type: str
       nullable: false
 
@@ -8423,12 +8408,7 @@ datasets:
     - name: country
       type: str | None
       nullable: true
-    - name: currency
-      type: str | None
-      nullable: true
-    - name: timezone
-      type: str | None
-      nullable: true
+      api: countryCode
 
 - domain: market
   source: fmp
@@ -8438,7 +8418,7 @@ datasets:
   silver_schema: silver
   silver_table: fmp_market_sectors
   key_cols:
-  - value
+  - sector
   row_date_col: null
   recipes:
   - plans:
@@ -8462,7 +8442,7 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.market.market_sectors_dto.MarketSectorsDTO
     columns:
-    - name: value
+    - name: sector
       type: str
       nullable: false
 
@@ -8474,7 +8454,7 @@ datasets:
   silver_schema: silver
   silver_table: fmp_market_industries
   key_cols:
-  - value
+  - industry
   row_date_col: null
   recipes:
   - plans:
@@ -8498,7 +8478,7 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.market.market_industries_dto.MarketIndustriesDTO
     columns:
-    - name: value
+    - name: industry
       type: str
       nullable: false
 
@@ -8546,9 +8526,10 @@ datasets:
     - name: exchange
       type: str
       nullable: false
-    - name: changes_percentage
+    - name: average_change
       type: float | None
       nullable: true
+      api: averageChange
 
 - domain: market
   source: fmp
@@ -8594,9 +8575,10 @@ datasets:
     - name: exchange
       type: str
       nullable: false
-    - name: changes_percentage
+    - name: average_change
       type: float | None
       nullable: true
+      api: averageChange
 
 - domain: market
   source: fmp
@@ -8751,9 +8733,6 @@ datasets:
     - name: closing_additional
       type: str | None
       nullable: true
-    - name: as_of_date
-      type: date
-      nullable: false
 
 - domain: market
   source: fmp
@@ -8799,3 +8778,4 @@ datasets:
     - name: holiday
       type: str
       nullable: false
+      api: name

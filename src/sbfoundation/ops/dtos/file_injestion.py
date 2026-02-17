@@ -42,6 +42,18 @@ class DatasetInjestion:
     silver_injest_end_time: datetime | None = None
     silver_can_promote: bool | None = None
 
+    @property
+    def msg(self) -> str:
+        return "| ".join(
+            p
+            for p in (
+                f"dataset={self.dataset} | ",
+                f"ticker={self.ticker} | " if self.ticker is not None else None,
+                f"file_id={self.file_id}",
+            )
+            if p is not None
+        )
+
     @classmethod
     def from_bronze(cls, result: BronzeResult) -> "DatasetInjestion":
         request = result.request

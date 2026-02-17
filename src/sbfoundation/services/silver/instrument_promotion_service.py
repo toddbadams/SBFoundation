@@ -76,11 +76,19 @@ class InstrumentPromotionService:
             f"THEN right(symbol, 3) ELSE NULL END"
         )
 
-        # Get exchange column name - varies by source table
-        exchange_col = "exchange" if instrument_type in ("equity", "etf") else "stock_exchange"
+        # Determine which columns exist in the source table
+        # stock-list and etf-list only have symbol and name (no exchange fields)
+        # Other instrument types may have exchange or stock_exchange
+        has_exchange_fields = instrument_type not in ("equity", "etf")
+
+        if has_exchange_fields:
+            exchange_expr = "stock_exchange"
+            exchange_short_name_expr = "exchange_short_name"
+        else:
+            exchange_expr = "NULL"
+            exchange_short_name_expr = "NULL"
 
         # Currency column only exists in index, forex, and crypto DTOs
-        # Stock and ETF lists don't have currency, so we use NULL
         currency_expr = "currency" if instrument_type in ("index", "forex", "crypto") else "NULL"
 
         sql = f"""
@@ -92,8 +100,8 @@ class InstrumentPromotionService:
                 '{instrument_type}' as instrument_type,
                 '{source_dataset}' as source_endpoint,
                 name,
-                {exchange_col} as exchange,
-                exchange_short_name,
+                {exchange_expr} as exchange,
+                {exchange_short_name_expr} as exchange_short_name,
                 {currency_expr} as currency,
                 {base_currency_expr} as base_currency,
                 {quote_currency_expr} as quote_currency,
@@ -104,6 +112,7 @@ class InstrumentPromotionService:
                 ingested_at
             FROM silver.{source_table}
             WHERE run_id = ?
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY ingested_at DESC) = 1
         ) AS source
         ON target.symbol = source.symbol AND target.instrument_type = source.instrument_type
         WHEN MATCHED THEN UPDATE SET

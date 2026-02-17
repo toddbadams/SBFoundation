@@ -1,17 +1,29 @@
-# SBFoundation — Strawberry Bronze + Silver Pipeline
+# SBFoundation — Strawberry Labs Bronze + Silver Pipeline
 
-SBFoundation is the data acquisition and validation package for the **Strawberry** AI trading platform. It implements the first two layers of a medallion/lakehouse architecture:
+SBFoundation is the data acquisition and validation package for the **Strawberry Labs** AI trading platform. It implements **ONLY the first two layers** of a medallion/lakehouse architecture:
 
 - **Bronze** — raw, append-only vendor API responses with full ingestion metadata
-- **Silver** — validated, typed, and conformed datasets ready for downstream consumers (Gold, backtesting, strategy engines)
+- **Silver** — validated, typed, and conformed datasets (clean, standalone tables with NO relationships)
 
-Downstream Gold layer construction and strategy execution live in separate packages.
+**What this project does NOT include:**
+- ❌ Gold layer (dimension modeling, star schemas, surrogate keys)
+- ❌ Surrogate key resolution (e.g., `instrument_sk`, `company_sk`)
+- ❌ Foreign key relationships or cross-table joins
+- ❌ Aggregations, rollups, or derived analytics tables
+
+Downstream Gold layer construction and strategy execution live in separate packages that import SBFoundation.
 
 ---
 
 ## Overview
 
 The pipeline ingests financial data from external providers (primarily Financial Modeling Prep), persists raw responses as immutable JSON files (Bronze), and promotes them to structured DuckDB tables (Silver) via typed Data Transfer Objects (DTOs). Every step is traceable: each Silver row carries a `bronze_file_id` linking it back to its source file.
+
+**Silver tables are clean, standalone datasets:**
+- Natural business keys only (e.g., `ticker`, `symbol`, `date`)
+- No surrogate keys (no `instrument_sk` or other `*_sk` columns)
+- No foreign key relationships between tables
+- Lineage metadata: `bronze_file_id`, `run_id`, `ingested_at`
 
 **Data domains ingested:**
 
@@ -38,6 +50,10 @@ Every Silver table is written and read exclusively through `BronzeToSilverDTO` s
 
 ### 4. DuckDB for structured storage
 Silver and operational tables (manifests, watermarks, run history) are stored in a single DuckDB file. Bronze remains filesystem JSON — DuckDB stores references and metadata, not raw payloads.
+
+**Schema layout:**
+- `ops` — manifests, watermarks, migrations (managed by this project)
+- `silver` — conformed datasets, one table per dataset (managed by this project)
 
 ### 5. Silver writes are idempotent (MERGE/UPSERT)
 Silver promotion uses the dataset's `key_cols` from the keymap to MERGE rows. Replaying the same Bronze file produces no duplicates.
@@ -73,9 +89,10 @@ uv pip install -r <(poetry export --without-hashes)
 
 ```dotenv
 FMP_API_KEY=your_fmp_api_key_here
+FMP_PLAN = "ultimate"                             # the data ingestion only runs import for datasets in purchased plan
 DATA_ROOT_FOLDER=c:/sb/SBFoundation/data          # Bronze JSON files, DuckDB, logs
 REPO_ROOT_FOLDER=c:/sb/SBFoundation               # Repo root (used for config/ and db/migrations/)
-DATASET_KEYMAP_FILENAME=dataset_keymap.yaml  # Optional override
+DATASET_KEYMAP_FILENAME=dataset_keymap.yaml       # The configuration for each ingested dataset
 ```
 
 The defaults (`DATA_ROOT_FOLDER=c:/sb/SBFoundation/data`, `REPO_ROOT_FOLDER=c:/sb/SBFoundation`) are set in `src/sbfoundation/settings.py` and apply if the env vars are absent.
@@ -96,9 +113,9 @@ The defaults (`DATA_ROOT_FOLDER=c:/sb/SBFoundation/data`, `REPO_ROOT_FOLDER=c:/s
 | Code quality | Black (line-length 150), isort (Black profile), flake8, mypy |
 | Primary data source | Financial Modeling Prep (FMP) via REST |
 | Planned / future | Alpha Vantage, Alpaca (simulation), Charles Schwab (live execution) |
-| Orchestration | Prefect OSS (nightly batch; not in this package directly) |
+| Orchestration | Prefect OSS (nightly batch; not in this package) |
 | UI | Streamlit + streamlit-echarts + Altair (separate package) |
-| Deployment | Docker Compose; PROD on Raspberry Pi |
+| Deployment | Docker Compose; used for PROD deploy |
 
 ---
 
@@ -108,15 +125,12 @@ The defaults (`DATA_ROOT_FOLDER=c:/sb/SBFoundation/data`, `REPO_ROOT_FOLDER=c:/s
 SBFoundation/
 ├── config/
 │   └── dataset_keymap.yaml       # AUTHORITATIVE dataset/recipe/DTO/Silver-table definitions
-├── docs/                         # project documentation
-Architecture, contracts, DuckDB design docs
+├── docs/                         # project documentation Architecture, contracts, DuckDB design docs
 ├── src/
 │   └── sbfoundation/
 │       ├── __init__.py               # Public API: Orchestrator, NewEquitiesOrchestrationService
 │       ├── settings.py               # All constants: domains, datasets, data sources, placeholders, paths
 │       ├── folders.py                # Path resolution helpers (bronze/duckdb/log/migration folders)
-│       ├── orchestrator.py           # Top-level entry point; domain-ordered Bronze→Silver loop
-│       ├── new_equities_orchestrator.py
 │       ├── dataset/
 │       │   ├── loaders/              # YAML keymap loader
 │       │   ├── models/               # DatasetRecipe, DatasetKeymapEntry, DatasetIdentity, watermark
@@ -144,7 +158,7 @@ Architecture, contracts, DuckDB design docs
 │       ├── run/
 │       │   ├── dtos/                 # RunContext, RunRequest, BronzeResult, ResultMapper
 │       │   └── services/             # RunRequestExecutor, ChunkEngine, DedupeEngine,
-│       │                             #   OrchestrationTickerChunkService
+│       │                             # OrchestrationTickerChunkService
 │       └── services/
 │           ├── bronze/               # BronzeService, BronzeBatchReader
 │           ├── silver/               # SilverService, InstrumentPromotionService
@@ -186,7 +200,7 @@ External API (FMP)
        ▼
 RunRequestExecutor
   ├── Retry (3x, exponential backoff)
-  ├── Throttle (≤50 calls/min for FMP)
+  ├── Throttle (<=THROTTLE_MAX_CALLS_PER_MINUTE calls/min)
   └── → BronzeResult (raw response + metadata)
        │
        ▼
@@ -212,7 +226,7 @@ SilverService.promote()
 silver.<table_name>  (DuckDB)
        │
        ▼
-  [Downstream: Gold layer, backtesting, strategy engine — separate packages]
+  [Downstream: Gold layer, Feature Engineer, Signals,  backtesting, portfolio optimization, execution — separate packages]
 ```
 
 **Ticker based domain execution order:** `instrument` → `company` → `fundamentals` → `technicals`
@@ -263,40 +277,6 @@ The single authoritative source for all dataset definitions. Each entry specifie
 | `__from_one_month_ago__` | One month before today |
 | `__limit__` | Default fetch limit |
 | `__period__` | Reporting period (annual/quarter) |
-
-### Environment / `.env`
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `FMP_API_KEY` | *(required)* | FMP REST API key |
-| `DATA_ROOT_FOLDER` | `c:/sb/SBFoundation/data` | Root for Bronze files, DuckDB, logs |
-| `REPO_ROOT_FOLDER` | `c:/sb/SBFoundation` | Repo root for `config/` and `db/migrations/` |
-| `DATASET_KEYMAP_FILENAME` | `dataset_keymap.yaml` | Keymap filename override |
-
-### `OrchestrationSettings` (runtime switches)
-
-Passed to `Orchestrator` to control which domains, layers, and ticker modes are active in a given run. Useful for incremental runs, debugging, or backfilling a single domain without touching others.
-
-```python
-OrchestrationSettings(
-    enable_instrument=True,
-    enable_economics=True,
-    enable_company=True,
-    enable_fundamentals=True,
-    enable_technicals=True,
-    enable_bronze=True,
-    enable_silver=True,
-    enable_non_ticker_run=True,
-    enable_ticker_run=True,
-    enable_update_tickers=True,
-    enable_new_tickers=True,
-    non_ticker_recipe_limit=99,
-    ticker_recipe_limit=99,
-    update_ticker_limit=500,
-    new_ticker_limit=50,
-    fmp_plan="starter",         # basic | starter | premium | ultimate
-)
-```
 
 ---
 

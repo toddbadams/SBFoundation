@@ -17,7 +17,7 @@ class InstrumentPromotionService:
     This service:
     1. Processes instrument discovery endpoints (CREATE behavior)
     2. Processes instrument enrichment endpoints (ENRICH behavior)
-    3. Manages the unified silver.instrument table
+    3. Manages the unified gold.instrument table
     """
 
     # Maps dataset name to (source_table, instrument_type)
@@ -92,14 +92,14 @@ class InstrumentPromotionService:
         currency_expr = "currency" if instrument_type in ("index", "forex", "crypto") else "NULL"
 
         sql = f"""
-        MERGE INTO silver.instrument AS target
+        MERGE INTO gold.instrument AS target
         USING (
             SELECT
                 gen_random_uuid()::VARCHAR as instrument_id,
                 symbol,
                 '{instrument_type}' as instrument_type,
                 '{source_dataset}' as source_endpoint,
-                name,
+                company_name,
                 {exchange_expr} as exchange,
                 {exchange_short_name_expr} as exchange_short_name,
                 {currency_expr} as currency,
@@ -116,19 +116,19 @@ class InstrumentPromotionService:
         ) AS source
         ON target.symbol = source.symbol AND target.instrument_type = source.instrument_type
         WHEN MATCHED THEN UPDATE SET
-            name = COALESCE(source.name, target.name),
+            company_name = COALESCE(source.company_name, target.company_name),
             exchange = COALESCE(source.exchange, target.exchange),
             exchange_short_name = COALESCE(source.exchange_short_name, target.exchange_short_name),
             currency = COALESCE(source.currency, target.currency),
             is_active = TRUE,
             last_enriched_at = CURRENT_TIMESTAMP
         WHEN NOT MATCHED THEN INSERT (
-            instrument_id, symbol, instrument_type, source_endpoint, name, exchange,
+            instrument_id, symbol, instrument_type, source_endpoint, company_name, exchange,
             exchange_short_name, currency, base_currency, quote_currency, is_active,
             discovered_at, bronze_file_id, run_id, ingested_at
         ) VALUES (
             source.instrument_id, source.symbol, source.instrument_type, source.source_endpoint,
-            source.name, source.exchange, source.exchange_short_name, source.currency,
+            source.company_name, source.exchange, source.exchange_short_name, source.currency,
             source.base_currency, source.quote_currency, source.is_active, source.discovered_at,
             source.bronze_file_id, source.run_id, source.ingested_at
         )
@@ -164,10 +164,10 @@ class InstrumentPromotionService:
         conn = self._bootstrap.connect()
 
         # Check if instrument table exists
-        if not self._table_exists(conn, "silver", "instrument"):
+        if not self._table_exists(conn, "gold", "instrument"):
             return False
 
-        sql = "SELECT COUNT(*) > 0 FROM silver.instrument WHERE symbol = ?"
+        sql = "SELECT COUNT(*) > 0 FROM gold.instrument WHERE symbol = ?"
         params: list = [symbol]
 
         if instrument_type:
@@ -195,10 +195,10 @@ class InstrumentPromotionService:
         """
         conn = self._bootstrap.connect()
 
-        if not self._table_exists(conn, "silver", "instrument"):
+        if not self._table_exists(conn, "gold", "instrument"):
             return []
 
-        sql = "SELECT * FROM silver.instrument WHERE is_active = TRUE"
+        sql = "SELECT * FROM gold.instrument WHERE is_active = TRUE"
         params: list = []
 
         if instrument_type:
@@ -224,10 +224,10 @@ class InstrumentPromotionService:
         """
         conn = self._bootstrap.connect()
 
-        if not self._table_exists(conn, "silver", "instrument"):
+        if not self._table_exists(conn, "gold", "instrument"):
             return 0
 
-        sql = "SELECT COUNT(*) FROM silver.instrument WHERE is_active = TRUE"
+        sql = "SELECT COUNT(*) FROM gold.instrument WHERE is_active = TRUE"
         params: list = []
 
         if instrument_type:

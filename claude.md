@@ -1,11 +1,13 @@
 # Strawberry Context
 
-**Version**: 3.0
-**Last Updated**: 2026-02-12
+**Version**: 3.1
+**Last Updated**: 2026-02-17
 **Maintenance**: Update when changing architecture patterns, modifying dataset_keymap.yaml structure, or adding new domains/contracts.
 
 ## Purpose
-Strawberry Foundation is a **Bronze + Silver data acquisition and validation package**. It ingests raw vendor data (Bronze) and promotes it to validated, typed, conformed datasets (Silver). The pipeline is orchestrated via `src/sbfoundation/orchestrator.py` and configured declaratively in `config/dataset_keymap.yaml`.
+Strawberry Foundation is a **Bronze + Silver ONLY data acquisition and validation package**. It ingests raw vendor data (Bronze) and promotes it to validated, typed, conformed datasets (Silver). The pipeline is orchestrated via `src/sbfoundation/orchestrator.py` and configured declaratively in `config/dataset_keymap.yaml`.
+
+**CRITICAL**: This project contains **ONLY Bronze and Silver layers**. The Gold layer (dimension modeling, surrogate keys, star schemas, aggregations) exists in a separate downstream project that imports SBFoundation as a dependency.
 
 ---
 
@@ -22,12 +24,28 @@ Strawberry Foundation is a **Bronze + Silver data acquisition and validation pac
 
 ## 1) Architecture
 
-Strawberry implements the first two layers of a medallion/lakehouse architecture:
+Strawberry implements **ONLY the first two layers** of a medallion/lakehouse architecture:
 
-| Layer | Purpose | Description |
-|---|---|---|
-| **Bronze (Raw/Landing)** | Ingest & Preserve | Exact vendor payloads, append-only, immutable, fully traceable |
-| **Silver (Clean/Conformed)** | Clean & Standardize | Validated, normalized, deduplicated, schema-enforced datasets |
+| Layer | Purpose | Description | In This Project? |
+|---|---|---|---|
+| **Bronze (Raw/Landing)** | Ingest & Preserve | Exact vendor payloads, append-only, immutable, fully traceable | ✅ YES |
+| **Silver (Clean/Conformed)** | Clean & Standardize | Validated, normalized, deduplicated, schema-enforced datasets | ✅ YES |
+| **Gold (Business/Analytics)** | Model & Aggregate | Star schemas, surrogate keys, dimensions, facts, rollups | ❌ NO - Separate project |
+
+**What Silver Tables Contain:**
+- Clean, typed business data from Bronze
+- Natural business keys only (e.g., `ticker`, `symbol`, `date`)
+- Lineage metadata: `bronze_file_id`, `run_id`, `ingested_at`
+- **NO surrogate keys** (e.g., `instrument_sk`)
+- **NO foreign key relationships**
+- **NO cross-table joins or aggregations**
+
+**What Belongs in Gold (NOT this project):**
+- Surrogate key resolution (`instrument_sk`, `company_sk`, etc.)
+- Dimension tables (`dim_instrument`, `dim_company`, etc.)
+- Fact tables with foreign keys
+- Star/snowflake schemas
+- Cross-dataset aggregations and rollups
 
 **Ingested data domains**: fundamentals, market data, analytical data, alternative data (macro/economics).
 
@@ -46,6 +64,13 @@ Strawberry implements the first two layers of a medallion/lakehouse architecture
 4. **DTOs are the only allowed boundary** between Bronze and Silver. Every Silver table is written and read via DTOs.
 
 5. **Silver writes are idempotent** via DuckDB UPSERT/MERGE using KEY_COLS from the YAML keymap. No dataset may promote to Silver without a keymap entry.
+
+6. **NO Gold layer operations in this project**. Silver must NOT:
+   - Resolve surrogate keys (e.g., `instrument_sk`)
+   - Query Gold tables (e.g., `gold.dim_instrument`)
+   - Create dimension or fact tables
+   - Add foreign key columns to Silver tables
+   - Perform cross-dataset joins or aggregations
 
 **Enforcement**: `DatasetService` validates keymap on load; `tests/unit/dataset/` validates config parsing; `tests/e2e/` verifies end-to-end behavior; mypy enforces types.
 
@@ -298,7 +323,9 @@ A failed run request does NOT crash the run. A `BronzeResult` is still created w
 
 ## 10) DuckDB Storage
 
-DuckDB is the canonical store for all structured data (Silver + Gold) plus manifests, watermarks, and operational metadata. Bronze remains immutable raw JSON files on disk.
+DuckDB is the canonical store for Silver data plus manifests, watermarks, and operational metadata. Bronze remains immutable raw JSON files on disk.
+
+**Note**: While DuckDB supports a `gold` schema, **this project does not create or manage Gold tables**. The Gold layer is implemented in a separate downstream project.
 
 ### 10.1 Configuration
 - `DUCKDB_FOLDER`: location of the DuckDB file (dev/prod differs)
@@ -311,9 +338,9 @@ All file paths stored in DuckDB are **repo-root-relative**. Single DuckDB file f
 
 ### 10.2 Schema Layout
 ```
-ops     — manifests, watermarks, migrations, run summaries
-silver  — conformed datasets (one table per dataset)
-gold    — warehouse tables (dims/facts, curated analytics)
+ops     — manifests, watermarks, migrations, run summaries (managed by this project)
+silver  — conformed datasets, one table per dataset (managed by this project)
+gold    — NOT MANAGED BY THIS PROJECT (downstream Gold project only)
 ```
 
 ### 10.3 ops Tables
@@ -351,7 +378,7 @@ Identity = `domain` + `source` + `dataset` + `discriminator` (empty string if un
 ### 10.7 Transactions
 - Bronze: write file → insert manifest row (actionable error if manifest insert fails; leave file for replay)
 - Silver promotion: MERGE/UPSERT + watermark updates in one transaction
-- Gold build: write gold tables + `ops.gold_build` record in one transaction
+- Gold build: **NOT in this project** (handled by downstream Gold project)
 
 ---
 
@@ -373,13 +400,13 @@ Record findings in the ExecPlan's `Surprises & Discoveries` and `Review Findings
 
 ## 12) Hardware / Ops Telemetry Domain
 
-The `ops/telemetry` domain samples host performance metrics and persists them as Silver time-series and Gold rollups. Runs on **Raspberry Pi** (primary, Linux) and **Windows** (secondary dev).
+The `ops/telemetry` domain samples host performance metrics and persists them as Silver time-series. Runs on **Raspberry Pi** (primary, Linux) and **Windows** (secondary dev).
 
 **Silver Dataset** (`OPS_HOST_METRICS_DATASET`): append-only, one row per sample per host.
 Required: `as_of` (UTC timestamp), `host_id`, `os`, `arch`, `cpu_pct`, `cpu_count_logical`, `ram_*_mb`, `swap_*_mb`, `disk_root_*_gb`, `net_rx_bytes`, `net_tx_bytes`
 Optional (nullable): `cpu_temp_c`, `throttle_flags` (Pi only), `cpu_freq_mhz`, `process_rss_mb`, `process_cpu_pct`
 
-**Gold Dataset** (`OPS_HOST_METRICS_5M_ROLLUP_DATASET`): 5-minute bucket rollups per host.
+**Gold Rollups** (e.g., 5-minute aggregations): **NOT in this project** (handled by downstream Gold project).
 
 **Implementation structure** (`src/sb/SBFoundation/ops/telemetry/`):
 `config.py`, `providers/base.py`, `providers/portable_psutil.py`, `providers/linux_pi_sensors.py`, `schemas.py`, `writer.py`, `rollups.py`, `flow.py`

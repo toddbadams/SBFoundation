@@ -17,13 +17,10 @@ class IndexListDTO(BronzeToSilverDTO):
     KEY_COLS = ["symbol"]
 
     symbol: str = field(default="_none_", metadata={"api": "symbol"})
-    name: str | None = field(default=None, metadata={"api": "name"})
+    company_name: str | None = field(default=None, metadata={"api": "name"})
     currency: str | None = field(default=None, metadata={"api": "currency"})
     stock_exchange: str | None = field(default=None, metadata={"api": "stockExchange"})
     exchange_short_name: str | None = field(default=None, metadata={"api": "exchangeShortName"})
-
-    # Override ticker since this is a global list, not per-ticker
-    ticker: str = field(default="", metadata={"api": "_ticker_"})
 
     @property
     def key_date(self) -> date:

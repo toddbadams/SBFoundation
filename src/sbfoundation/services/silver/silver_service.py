@@ -25,8 +25,6 @@ from sbfoundation.dtos.models import BronzeManifestRow
 from sbfoundation.ops.requests.promotion_config import PromotionConfig
 from sbfoundation.infra.result_file_adaptor import ResultFileAdapter
 from sbfoundation.ops.services.ops_service import OpsService
-from sbfoundation.services.silver.instrument_promotion_service import InstrumentPromotionService
-from sbfoundation.services.instrument_resolution_service import InstrumentResolutionService
 
 
 class SilverService:
@@ -45,7 +43,6 @@ class SilverService:
         chunk_engine: ChunkEngine | None = None,
         dedupe_engine: DedupeEngine | None = None,
         ops_service: OpsService | None = None,
-        instrument_resolver: InstrumentResolutionService | None = None,
     ) -> None:
         self._enabled = enabled
         self._logger = logger or LoggerFactory().create_logger(self.__class__.__name__)
@@ -61,8 +58,6 @@ class SilverService:
         self._owns_ops_service = ops_service is None
         keymap_service = keymap_service or DatasetService()
         self.keymap = keymap_service.load_dataset_keymap()
-        self._instrument_promotion_service = InstrumentPromotionService(bootstrap=self._bootstrap)
-        self._instrument_resolver = instrument_resolver or InstrumentResolutionService(bootstrap=self._bootstrap)
 
     def close(self) -> None:
         if self._owns_bootstrap:
@@ -85,8 +80,6 @@ class SilverService:
 
         promoted: list[str] = []
         promoted_rows = 0
-        # Track datasets that need unified instrument promotion
-        instrument_promotions: set[tuple[str, str]] = set()  # (dataset, run_id)
 
         for ingestion in ingestions:
             self._logger.info(f"{prefix} | promoting | {ingestion.msg}", run_id=ingestion.run_id)
@@ -126,28 +119,6 @@ class SilverService:
             promoted.append(ingestion.file_id)
             promoted_rows += rows_written
 
-            # Track for unified instrument promotion if this is a CREATE behavior dataset
-            entry = self._resolve_keymap_entry_safe(manifest_row, self.keymap)
-            if entry and entry.instrument_behavior == INSTRUMENT_BEHAVIOR_CREATE:
-                instrument_promotions.add((ingestion.dataset, ingestion.run_id))
-
-        # Promote to unified instrument table for CREATE behavior datasets
-        for dataset, run_id in instrument_promotions:
-            self._logger.info(
-                "PROCESSING SILVER | unified instrument promotion | dataset=%s",
-                dataset,
-                run_id=run_id,
-            )
-            try:
-                self._instrument_promotion_service.promote_to_unified_instrument(dataset, run_id)
-            except Exception as exc:
-                self._logger.warning(
-                    "Unified instrument promotion failed | dataset=%s | error=%s",
-                    dataset,
-                    exc,
-                    run_id=run_id,
-                )
-
         self._logger.info(
             "PROCESSING SILVER | complete | bronze_files=%s | rows=%s",
             len(promoted),
@@ -166,33 +137,9 @@ class SilverService:
     def _promote_row(self, row: BronzeManifestRow, keymap: DatasetKeymap) -> tuple[int, int, date | None, date | None, str]:
         entry = self._resolve_keymap_entry(row, keymap)
 
-        # Resolve instrument_sk for per_ticker datasets
-        instrument_sk: int | None = None
-        if entry.ticker_scope == "per_ticker" and row.ticker:
-            # For CREATE behavior datasets (stock-list, etf-list), skip instrument_sk resolution
-            # They create instruments, not consume them
-            if entry.instrument_behavior == INSTRUMENT_BEHAVIOR_CREATE:
-                instrument_sk = None  # Will be resolved later when promoting to Gold
-            elif entry.instrument_behavior == INSTRUMENT_BEHAVIOR_ENRICH:
-                # For ENRICH behavior, resolve instrument_sk (strict enforcement)
-                instrument_sk = self._instrument_resolver.resolve(
-                    symbol=row.ticker,
-                    instrument_type="equity",  # Default to equity for now
-                )
-                if instrument_sk is None:
-                    self._logger.warning(
-                        "Skipping - instrument_sk not found (strict enforcement) | ticker=%s | dataset=%s",
-                        row.ticker,
-                        row.dataset,
-                    )
-                    return 0, 0, None, None, ""
-            else:
-                # None/legacy behavior - try to resolve but don't block if not found
-                instrument_sk = self._instrument_resolver.resolve(
-                    symbol=row.ticker,
-                    instrument_type="equity",
-                )
-                # instrument_sk may be None here, which is acceptable for legacy datasets
+        # SILVER LAYER: Clean, standalone datasets only
+        # NO surrogate keys (instrument_sk), NO relationships, NO Gold dependencies
+        # Surrogate key resolution and relationships are Gold layer concerns
 
         batch = self._bronze_batch_reader.read(row)
         dto_schema = entry.dto_schema
@@ -209,10 +156,6 @@ class SilverService:
         )
         if df_projected.empty:
             return 0, 0, None, None, ""
-
-        # Add instrument_sk for per_ticker datasets (only for ENRICH behavior where it was resolved)
-        if entry.ticker_scope == "per_ticker" and instrument_sk is not None:
-            df_projected["instrument_sk"] = instrument_sk
 
         df_projected["bronze_file_id"] = row.bronze_file_id
         df_projected["run_id"] = row.run_id

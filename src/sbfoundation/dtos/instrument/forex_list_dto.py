@@ -20,7 +20,7 @@ class ForexListDTO(BronzeToSilverDTO):
     KEY_COLS = ["symbol"]
 
     symbol: str = field(default="_none_", metadata={"api": "symbol"})
-    name: str | None = field(default=None, metadata={"api": "name"})
+    company_name: str | None = field(default=None, metadata={"api": "name"})
     currency: str | None = field(default=None, metadata={"api": "currency"})
     stock_exchange: str | None = field(default=None, metadata={"api": "stockExchange"})
     exchange_short_name: str | None = field(default=None, metadata={"api": "exchangeShortName"})
@@ -28,9 +28,6 @@ class ForexListDTO(BronzeToSilverDTO):
     # Derived fields for currency pair decomposition
     base_currency: str | None = field(default=None, metadata={"api": "_base_currency_"})
     quote_currency: str | None = field(default=None, metadata={"api": "_quote_currency_"})
-
-    # Override ticker since this is a global list, not per-ticker
-    ticker: str = field(default="", metadata={"api": "_ticker_"})
 
     def __post_init__(self) -> None:
         # Parse symbol like "EURUSD" into base="EUR", quote="USD"

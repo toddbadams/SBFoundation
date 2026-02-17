@@ -17,7 +17,7 @@ class StockListDTO(BronzeToSilverDTO):
     KEY_COLS = ["symbol"]
 
     symbol: str = field(default="_none_", metadata={"api": "symbol"})
-    name: str | None = field(default=None, metadata={"api": "companyName"})
+    company_name: str | None = field(default=None, metadata={"api": "companyName"})
 
     @property
     def key_date(self) -> date:

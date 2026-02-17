@@ -11,7 +11,7 @@ from sbfoundation.dataset.models.dataset_recipe import DatasetRecipe
 from sbfoundation.ops.services.ops_service import OpsService
 from sbfoundation.run.services.orchestration_ticker_chunk_service import OrchestrationTickerChunkService
 from sbfoundation.services.universe_service import UniverseService
-from sbfoundation.services.instrument_resolution_service import InstrumentResolutionService
+# InstrumentResolutionService removed - Gold layer dependency
 
 
 @dataclass(frozen=True)
@@ -66,7 +66,6 @@ class NewEquitiesOrchestrationService:
         self._today = today
         self._dataset_service = DatasetService(today=today, logger=self.logger)
         self._universe_service = UniverseService(logger=self.logger)
-        self._instrument_resolver = InstrumentResolutionService(logger=self.logger)
 
     def run(self) -> RunContext:
         """Execute the new equities orchestration pipeline.
@@ -96,7 +95,6 @@ class NewEquitiesOrchestrationService:
         # Close out the ops metrics
         self.ops_service.finish_run(run)
         self._universe_service.close()
-        self._instrument_resolver.close()
         self.logger.info(f"New equities orchestration complete. {run.msg}  Elapsed time: {run.formatted_elapsed_time}", run_id=run.run_id)
 
         return run
@@ -220,21 +218,16 @@ class NewEquitiesOrchestrationService:
         """
         self.logger.log_section(run.run_id, "Step 3: Loading domain data (company, fundamentals, technicals)")
 
-        # Filter tickers by exchange if exchanges filter is specified
+        # TODO: Filter tickers by exchange - requires querying silver.fmp_company_profile
+        # This was previously querying Gold layer (dim_instrument) which is not available
+        # in this Bronze+Silver only project. Need to implement exchange filtering
+        # by querying Silver tables directly (e.g., silver.fmp_company_profile).
         if self.settings.exchanges:
-            self.logger.info(f"Filtering tickers by exchanges: {self.settings.exchanges}", run_id=run.run_id)
-            exchange_tickers = self._instrument_resolver.get_tickers_by_exchanges(
-                exchanges=self.settings.exchanges,
-                instrument_type=INSTRUMENT_TYPE_EQUITY,
-                limit=self.settings.ticker_limit,
+            self.logger.warning(
+                f"Exchange filtering not yet implemented for Bronze+Silver project. "
+                f"Requested exchanges: {self.settings.exchanges}. Processing all tickers.",
+                run_id=run.run_id
             )
-            if exchange_tickers:
-                filtered_tickers = [ticker for ticker, _ in exchange_tickers]
-                self.logger.info(f"Found {len(filtered_tickers)} tickers on exchanges {self.settings.exchanges}", run_id=run.run_id)
-                run.tickers = filtered_tickers
-            else:
-                self.logger.warning(f"No tickers found for exchanges {self.settings.exchanges}", run_id=run.run_id)
-                run.tickers = []
 
         if not run.tickers:
             self.logger.info("No tickers to process for domain recipes", run_id=run.run_id)
@@ -323,7 +316,6 @@ class NewEquitiesOrchestrationService:
         silver_service = SilverService(
             ops_service=self.ops_service,
             keymap_service=self._dataset_service,
-            instrument_resolver=self._instrument_resolver,
         )
         try:
             promoted_ids, promoted_rows = silver_service.promote(run)

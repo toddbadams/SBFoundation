@@ -286,6 +286,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: asset
       type: str
       nullable: false
@@ -339,6 +342,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: cik
       type: str
@@ -477,6 +483,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: cik
       type: str
@@ -635,6 +644,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: title
       type: str
       nullable: true
@@ -690,6 +702,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: peer
       type: str
       nullable: false
@@ -728,6 +743,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: cik
       type: str
@@ -787,6 +805,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: free_float
       type: float
       nullable: true
@@ -830,6 +851,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: symbol
       type: str
@@ -881,6 +905,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: date
       type: date
       nullable: false
@@ -922,6 +949,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -1076,6 +1106,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -1228,6 +1261,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -1444,6 +1480,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -1660,6 +1699,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -1837,6 +1879,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -2014,6 +2059,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: symbol
       type: str
       nullable: false
@@ -2189,6 +2237,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: symbol
       type: str
@@ -2411,6 +2462,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: symbol
       type: str
       nullable: false
@@ -2572,6 +2626,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: symbol
       type: str
       nullable: false
@@ -2640,6 +2697,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: symbol
       type: str
       nullable: false
@@ -2705,6 +2765,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: symbol
       type: str
       nullable: false
@@ -2764,6 +2827,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: symbol
       type: str
@@ -2903,6 +2969,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: symbol
       type: str
       nullable: false
@@ -3040,6 +3109,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: symbol
       type: str
@@ -3244,6 +3316,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: symbol
       type: str
@@ -3448,6 +3523,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: symbol
       type: str
@@ -3610,6 +3688,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: symbol
       type: str
@@ -3772,6 +3853,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: symbol
       type: str
@@ -3940,6 +4024,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: symbol
       type: str
@@ -4109,6 +4196,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: symbol
       type: str
       nullable: false
@@ -4156,6 +4246,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: symbol
       type: str
@@ -5376,6 +5469,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: symbol
       type: str
       nullable: false
@@ -5441,6 +5537,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: symbol
       type: str
       nullable: false
@@ -5496,6 +5595,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: symbol
       type: str
@@ -5553,6 +5655,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -5608,6 +5713,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -5665,6 +5773,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -5720,6 +5831,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -5777,6 +5891,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -5832,6 +5949,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -5889,6 +6009,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -5944,6 +6067,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -6001,6 +6127,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -6056,6 +6185,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -6113,6 +6245,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -6168,6 +6303,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -6225,6 +6363,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -6280,6 +6421,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -6337,6 +6481,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -6392,6 +6539,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -6449,6 +6599,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -6504,6 +6657,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -6561,6 +6717,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -6617,6 +6776,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -6654,6 +6816,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -6788,6 +6953,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: date
       type: str | None
@@ -6986,6 +7154,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -7144,6 +7315,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: symbol
       type: str
       nullable: false
@@ -7301,6 +7475,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: symbol
       type: str
@@ -7508,6 +7685,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: symbol
       type: str
       nullable: false
@@ -7626,6 +7806,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: symbol
       type: str
@@ -7812,6 +7995,9 @@ datasets:
     - name: ticker
       type: str
       nullable: false
+    - name: instrument_sk
+      type: int
+      nullable: false
     - name: symbol
       type: str
       nullable: false
@@ -7954,6 +8140,9 @@ datasets:
     columns:
     - name: ticker
       type: str
+      nullable: false
+    - name: instrument_sk
+      type: int
       nullable: false
     - name: symbol
       type: str

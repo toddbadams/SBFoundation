@@ -11,7 +11,7 @@ from sbfoundation.recovery.bronze_recovery_service import BronzeRecoveryService
 from sbfoundation.run.dtos.run_context import RunContext
 from sbfoundation.run.services.orchestration_ticker_chunk_service import OrchestrationTickerChunkService
 from sbfoundation.services.bronze.bronze_service import BronzeService
-from sbfoundation.services.instrument_resolution_service import InstrumentResolutionService
+# InstrumentResolutionService removed - Gold layer dependency
 from sbfoundation.services.silver.silver_service import SilverService
 from sbfoundation.services.universe_service import UniverseService
 from sbfoundation.settings import *
@@ -43,14 +43,12 @@ class SBFoundationAPI:
         ops_service: OpsService | None = None,
         dataset_service: DatasetService | None = None,
         universe_service: UniverseService | None = None,
-        instrument_service: InstrumentResolutionService | None = None,
         recovery_service: BronzeRecoveryService | None = None,
     ) -> None:
         self.logger = logger or LoggerFactory().create_logger(__name__)
         self.ops_service = ops_service or OpsService()
         self._dataset_service = dataset_service or DatasetService(today=today)
         self._universe_service = universe_service or UniverseService()
-        self._instrument_resolver = instrument_service or InstrumentResolutionService()
         self._recovery_service = recovery_service or BronzeRecoveryService()
         self._today = today or self._universe_service.today().isoformat()
 
@@ -300,7 +298,6 @@ class SBFoundationAPI:
         run.finished_at = self._universe_service.now()
         self.ops_service.finish_run(run)
         self._universe_service.close()
-        self._instrument_resolver.close()
         self.logger.log_section(run.run_id, "Run complete")
         self.logger.info(f"Run context: {run.msg}  Elapsed time: {run.formatted_elapsed_time}", run_id=run.run_id)
 
@@ -416,21 +413,16 @@ class SBFoundationAPI:
         """
         self.logger.log_section(run.run_id, "Loading domain data (company, fundamentals, technicals)")
 
-        # Filter tickers by exchange if exchanges filter is specified
+        # TODO: Filter tickers by exchange - requires querying silver.fmp_company_profile
+        # This was previously querying Gold layer (dim_instrument) which is not available
+        # in this Bronze+Silver only project. Need to implement exchange filtering
+        # by querying Silver tables directly (e.g., silver.fmp_company_profile).
         if command.exchanges:
-            self.logger.info(f"Filtering tickers by exchanges: {command.exchanges}", run_id=run.run_id)
-            exchange_tickers = self._instrument_resolver.get_tickers_by_exchanges(
-                exchanges=command.exchanges,
-                instrument_type=INSTRUMENT_TYPE_EQUITY,
-                limit=command.ticker_limit,
+            self.logger.warning(
+                f"Exchange filtering not yet implemented for Bronze+Silver project. "
+                f"Requested exchanges: {command.exchanges}. Processing all tickers.",
+                run_id=run.run_id
             )
-            if exchange_tickers:
-                filtered_tickers = [ticker for ticker, _ in exchange_tickers]
-                self.logger.info(f"Found {len(filtered_tickers)} tickers on exchanges {command.exchanges}", run_id=run.run_id)
-                run.tickers = filtered_tickers
-            else:
-                self.logger.warning(f"No tickers found for exchanges {command.exchanges}", run_id=run.run_id)
-                run.tickers = []
 
         if not run.tickers:
             self.logger.info("No tickers to process for domain recipes", run_id=run.run_id)
@@ -514,7 +506,6 @@ class SBFoundationAPI:
             enabled=self._enable_silver,
             ops_service=self.ops_service,
             keymap_service=self._dataset_service,
-            instrument_resolver=self._instrument_resolver,
         )
         try:
             promoted_ids, promoted_rows = silver_service.promote(run)

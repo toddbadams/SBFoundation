@@ -17,13 +17,7 @@ class ETFListDTO(BronzeToSilverDTO):
     KEY_COLS = ["symbol"]
 
     symbol: str = field(default="_none_", metadata={"api": "symbol"})
-    name: str | None = field(default=None, metadata={"api": "name"})
-    price: float | None = field(default=None, metadata={"api": "price"})
-    exchange: str | None = field(default=None, metadata={"api": "exchange"})
-    exchange_short_name: str | None = field(default=None, metadata={"api": "exchangeShortName"})
-
-    # Override ticker since this is a global list, not per-ticker
-    ticker: str = field(default="", metadata={"api": "_ticker_"})
+    company_name: str | None = field(default=None, metadata={"api": "name"})
 
     @property
     def key_date(self) -> date:

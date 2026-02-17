@@ -62,6 +62,11 @@ from sbfoundation.dtos.market.market_industry_pe_dto import MarketIndustryPeDTO
 from sbfoundation.dtos.market.market_hours_dto import MarketHoursDTO
 from sbfoundation.dtos.market.market_holidays_dto import MarketHolidaysDTO
 
+from sbfoundation.dtos.commodities.commodities_list_dto import CommoditiesListDTO
+from sbfoundation.dtos.commodities.commodities_price_eod_dto import CommoditiesPriceEodDTO
+from sbfoundation.dtos.crypto.crypto_price_eod_dto import CryptoPriceEodDTO
+from sbfoundation.dtos.fx.fx_price_eod_dto import FxPriceEodDTO
+
 
 class DTORegistry:
     def __init__(self, mapping: dict[str, type[BronzeToSilverDTO]]) -> None:
@@ -170,6 +175,15 @@ DTO_REGISTRY = DTORegistry(
         "market-industry-pe": MarketIndustryPeDTO,
         "market-hours": MarketHoursDTO,
         "market-holidays": MarketHolidaysDTO,
+        # Commodities domain
+        "commodities-list": CommoditiesListDTO,
+        "commodities-price-eod": CommoditiesPriceEodDTO,
+        # Crypto domain
+        "crypto-list": CryptocurrencyListDTO,
+        "crypto-price-eod": CryptoPriceEodDTO,
+        # FX domain
+        "fx-list": ForexListDTO,
+        "fx-price-eod": FxPriceEodDTO,
     }
 )
 

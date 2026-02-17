@@ -14,7 +14,7 @@ def test_run_request_rejects_invalid_recipe() -> None:
 
 
 def test_run_request_rejects_invalid_ticker() -> None:
-    request = make_run_request(overrides={"ticker": "TOOLONG"})
+    request = make_run_request(overrides={"ticker": "WAYTOOLONGFOR"})
     assert not request.canRun()
     assert request.error == "INVALID TICKER"
 

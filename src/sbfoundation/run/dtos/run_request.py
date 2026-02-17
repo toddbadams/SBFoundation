@@ -85,7 +85,7 @@ class RunRequest(BronzeToSilverDTO):
             self.error = "INVALID RUN RECIPE"
             return False
 
-        if self.recipe.is_ticker_based and (self.ticker is None or len(self.ticker) < 1 or len(self.ticker) > 5):
+        if self.recipe.is_ticker_based and (self.ticker is None or len(self.ticker) < 1 or len(self.ticker) > 12):
             self.error = "INVALID TICKER"
             return False
 

@@ -11,10 +11,20 @@ from sbfoundation.recovery.bronze_recovery_service import BronzeRecoveryService
 from sbfoundation.run.dtos.run_context import RunContext
 from sbfoundation.run.services.orchestration_ticker_chunk_service import OrchestrationTickerChunkService
 from sbfoundation.services.bronze.bronze_service import BronzeService
-# InstrumentResolutionService removed - Gold layer dependency
 from sbfoundation.services.silver.silver_service import SilverService
 from sbfoundation.services.universe_service import UniverseService
 from sbfoundation.settings import *
+from sbfoundation.settings import (
+    COMMODITIES_DOMAIN,
+    COMMODITIES_LIST_DATASET,
+    COMMODITIES_PRICE_EOD_DATASET,
+    CRYPTO_DOMAIN,
+    CRYPTO_LIST_DATASET,
+    CRYPTO_PRICE_EOD_DATASET,
+    FX_DOMAIN,
+    FX_LIST_DATASET,
+    FX_PRICE_EOD_DATASET,
+)
 
 
 @dataclass(slots=True)
@@ -231,6 +241,49 @@ class SBFoundationAPI:
             self.logger.warning(f"Could not query silver.fmp_market_exchanges: {exc}")
             return []
 
+    def _get_universe_from_silver(self, dataset: str, symbol_col: str = "symbol") -> list[str] | None:
+        """
+        Retrieve universe (list of symbols) from a silver table.
+
+        Args:
+            dataset: Dataset name (e.g., "commodities-list")
+            symbol_col: Column name containing symbols (default: "symbol")
+
+        Returns:
+            List of symbol strings, or None if no symbols found
+        """
+        try:
+            # Query silver table for symbols
+            table_name = f"silver.fmp_{dataset.replace('-', '_')}"
+            bootstrap = DuckDbBootstrap(logger=self.logger)
+            conn = bootstrap.connect()
+
+            # Check if table exists
+            exists = conn.execute(
+                f"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'silver' AND table_name = 'fmp_{dataset.replace('-', '_')}'"
+            ).fetchone()
+            if not exists or exists[0] == 0:
+                self.logger.warning(f"Table {table_name} does not exist")
+                bootstrap.close()
+                return None
+
+            # Query for symbols
+            query = f"SELECT DISTINCT {symbol_col} FROM {table_name} WHERE {symbol_col} IS NOT NULL"
+            result = conn.execute(query).fetchall()
+            bootstrap.close()
+
+            symbols = [row[0] for row in result if row[0]]
+
+            if symbols:
+                self.logger.info(f"Retrieved {len(symbols)} symbols from {table_name}")
+                return symbols
+            else:
+                self.logger.warning(f"No symbols found in {table_name}")
+                return None
+        except Exception as exc:
+            self.logger.error(f"Failed to retrieve universe from {dataset}: {exc}")
+            return None
+
     @staticmethod
     def _market_weekdays(from_date: date, to_date: date) -> list[date]:
         """Return Mon–Fri dates in [from_date, to_date] inclusive."""
@@ -273,13 +326,97 @@ class SBFoundationAPI:
         return self._process_recipe_list(patched, run)
 
     def _handle_commodities(self, command: RunCommand, run: RunContext) -> RunContext:
-        return run  # todo: add method to handle
+        """
+        Handle commodities domain datasets.
+
+        Execution sequence:
+        1. commodities-list (baseline, global, yearly)
+        2. commodities-price-eod (ticker-based, daily)
+        """
+        self.logger.log_section(run.run_id, "Processing commodities domain")
+
+        # Step 1: Load commodities list (baseline discovery)
+        recipes = [r for r in self._dataset_service.recipes if r.domain == COMMODITIES_DOMAIN and r.dataset == COMMODITIES_LIST_DATASET]
+        if recipes:
+            self.logger.log_section(run.run_id, "Phase 1: Loading commodities list")
+            run = self._process_recipe_list(recipes, run)
+            run = self._promote_silver(run)
+
+        # Step 2: Load commodities price-eod data (ticker-based)
+        recipes = [r for r in self._dataset_service.recipes if r.domain == COMMODITIES_DOMAIN and r.dataset == COMMODITIES_PRICE_EOD_DATASET]
+        if recipes:
+            self.logger.log_section(run.run_id, "Phase 2: Loading commodities price-eod data")
+            # Get universe from silver commodities-list
+            universe = self._get_universe_from_silver(COMMODITIES_LIST_DATASET, "symbol")
+            if universe:
+                original_tickers = run.tickers
+                run.tickers = universe
+                run = self._process_ticker_recipes(recipes, command, run, label="commodities-price-eod")
+                run.tickers = original_tickers
+
+        return run
 
     def _handle_fx(self, command: RunCommand, run: RunContext) -> RunContext:
-        return run  # todo: add method to handle
+        """
+        Handle FX domain datasets.
+
+        Execution sequence:
+        1. fx-list (baseline, global, yearly)
+        2. fx-price-eod (ticker-based, daily)
+        """
+        self.logger.log_section(run.run_id, "Processing fx domain")
+
+        # Step 1: Load fx list (baseline discovery)
+        recipes = [r for r in self._dataset_service.recipes if r.domain == FX_DOMAIN and r.dataset == FX_LIST_DATASET]
+        if recipes:
+            self.logger.log_section(run.run_id, "Phase 1: Loading fx list")
+            run = self._process_recipe_list(recipes, run)
+            run = self._promote_silver(run)
+
+        # Step 2: Load fx price-eod data (ticker-based)
+        recipes = [r for r in self._dataset_service.recipes if r.domain == FX_DOMAIN and r.dataset == FX_PRICE_EOD_DATASET]
+        if recipes:
+            self.logger.log_section(run.run_id, "Phase 2: Loading fx price-eod data")
+            # Get universe from silver fx-list
+            universe = self._get_universe_from_silver(FX_LIST_DATASET, "symbol")
+            if universe:
+                original_tickers = run.tickers
+                run.tickers = universe
+                run = self._process_ticker_recipes(recipes, command, run, label="fx-price-eod")
+                run.tickers = original_tickers
+
+        return run
 
     def _handle_crypto(self, command: RunCommand, run: RunContext) -> RunContext:
-        return run  # todo: add method to handle
+        """
+        Handle crypto domain datasets.
+
+        Execution sequence:
+        1. crypto-list (baseline, global, yearly)
+        2. crypto-price-eod (ticker-based, daily)
+        """
+        self.logger.log_section(run.run_id, "Processing crypto domain")
+
+        # Step 1: Load crypto list (baseline discovery)
+        recipes = [r for r in self._dataset_service.recipes if r.domain == CRYPTO_DOMAIN and r.dataset == CRYPTO_LIST_DATASET]
+        if recipes:
+            self.logger.log_section(run.run_id, "Phase 1: Loading crypto list")
+            run = self._process_recipe_list(recipes, run)
+            run = self._promote_silver(run)
+
+        # Step 2: Load crypto price-eod data (ticker-based)
+        recipes = [r for r in self._dataset_service.recipes if r.domain == CRYPTO_DOMAIN and r.dataset == CRYPTO_PRICE_EOD_DATASET]
+        if recipes:
+            self.logger.log_section(run.run_id, "Phase 2: Loading crypto price-eod data")
+            # Get universe from silver crypto-list
+            universe = self._get_universe_from_silver(CRYPTO_LIST_DATASET, "symbol")
+            if universe:
+                original_tickers = run.tickers
+                run.tickers = universe
+                run = self._process_ticker_recipes(recipes, command, run, label="crypto-price-eod")
+                run.tickers = original_tickers
+
+        return run
 
     def _start_run(self, command: RunCommand) -> RunContext:
         run = RunContext(
@@ -421,7 +558,7 @@ class SBFoundationAPI:
             self.logger.warning(
                 f"Exchange filtering not yet implemented for Bronze+Silver project. "
                 f"Requested exchanges: {command.exchanges}. Processing all tickers.",
-                run_id=run.run_id
+                run_id=run.run_id,
             )
 
         if not run.tickers:
@@ -523,10 +660,12 @@ class SBFoundationAPI:
 
 if __name__ == "__main__":
     command = RunCommand(
-        domain=MARKET_DOMAIN,
+        domain=CRYPTO_DOMAIN,
         concurent_requests=1,
-        enable_bronze=False,
+        enable_bronze=True,
         enable_silver=True,
+        ticker_limit=100,
+        ticker_recipe_chunk_size=10,
     )
     result = SBFoundationAPI(today=date.today().isoformat()).run(command)
     print(

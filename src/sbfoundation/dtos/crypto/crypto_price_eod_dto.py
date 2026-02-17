@@ -1,0 +1,39 @@
+from dataclasses import dataclass, field
+from datetime import date
+import typing
+
+from sbfoundation.dtos.bronze_to_silver_dto import BronzeToSilverDTO
+
+
+@dataclass(slots=True, kw_only=True, order=True)
+class CryptoPriceEodDTO(BronzeToSilverDTO):
+    """
+    DTO for FMP cryptocurrency historical price EOD data.
+
+    API docs: https://site.financialmodelingprep.com/developer/docs#cryptocurrency-historical-price-eod-full
+    """
+
+    KEY_COLS = ["symbol", "date"]
+
+    symbol: str = field(default="_none_", metadata={"api": "symbol"})
+    date: str | None = field(default=None, metadata={"api": "date"})
+    open: float | None = field(default=None, metadata={"api": "open"})
+    high: float | None = field(default=None, metadata={"api": "high"})
+    low: float | None = field(default=None, metadata={"api": "low"})
+    close: float | None = field(default=None, metadata={"api": "close"})
+    volume: int | None = field(default=None, metadata={"api": "volume"})
+    adj_close: float | None = field(default=None, metadata={"api": "adjClose"})
+    change: float | None = field(default=None, metadata={"api": "change"})
+    change_percent: float | None = field(default=None, metadata={"api": "changePercent"})
+
+    @classmethod
+    def from_row(cls, row: typing.Mapping[str, typing.Any], ticker: str | None = None) -> "CryptoPriceEodDTO":
+        return cls.build_from_row(row, ticker_override=ticker)
+
+    def to_dict(self) -> dict[str, typing.Any]:
+        return self.build_to_dict()
+
+    @property
+    def key_date(self) -> date:
+        d = {"date": self.date}
+        return self.d(d, "date") or date.min

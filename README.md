@@ -346,6 +346,90 @@ Plain-text logs are written to `$DATA_ROOT_FOLDER/logs/`. Each log line carries 
 
 ---
 
+## Commodities Data
+
+The Commodities domain provides access to historical price data for tradable commodities including energy (crude oil, natural gas), metals (gold, silver, copper), and agricultural products (corn, wheat, soybeans).
+
+**Load Order:** Commodities data is loaded after technicals data in the domain execution sequence.
+
+### Datasets
+
+#### 1. commodities-list (Baseline)
+- **Purpose:** Discover available commodities tracked by the vendor
+- **Scope:** Global (non-ticker-based)
+- **Refresh:** Yearly (min_age_days: 365)
+- **Silver Table:** `silver.fmp_commodities_list`
+- **Key Columns:** `symbol`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/commodities-list`
+- **Documentation:** [FMP Commodities List](https://site.financialmodelingprep.com/developer/docs#Commoditiescurrency-list)
+
+#### 2. commodities-price-eod (Timeseries)
+- **Purpose:** Historical end-of-day price data for each commodity
+- **Scope:** Per-ticker (runs for each symbol from commodities-list)
+- **Refresh:** Daily (min_age_days: 1)
+- **Silver Table:** `silver.fmp_commodities_price_eod`
+- **Key Columns:** `symbol`, `date`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=GCUSD`
+- **Documentation:** [FMP Commodities Historical Price](https://site.financialmodelingprep.com/developer/docs#Commoditiescurrency-historical-price-eod-full)
+
+---
+
+## Cryptocurrency Data
+
+The Crypto domain provides access to historical price data for cryptocurrencies traded on exchanges worldwide, including Bitcoin, Ethereum, and thousands of altcoins.
+
+**Load Order:** Crypto data is loaded after FX data in the domain execution sequence.
+
+### Datasets
+
+#### 1. crypto-list (Baseline)
+- **Purpose:** Discover available cryptocurrencies and trading pairs
+- **Scope:** Global (non-ticker-based)
+- **Refresh:** Yearly (min_age_days: 365)
+- **Silver Table:** `silver.fmp_crypto_list`
+- **Key Columns:** `symbol`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/cryptocurrency-list`
+- **Documentation:** [FMP Cryptocurrency List](https://site.financialmodelingprep.com/developer/docs#cryptocurrency-list)
+
+#### 2. crypto-price-eod (Timeseries)
+- **Purpose:** Historical end-of-day price data for each cryptocurrency
+- **Scope:** Per-ticker (runs for each symbol from crypto-list)
+- **Refresh:** Daily (min_age_days: 1)
+- **Silver Table:** `silver.fmp_crypto_price_eod`
+- **Key Columns:** `symbol`, `date`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=BTCUSD`
+- **Documentation:** [FMP Crypto Historical Price](https://site.financialmodelingprep.com/developer/docs#cryptocurrency-historical-price-eod-full)
+
+---
+
+## Foreign Exchange (FX) Data
+
+The FX domain provides access to historical exchange rate data for currency pairs traded on the forex market, enabling multi-currency analysis and hedging strategies.
+
+**Load Order:** FX data is loaded after commodities data in the domain execution sequence.
+
+### Datasets
+
+#### 1. fx-list (Baseline)
+- **Purpose:** Discover available currency pairs
+- **Scope:** Global (non-ticker-based)
+- **Refresh:** Yearly (min_age_days: 365)
+- **Silver Table:** `silver.fmp_fx_list`
+- **Key Columns:** `symbol`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/forex-list`
+- **Documentation:** [FMP Forex List](https://site.financialmodelingprep.com/developer/docs#forex-list)
+
+#### 2. fx-price-eod (Timeseries)
+- **Purpose:** Historical end-of-day exchange rates for each currency pair
+- **Scope:** Per-ticker (runs for each symbol from fx-list)
+- **Refresh:** Daily (min_age_days: 1)
+- **Silver Table:** `silver.fmp_fx_price_eod`
+- **Key Columns:** `symbol`, `date`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=EURUSD`
+- **Documentation:** [FMP Forex Historical Price](https://site.financialmodelingprep.com/developer/docs#forex-historical-price-eod-full)
+
+---
+
 ## Strengths
 
 - **Full auditability** — every Silver row traces back to a specific Bronze JSON file via `bronze_file_id`. Lineage is never broken.

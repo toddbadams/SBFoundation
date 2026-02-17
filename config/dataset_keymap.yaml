@@ -8590,3 +8590,357 @@ datasets:
       type: str
       nullable: false
       api: name
+
+# ==================== COMMODITIES DOMAIN ====================
+
+- domain: commodities
+  source: fmp
+  dataset: commodities-list
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_commodities_list
+  key_cols:
+  - symbol
+  row_date_col: null
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: commodities-list
+    query_vars: {}
+    date_key: null
+    cadence_mode: interval
+    min_age_days: 365
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#Commoditiescurrency-list
+  dto_schema:
+    dto_type: sbfoundation.dtos.commodities.commodities_list_dto.CommoditiesListDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: name
+      type: str
+      nullable: true
+    - name: currency
+      type: str
+      nullable: true
+    - name: stock_exchange
+      type: str
+      nullable: true
+    - name: exchange_short_name
+      type: str
+      nullable: true
+
+- domain: commodities
+  source: fmp
+  dataset: commodities-price-eod
+  discriminator: ''
+  ticker_scope: per_ticker
+  silver_schema: silver
+  silver_table: fmp_commodities_price_eod
+  key_cols:
+  - symbol
+  - date
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: historical-price-eod/full
+    query_vars:
+      symbol: __ticker__
+      from: __from_date__
+      to: __to_date__
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    help_url: https://site.financialmodelingprep.com/developer/docs#Commoditiescurrency-historical-price-eod-full
+  dto_schema:
+    dto_type: sbfoundation.dtos.commodities.commodities_price_eod_dto.CommoditiesPriceEodDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: date
+      type: str
+      nullable: true
+    - name: open
+      type: float
+      nullable: true
+    - name: high
+      type: float
+      nullable: true
+    - name: low
+      type: float
+      nullable: true
+    - name: close
+      type: float
+      nullable: true
+    - name: volume
+      type: int
+      nullable: true
+    - name: adj_close
+      type: float
+      nullable: true
+    - name: change
+      type: float
+      nullable: true
+    - name: change_percent
+      type: float
+      nullable: true
+
+# ==================== CRYPTO DOMAIN ====================
+
+- domain: crypto
+  source: fmp
+  dataset: crypto-list
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_crypto_list
+  key_cols:
+  - symbol
+  row_date_col: null
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: cryptocurrency-list
+    query_vars: {}
+    date_key: null
+    cadence_mode: interval
+    min_age_days: 365
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#cryptocurrency-list
+  dto_schema:
+    dto_type: sbfoundation.dtos.instrument.cryptocurrency_list_dto.CryptocurrencyListDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: company_name
+      type: str
+      nullable: true
+    - name: currency
+      type: str
+      nullable: true
+    - name: stock_exchange
+      type: str
+      nullable: true
+    - name: exchange_short_name
+      type: str
+      nullable: true
+
+- domain: crypto
+  source: fmp
+  dataset: crypto-price-eod
+  discriminator: ''
+  ticker_scope: per_ticker
+  silver_schema: silver
+  silver_table: fmp_crypto_price_eod
+  key_cols:
+  - symbol
+  - date
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: historical-price-eod/full
+    query_vars:
+      symbol: __ticker__
+      from: __from_date__
+      to: __to_date__
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    help_url: https://site.financialmodelingprep.com/developer/docs#cryptocurrency-historical-price-eod-full
+  dto_schema:
+    dto_type: sbfoundation.dtos.crypto.crypto_price_eod_dto.CryptoPriceEodDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: date
+      type: str
+      nullable: true
+    - name: open
+      type: float
+      nullable: true
+    - name: high
+      type: float
+      nullable: true
+    - name: low
+      type: float
+      nullable: true
+    - name: close
+      type: float
+      nullable: true
+    - name: volume
+      type: int
+      nullable: true
+    - name: adj_close
+      type: float
+      nullable: true
+    - name: change
+      type: float
+      nullable: true
+    - name: change_percent
+      type: float
+      nullable: true
+
+# ==================== FX DOMAIN ====================
+
+- domain: fx
+  source: fmp
+  dataset: fx-list
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_fx_list
+  key_cols:
+  - symbol
+  row_date_col: null
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: forex-list
+    query_vars: {}
+    date_key: null
+    cadence_mode: interval
+    min_age_days: 365
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#forex-list
+  dto_schema:
+    dto_type: sbfoundation.dtos.instrument.forex_list_dto.ForexListDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: company_name
+      type: str
+      nullable: true
+    - name: currency
+      type: str
+      nullable: true
+    - name: stock_exchange
+      type: str
+      nullable: true
+    - name: exchange_short_name
+      type: str
+      nullable: true
+    - name: base_currency
+      type: str
+      nullable: true
+    - name: quote_currency
+      type: str
+      nullable: true
+
+- domain: fx
+  source: fmp
+  dataset: fx-price-eod
+  discriminator: ''
+  ticker_scope: per_ticker
+  silver_schema: silver
+  silver_table: fmp_fx_price_eod
+  key_cols:
+  - symbol
+  - date
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: historical-price-eod/full
+    query_vars:
+      symbol: __ticker__
+      from: __from_date__
+      to: __to_date__
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    help_url: https://site.financialmodelingprep.com/developer/docs#forex-historical-price-eod-full
+  dto_schema:
+    dto_type: sbfoundation.dtos.fx.fx_price_eod_dto.FxPriceEodDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: date
+      type: str
+      nullable: true
+    - name: open
+      type: float
+      nullable: true
+    - name: high
+      type: float
+      nullable: true
+    - name: low
+      type: float
+      nullable: true
+    - name: close
+      type: float
+      nullable: true
+    - name: volume
+      type: int
+      nullable: true
+    - name: adj_close
+      type: float
+      nullable: true
+    - name: change
+      type: float
+      nullable: true
+    - name: change_percent
+      type: float
+      nullable: true

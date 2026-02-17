@@ -215,3 +215,9 @@ node_modules/
 *.exe
 NUL
 .VSCodeCounter
+
+# ai prompts
+docs/prompts/
+
+# scripts are for local migration only
+scripts/

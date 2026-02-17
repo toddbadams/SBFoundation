@@ -5,7 +5,7 @@
 **Maintenance**: Update when changing architecture patterns, modifying dataset_keymap.yaml structure, or adding new domains/contracts.
 
 ## Purpose
-Strawberry Foundation is a **Bronze + Silver ONLY data acquisition and validation package**. It ingests raw vendor data (Bronze) and promotes it to validated, typed, conformed datasets (Silver). The pipeline is orchestrated via `src/sbfoundation/orchestrator.py` and configured declaratively in `config/dataset_keymap.yaml`.
+Strawberry Foundation is a **Bronze + Silver ONLY data acquisition and validation package**. It ingests raw vendor data (Bronze) and promotes it to validated, typed, conformed datasets (Silver). The pipeline is executed via `src/sbfoundation/api.py` (`SBFoundationAPI`) and configured declaratively in `config/dataset_keymap.yaml`.
 
 **CRITICAL**: This project contains **ONLY Bronze and Silver layers**. The Gold layer (dimension modeling, surrogate keys, star schemas, aggregations) exists in a separate downstream project that imports SBFoundation as a dependency.
 
@@ -13,7 +13,7 @@ Strawberry Foundation is a **Bronze + Silver ONLY data acquisition and validatio
 
 ## Quick Reference
 - **Adding new dataset?** → Edit `config/dataset_keymap.yaml` (see Section 5.3)
-- **Modifying data pipeline?** → `src/sbfoundation/orchestrator.py` + `config/dataset_keymap.yaml`
+- **Modifying data pipeline?** → `src/sbfoundation/api.py` + `config/dataset_keymap.yaml`
 - **Complex refactor?** → Section 7 (ExecPlans)
 - **Writing a DTO?** → Section 8 (DTO Contracts)
 - **Writing a recipe?** → Section 9 (Recipe Contracts)

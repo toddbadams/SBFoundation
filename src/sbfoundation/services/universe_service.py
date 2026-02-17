@@ -44,7 +44,7 @@ class UniverseService:
         Args:
             start: Starting offset
             limit: Maximum number of symbols to return
-            instrument_type: Filter by type (applied via silver.instrument join)
+            instrument_type: Filter by type (applied via ops.instrument_catalog join)
             is_active: Only return active instruments (default True)
 
         Returns:

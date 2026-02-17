@@ -116,7 +116,7 @@ class DTOProjection:
         if target in {"int", "int64", "bigint"}:
             return pd.to_numeric(series, errors="coerce").round().astype("Int64")
         if target == "float":
-            return pd.to_numeric(series, errors="coerce")
+            return pd.to_numeric(series, errors="coerce").astype("float64")
         if target == "bool":
             return series.map(self._coerce_bool)
         if target in {"date", "datetime.date"}:
@@ -148,7 +148,7 @@ class DTOProjection:
             return pd.to_numeric(series, errors="coerce").round().astype("Int64")
 
         if resolved is float:
-            return pd.to_numeric(series, errors="coerce")
+            return pd.to_numeric(series, errors="coerce").astype("float64")
 
         if resolved is bool:
             return series.map(self._coerce_bool)

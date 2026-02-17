@@ -48,25 +48,15 @@ CREATE TABLE IF NOT EXISTS ops.file_ingestions (
 );
 """
 
-SILVER_INSTRUMENT_DDL = """
-CREATE TABLE IF NOT EXISTS silver.instrument (
-    instrument_id VARCHAR PRIMARY KEY,
+OPS_INSTRUMENT_CATALOG_DDL = """
+CREATE TABLE IF NOT EXISTS ops.instrument_catalog (
     symbol VARCHAR NOT NULL,
     instrument_type VARCHAR NOT NULL,
     source_endpoint VARCHAR NOT NULL,
-    name VARCHAR,
-    exchange VARCHAR,
-    exchange_short_name VARCHAR,
-    currency VARCHAR,
-    base_currency VARCHAR,
-    quote_currency VARCHAR,
     is_active BOOLEAN DEFAULT TRUE,
     discovered_at TIMESTAMP NOT NULL,
     last_enriched_at TIMESTAMP,
-    bronze_file_id VARCHAR,
-    run_id VARCHAR,
-    ingested_at TIMESTAMP,
-    UNIQUE (symbol, instrument_type)
+    PRIMARY KEY (symbol, instrument_type)
 );
 """
 
@@ -109,7 +99,7 @@ class DuckDbBootstrap:
         Creates:
         - ops, silver schemas
         - ops.file_ingestions table (core metadata table)
-        - silver.instrument table
+        - ops.instrument_catalog table (operational instrument metadata)
 
         Raises:
             Exception: If schema creation fails (transaction is rolled back)
@@ -118,7 +108,7 @@ class DuckDbBootstrap:
             self._conn.execute("BEGIN")
             self._conn.execute(SCHEMA_DDL)
             self._conn.execute(OPS_FILE_INGESTIONS_DDL)
-            self._conn.execute(SILVER_INSTRUMENT_DDL)
+            self._conn.execute(OPS_INSTRUMENT_CATALOG_DDL)
             self._conn.execute("COMMIT")
             self._logger.debug("Schema initialization complete")
         except Exception as e:

@@ -65,6 +65,26 @@ This refactoring enforces the Bronze→Silver→Gold architecture contract defin
 
 _This section will be updated as work proceeds._
 
+### 🔴 CRITICAL Discovery: silver.instrument is NEVER POPULATED
+**Date**: 2026-02-17
+**Finding**: The `silver.instrument` table is created but **NEVER written to**!
+
+**Evidence**:
+1. `duckdb_bootstrap.py:52` creates `silver.instrument` table
+2. `InstrumentPromotionService.promote_to_unified_instrument()` writes to `gold.instrument` (line 95), NOT `silver.instrument`
+3. `promote_to_unified_instrument()` is NEVER called anywhere in the codebase (orphaned code)
+4. No INSERT/UPDATE/MERGE statements found for `silver.instrument` table
+5. `UniverseRepo` reads from `silver.instrument` (lines 58, 151, 217) - would always be empty!
+6. E2E test `test_03_instrument_discovery_flow:299` expects `silver.instrument` to be populated - **this test would FAIL**
+
+**Implication**:
+- **The code is in a broken state** - reads from empty table
+- The `InstrumentPromotionService` was intended to populate `gold.instrument`, not `silver.instrument`
+- The `silver.instrument` table serves no purpose and can be removed immediately
+- Need to decide: Should `UniverseRepo` query `gold.instrument` or `ops.file_ingestions` directly?
+
+---
+
 ### Discovery: Current silver.instrument Usage
 **Date**: 2026-02-17
 **Finding**: The `silver.instrument` table is used in 3 primary locations:
@@ -122,7 +142,28 @@ sql = """
 
 ---
 
-### Decision 3: Preserve Only Operational Fields in ops.instrument_catalog
+### Decision 3: Query ops.file_ingestions Directly (NOT gold.instrument)
+**Date**: 2026-02-17
+**Rationale**:
+- Given that `silver.instrument` is never populated, the current code is broken
+- CLAUDE.md §1 states: "Gold layer exists in a separate downstream project"
+- This project (SBFoundation) should NOT query Gold tables
+- The `ops.file_ingestions` table already tracks which tickers have been ingested
+- Instrument type filtering can be derived from domain or stored in `ops.file_ingestions`
+
+**Options Considered**:
+1. Query `gold.instrument` - **Rejected**: Violates separation (Gold is separate project)
+2. Create `ops.instrument_catalog` from instrument list datasets - **Selected**: Aligns with ops schema purpose
+3. Query `ops.file_ingestions` only - **Rejected**: Loses instrument_type and is_active filtering capability
+
+**Implementation**:
+- Create `ops.instrument_catalog` table with operational fields only
+- Populate it from Silver instrument list tables (stock-list, etf-list, etc.) during orchestration
+- `UniverseRepo` queries `ops.instrument_catalog` for filtering
+
+---
+
+### Decision 4: Preserve Only Operational Fields in ops.instrument_catalog
 **Date**: 2026-02-17
 **Fields to Preserve**:
 - `symbol`, `instrument_type` (composite natural key)

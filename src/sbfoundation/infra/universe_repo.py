@@ -11,7 +11,7 @@ class UniverseRepo:
     Handles all DuckDB operations for instrument universe queries including:
     - Querying ingested tickers from ops.file_ingestions
     - Querying new tickers from gold.dim_instrument
-    - Retrieving instrument details from silver.instrument
+    - Retrieving instrument details from ops.instrument_catalog
     """
 
     def __init__(
@@ -43,7 +43,7 @@ class UniverseRepo:
         Args:
             start: Starting offset
             limit: Maximum number of symbols to return
-            instrument_type: Filter by type (applied via silver.instrument join)
+            instrument_type: Filter by type (applied via ops.instrument_catalog join)
             is_active: Only return active instruments (default True)
 
         Returns:
@@ -55,17 +55,17 @@ class UniverseRepo:
             sql = """
                 SELECT DISTINCT fi.ticker
                 FROM ops.file_ingestions fi
-                INNER JOIN silver.instrument si ON fi.ticker = si.symbol
+                INNER JOIN ops.instrument_catalog ic ON fi.ticker = ic.symbol
                 WHERE fi.ticker IS NOT NULL AND fi.ticker <> ''
                 AND fi.silver_can_promote = TRUE
             """
             params: list = []
 
             if is_active:
-                sql += " AND si.is_active = TRUE"
+                sql += " AND ic.is_active = TRUE"
 
             if instrument_type:
-                sql += " AND si.instrument_type = ?"
+                sql += " AND ic.instrument_type = ?"
                 params.append(instrument_type)
 
             sql += f" ORDER BY fi.ticker LIMIT {limit} OFFSET {start}"
@@ -148,10 +148,10 @@ class UniverseRepo:
             sql = """
                 SELECT COUNT(DISTINCT fi.ticker)
                 FROM ops.file_ingestions fi
-                INNER JOIN silver.instrument si ON fi.ticker = si.symbol
+                INNER JOIN ops.instrument_catalog ic ON fi.ticker = ic.symbol
                 WHERE fi.ticker IS NOT NULL AND fi.ticker <> ''
                 AND fi.silver_can_promote = TRUE
-                AND si.instrument_type = ?
+                AND ic.instrument_type = ?
             """
             result = conn.execute(sql, [instrument_type]).fetchone()
         else:
@@ -210,11 +210,11 @@ class UniverseRepo:
         """
         conn = self._bootstrap.connect()
 
-        if not self._table_exists(conn, "silver", "instrument"):
+        if not self._table_exists(conn, "ops", "instrument_catalog"):
             return None
 
         result = conn.execute(
-            "SELECT * FROM silver.instrument WHERE symbol = ?",
+            "SELECT * FROM ops.instrument_catalog WHERE symbol = ?",
             [symbol],
         ).fetchone()
 

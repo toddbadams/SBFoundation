@@ -128,7 +128,8 @@ SBFoundation/
 ├── docs/                         # project documentation Architecture, contracts, DuckDB design docs
 ├── src/
 │   └── sbfoundation/
-│       ├── __init__.py               # Public API: Orchestrator, NewEquitiesOrchestrationService
+│       ├── __init__.py               # Public API: SBFoundationAPI, RunCommand
+│       ├── api.py                    # Main entry point for running data ingestion
 │       ├── settings.py               # All constants: domains, datasets, data sources, placeholders, paths
 │       ├── folders.py                # Path resolution helpers (bronze/duckdb/log/migration folders)
 │       ├── dataset/
@@ -175,7 +176,7 @@ SBFoundation/
 
 | Module | Responsibility |
 |---|---|
-| `orchestrator.py` | Entry point. Iterates domains in order, calls Bronze ingestion then Silver promotion per domain. Manages `OrchestrationSettings` feature switches. |
+| `api.py` | Main entry point. Provides `SBFoundationAPI` class and `RunCommand` dataclass. Orchestrates domain-specific ingestion flows (Bronze → Silver) for instrument, market, economics, commodities, forex, and crypto domains. |
 | `dataset/services/dataset_service.py` | Loads `dataset_keymap.yaml`, validates entries, exposes filtered recipe lists by plan/domain. |
 | `run/dtos/run_request.py` | Encapsulates a single API call spec: URL, query vars (placeholders expanded), cadence metadata, `from_date`/`to_date`. |
 | `run/dtos/bronze_result.py` | Wraps the HTTP response + metadata. Computes `is_valid_bronze` and `canPromoteToSilverWith` gates. |
@@ -286,10 +287,10 @@ The single authoritative source for all dataset definitions. Each entry specifie
 
 ```bash
 # Activate the venv (Poetry does this automatically in `poetry run`)
-poetry run python src/sbfoundation/orchestrator.py
+poetry run python src/sbfoundation/api.py
 ```
 
-The `if __name__ == "__main__"` block at the bottom of `orchestrator.py` contains a ready-to-edit example. Adjust `OrchestrationSettings` flags to scope the run.
+The `if __name__ == "__main__"` block at the bottom of `api.py` contains a ready-to-edit example. Adjust `RunCommand` parameters to scope the run.
 
 ### Run tests
 
@@ -311,18 +312,18 @@ poetry run mypy src                     # type checking
 
 ### Debugging a single domain
 
-Edit `orchestrator.py`'s `__main__` block and set all `enable_*` flags to `False` except the domain of interest:
+Edit `api.py`'s `__main__` block and configure the `RunCommand` for the domain of interest:
 
 ```python
-OrchestrationSettings(
-    enable_company=True,
-    enable_bronze=True,
-    enable_silver=False,   # skip promotion to inspect Bronze only
-    enable_ticker_run=True,
-    enable_new_tickers=True,
-    new_ticker_limit=3,    # process only 3 tickers
-    ...
+command = RunCommand(
+    domain=MARKET_DOMAIN,           # Choose domain: MARKET, INSTRUMENT, COMPANY, etc.
+    concurent_requests=1,           # Set to 1 for synchronous debugging
+    enable_bronze=True,             # True to fetch from APIs
+    enable_silver=False,            # False to inspect Bronze only (skip Silver promotion)
+    ticker_limit=3,                 # Process only 3 tickers
+    ticker_recipe_chunk_size=10,    # Chunk size for ticker processing
 )
+result = SBFoundationAPI(today=date.today().isoformat()).run(command)
 ```
 
 ### Inspecting Bronze files
@@ -367,6 +368,6 @@ Plain-text logs are written to `$DATA_ROOT_FOLDER/logs/`. Each log line carries 
 | **Parquet → DuckDB migration** | ~~Medium~~ Resolved | All Parquet references removed from active code. `silver_data_contracts.md` does not exist in the repo. Stale Parquet comments in `result_mapper.py`, `bronze_to_silver_dto.py`, and `scripts/cleanup_ticker_state_partitions.py` have been updated. No `pyarrow` or `fastparquet` imports remain in the codebase. DuckDB is now the sole Silver/Gold storage backend. |
 | **No pagination support** | Medium | `DatasetRecipe` defers pagination by design. All large datasets rely on `from_date` windowing (`from_date` → `to_date` = today) rather than offset or cursor pagination. If a single API window returns a truncated result set (e.g., FMP caps responses at 10 000 rows), data beyond that limit is silently dropped. Mitigation: use shorter `min_age_days` windows for high-volume datasets. Full fix requires adding `page`/`cursor` support to `RunProvider._get_query_vars()` and a looping driver in `bronze_service.py`. |
 | **FMP API key is the only configured source** | Low | `DATA_SOURCES_CONFIG` only has an FMP entry. Alpha Vantage, BIS, FRED, and other planned sources have dataset constants defined but no HTTP configuration yet. |
-| **`sbfoundation/settings.py` uses wildcard import** | Low | `from sbfoundation.settings import *` is used in `orchestrator.py` and `sbfoundation/folders.py`. This makes static analysis harder and can cause name collisions if settings grow. |
+| **`sbfoundation/settings.py` uses wildcard import** | Low | `from sbfoundation.settings import *` is used in `api.py` and `sbfoundation/folders.py`. This makes static analysis harder and can cause name collisions if settings grow. |
 | **No concurrency / parallelism** | Info | Bronze ingestion is sequential per recipe. Throughput is bounded by `THROTTLE_MAX_CALLS_PER_MINUTE` (50/min for FMP). Large universes (1000+ tickers × 40+ datasets) take significant wall-clock time. |
 | **PROD runs on Raspberry Pi** | Info | Low RAM and single-core constraints apply. Chunk size (10 tickers) and recipe limits in `OrchestrationSettings` are the primary throughput controls. |

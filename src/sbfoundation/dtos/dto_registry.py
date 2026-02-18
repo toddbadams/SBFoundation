@@ -48,7 +48,6 @@ from sbfoundation.dtos.instrument.stock_list_dto import StockListDTO
 from sbfoundation.dtos.instrument.etf_list_dto import ETFListDTO
 from sbfoundation.dtos.instrument.index_list_dto import IndexListDTO
 from sbfoundation.dtos.instrument.cryptocurrency_list_dto import CryptocurrencyListDTO
-from sbfoundation.dtos.instrument.forex_list_dto import ForexListDTO
 from sbfoundation.dtos.instrument.etf_holdings_dto import ETFHoldingsDTO
 
 from sbfoundation.dtos.market.market_countries_dto import MarketCountriesDTO
@@ -65,6 +64,7 @@ from sbfoundation.dtos.market.market_holidays_dto import MarketHolidaysDTO
 from sbfoundation.dtos.commodities.commodities_list_dto import CommoditiesListDTO
 from sbfoundation.dtos.commodities.commodities_price_eod_dto import CommoditiesPriceEodDTO
 from sbfoundation.dtos.crypto.crypto_price_eod_dto import CryptoPriceEodDTO
+from sbfoundation.dtos.fx.fx_list_dto import FxListDTO
 from sbfoundation.dtos.fx.fx_price_eod_dto import FxPriceEodDTO
 
 
@@ -162,7 +162,6 @@ DTO_REGISTRY = DTORegistry(
         "etf-list": ETFListDTO,
         "index-list": IndexListDTO,
         "cryptocurrency-list": CryptocurrencyListDTO,
-        "forex-list": ForexListDTO,
         "etf-holdings": ETFHoldingsDTO,
         # Market domain
         "market-countries": MarketCountriesDTO,
@@ -182,7 +181,7 @@ DTO_REGISTRY = DTORegistry(
         "crypto-list": CryptocurrencyListDTO,
         "crypto-price-eod": CryptoPriceEodDTO,
         # FX domain
-        "fx-list": ForexListDTO,
+        "fx-list": FxListDTO,
         "fx-price-eod": FxPriceEodDTO,
     }
 )

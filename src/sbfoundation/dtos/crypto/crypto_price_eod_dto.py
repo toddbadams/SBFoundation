@@ -22,7 +22,7 @@ class CryptoPriceEodDTO(BronzeToSilverDTO):
     low: float | None = field(default=None, metadata={"api": "low"})
     close: float | None = field(default=None, metadata={"api": "close"})
     volume: int | None = field(default=None, metadata={"api": "volume"})
-    adj_close: float | None = field(default=None, metadata={"api": "adjClose"})
+    vwap: float | None = field(default=None, metadata={"api": "vwap"})
     change: float | None = field(default=None, metadata={"api": "change"})
     change_percent: float | None = field(default=None, metadata={"api": "changePercent"})
 

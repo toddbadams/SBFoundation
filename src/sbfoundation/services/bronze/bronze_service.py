@@ -26,6 +26,7 @@ class BronzeService:
         universe: typing.Optional[UniverseService] = None,
         request_executor: typing.Optional[RunRequestExecutor] = None,
         ops_service: typing.Optional[OpsService] = None,
+        concurrent_requests: int = 1,
     ):
         """Initialize dependencies, run metadata, and storage repositories."""
         self.fmp_api_key = fmp_api_key or os.getenv("FMP_API_KEY")
@@ -37,6 +38,7 @@ class BronzeService:
         self.recipes: list[DatasetRecipe] = []
         self.request_executor = request_executor or RunRequestExecutor(self.logger)
         self.run: RunContext = None
+        self.concurrent_requests = max(1, concurrent_requests)  # Ensure >= 1
 
     @property
     def summary(self) -> RunContext:
@@ -151,21 +153,61 @@ class BronzeService:
 
         return str(Folders.duckdb_absolute_path)
 
+    def _process_requests_concurrent(self, requests: list[RunRequest]) -> None:
+        """Process requests concurrently using ThreadPoolExecutor.
+
+        Args:
+            requests: List of RunRequest objects to process in parallel
+
+        Note:
+            - Uses self.concurrent_requests for worker pool size
+            - Shares RunRequestExecutor for throttling across all workers
+            - Thread-safe RunContext updates via locks
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        with ThreadPoolExecutor(max_workers=self.concurrent_requests) as executor:
+            # Submit all requests to thread pool
+            futures = {executor.submit(self._process_run_request, req): req for req in requests}
+
+            # Process results as they complete
+            for future in as_completed(futures):
+                request = futures[future]
+                try:
+                    future.result()  # Raise any exceptions from worker
+                except Exception as exc:
+                    # Already logged in _process_run_request, just log at executor level
+                    self.logger.error(f"Worker exception for {request.msg}: {exc}", run_id=self.run.run_id)
+
     def _process_dataset_recipe(self, recipe: DatasetRecipe):
         """Process a recipe for each ticker, or once if not ticker-based."""
         if recipe.is_ticker_based:
-            for ticker in self.run.tickers:
-                self._process_run_request(
-                    RunRequest.from_recipe(
-                        recipe=recipe,
-                        run_id=self.run.run_id,
-                        from_date=self.universe.from_date,
-                        today=self.run.today,
-                        api_key=self.fmp_api_key,
-                        ticker=ticker,
-                    )
+            # Build all requests upfront
+            requests = [
+                RunRequest.from_recipe(
+                    recipe=recipe,
+                    run_id=self.run.run_id,
+                    from_date=self.universe.from_date,
+                    today=self.run.today,
+                    api_key=self.fmp_api_key,
+                    ticker=ticker,
                 )
+                for ticker in self.run.tickers
+            ]
+
+            # Dispatch based on concurrency mode
+            if self.concurrent_requests > 1:
+                self.logger.info(
+                    f"Processing {len(requests)} requests concurrently (workers={self.concurrent_requests})",
+                    run_id=self.run.run_id,
+                )
+                self._process_requests_concurrent(requests)
+            else:
+                # Sequential mode (current behavior)
+                for request in requests:
+                    self._process_run_request(request)
         else:
+            # Non-ticker recipes always sequential (single request)
             self._process_run_request(
                 RunRequest.from_recipe(
                     recipe=recipe,

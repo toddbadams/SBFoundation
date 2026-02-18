@@ -317,7 +317,7 @@ Edit `api.py`'s `__main__` block and configure the `RunCommand` for the domain o
 ```python
 command = RunCommand(
     domain=MARKET_DOMAIN,           # Choose domain: MARKET, INSTRUMENT, COMPANY, etc.
-    concurent_requests=1,           # Set to 1 for synchronous debugging
+    concurrent_requests=1,           # Set to 1 for synchronous debugging, 10+ for concurrent mode
     enable_bronze=True,             # True to fetch from APIs
     enable_silver=False,            # False to inspect Bronze only (skip Silver promotion)
     ticker_limit=3,                 # Process only 3 tickers

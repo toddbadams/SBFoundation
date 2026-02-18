@@ -54,8 +54,9 @@ class RunRequestExecutor:
                 sleep_for = THROTTLE_PERIOD_SECONDS - (now - self.call_timestamps[0])
             if sleep_for > 0:
                 if self.summary is not None:
-                    self.summary.throttle_wait_count += 1
-                    self.summary.throttle_sleep_seconds += sleep_for
+                    with self.summary._lock:
+                        self.summary.throttle_wait_count += 1
+                        self.summary.throttle_sleep_seconds += sleep_for
                 self.logger.debug(f"Throttle sleeping | {sleep_for}")
                 time.sleep(sleep_for)
             else:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import threading
 from typing import Iterator
 
 import duckdb
@@ -77,6 +78,7 @@ class DuckDbBootstrap:
         self._conn = conn or duckdb.connect(duckdb_path / DUCKDB_FILENAME)
         self._owns_connection = conn is None
         self._schema_initialized = False
+        self._conn_lock = threading.Lock()  # Protect connection for concurrent writes
 
     def connect(self) -> duckdb.DuckDBPyConnection:
         """Get the database connection, initializing schema on first call.
@@ -134,14 +136,21 @@ class DuckDbBootstrap:
 
     @contextmanager
     def transaction(self) -> Iterator[duckdb.DuckDBPyConnection]:
-        conn = self.connect()
-        conn.execute("BEGIN")
-        try:
-            yield conn
-            conn.execute("COMMIT")
-        except Exception:
-            conn.execute("ROLLBACK")
-            raise
+        """Execute a transaction with thread-safe connection locking.
+
+        DuckDB connections are not thread-safe, so we serialize access
+        to the connection using a lock. This ensures concurrent Bronze
+        workers can safely write to ops.file_ingestions.
+        """
+        with self._conn_lock:
+            conn = self.connect()
+            conn.execute("BEGIN")
+            try:
+                yield conn
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
 
     @contextmanager
     def ops_transaction(self) -> Iterator[duckdb.DuckDBPyConnection]:

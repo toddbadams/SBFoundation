@@ -96,3 +96,53 @@ def test_process_run_request_persists_success() -> None:
     assert len(service.result_file_adapter.results) == 1
     assert len(service.ops_service.inserted) == 1
     assert executor.calls == 1
+
+
+def test_concurrent_mode_processes_all_requests() -> None:
+    """Test that concurrent mode processes all requests correctly."""
+    executor = _StubExecutor(response=_FakeResponse())
+    service = BronzeService(
+        result_file_adapter=_StubResultAdapter(),
+        request_executor=executor,
+        ops_service=_StubOpsService(),
+        concurrent_requests=5,  # Enable concurrent mode
+    )
+    summary = make_run_context(tickers=["AAPL", "MSFT", "GOOGL", "TSLA", "NVDA"])
+    service.run = summary
+
+    # Create multiple requests
+    requests = [make_run_request(overrides={"ticker": ticker}) for ticker in summary.tickers]
+
+    # Process concurrently
+    service._process_requests_concurrent(requests)
+
+    # Verify all requests were processed
+    assert summary.bronze_files_passed == len(requests)
+    assert len(service.result_file_adapter.results) == len(requests)
+    assert len(service.ops_service.inserted) == len(requests)
+    assert executor.calls == len(requests)
+
+
+def test_sync_mode_when_concurrent_requests_is_one() -> None:
+    """Test that concurrent_requests=1 uses sequential processing."""
+    from tests.unit.helpers import make_dataset_recipe
+
+    executor = _StubExecutor(response=_FakeResponse())
+    service = BronzeService(
+        result_file_adapter=_StubResultAdapter(),
+        request_executor=executor,
+        ops_service=_StubOpsService(),
+        concurrent_requests=1,  # Synchronous mode
+    )
+    summary = make_run_context(tickers=["AAPL", "MSFT"])
+    service.run = summary
+
+    # Create recipe
+    recipe = make_dataset_recipe(is_ticker_based=True)
+
+    # Process dataset recipe (will dispatch to sync or concurrent based on concurrent_requests)
+    service._process_dataset_recipe(recipe)
+
+    # Verify all requests were processed (sequential mode)
+    assert summary.bronze_files_passed == len(summary.tickers)
+    assert executor.calls == len(summary.tickers)

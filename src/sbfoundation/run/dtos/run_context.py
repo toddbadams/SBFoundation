@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
+import threading
 import typing
 
 from sbfoundation.dtos.bronze_to_silver_dto import BronzeToSilverDTO
@@ -31,6 +32,9 @@ class RunContext(BronzeToSilverDTO):
     bronze_injest_items: list[BronzeInjestItem] = field(default_factory=list)
     silver_injest_items: list[SilverInjestItem] = field(default_factory=list)
 
+    # Thread synchronization for concurrent Bronze requests
+    _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False, compare=False)
+
     @property
     def elapsed_seconds(self) -> float:
         return round((self.finished_at - self.started_at).total_seconds(), 2)
@@ -58,7 +62,6 @@ class RunContext(BronzeToSilverDTO):
         return f"{hours}h {minutes}m {seconds}s"
 
     def result_bronze_error(self, result: BronzeResult, e: str, filename: str | None = None) -> BronzeInjestItem:
-        self.bronze_files_failed += 1
         filename = filename or result.request.bronze_absolute_filename
         item = BronzeInjestItem(
             domain=result.request.recipe.domain,
@@ -72,11 +75,12 @@ class RunContext(BronzeToSilverDTO):
             status="failed",
             error=result.error,
         )
-        self.bronze_injest_items.append(item)
+        with self._lock:
+            self.bronze_files_failed += 1
+            self.bronze_injest_items.append(item)
         return item
 
     def result_bronze_pass(self, result: BronzeResult, filename: str | None = None) -> BronzeInjestItem:
-        self.bronze_files_passed += 1
         filename = filename or result.request.bronze_absolute_filename
         item = BronzeInjestItem(
             domain=result.request.recipe.domain,
@@ -90,7 +94,9 @@ class RunContext(BronzeToSilverDTO):
             status="passed",
             error=result.error,
         )
-        self.bronze_injest_items.append(item)
+        with self._lock:
+            self.bronze_files_passed += 1
+            self.bronze_injest_items.append(item)
         return item
 
     def result_silver_pass(self, result: BronzeResult, dto: BronzeToSilverDTO) -> SilverInjestItem:
@@ -106,11 +112,11 @@ class RunContext(BronzeToSilverDTO):
             dto_type=repr(type(dto)),
             error=None,
         )
-        self.silver_injest_items.append(item)
+        with self._lock:
+            self.silver_injest_items.append(item)
         return item
 
     def result_silver_error(self, result: BronzeResult, e: str) -> SilverInjestItem:
-        self.silver_failed_count += 1
         silver_date = result.last_date or result.request.to_date
         item = SilverInjestItem(
             domain=result.request.recipe.domain,
@@ -124,7 +130,9 @@ class RunContext(BronzeToSilverDTO):
             dto_type=repr(result.request.dto_type),
             error=result.error,
         )
-        self.silver_injest_items.append(item)
+        with self._lock:
+            self.silver_failed_count += 1
+            self.silver_injest_items.append(item)
         return item
 
     def resolve_status(self) -> str:

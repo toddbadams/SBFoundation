@@ -32,7 +32,7 @@ class RunCommand:
 
     domain: str  # Allows running a specific data category
 
-    concurent_requests: int  # the max number of concurrent requests, set to 1 to debug in sync mode
+    concurrent_requests: int  # Max concurrent workers for Bronze requests. Set to 1 for sync/debug mode.
     enable_bronze: bool  # True to load source APIs into json files, else logs a dry run of requests
     enable_silver: bool  # True promotes loaded bronze json files into silver database
     ticker_limit: int = 0  # Max tickers to process
@@ -71,6 +71,7 @@ class SBFoundationAPI:
             self._recovery_service.recover()
 
         self._enable_silver = command.enable_silver
+        self._concurrent_requests = command.concurrent_requests
         run = self._start_run(command)
         domain = command.domain
         if domain == INSTRUMENT_DOMAIN:
@@ -629,7 +630,10 @@ class SBFoundationAPI:
         if not recipes:
             return run
 
-        bronze_service = BronzeService(ops_service=self.ops_service)
+        bronze_service = BronzeService(
+            ops_service=self.ops_service,
+            concurrent_requests=self._concurrent_requests,
+        )
         try:
             return bronze_service.register_recipes(run, recipes).process(run)
         except Exception as exc:
@@ -660,11 +664,11 @@ class SBFoundationAPI:
 
 if __name__ == "__main__":
     command = RunCommand(
-        domain=CRYPTO_DOMAIN,
-        concurent_requests=1,
+        domain=COMMODITIES_DOMAIN,
+        concurrent_requests=1,  # Default: 10 workers for optimal throughput
         enable_bronze=True,
         enable_silver=True,
-        ticker_limit=100,
+        ticker_limit=10,
         ticker_recipe_chunk_size=10,
     )
     result = SBFoundationAPI(today=date.today().isoformat()).run(command)

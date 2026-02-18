@@ -20,10 +20,11 @@ class CryptocurrencyListDTO(BronzeToSilverDTO):
     KEY_COLS = ["symbol"]
 
     symbol: str = field(default="_none_", metadata={"api": "symbol"})
-    company_name: str | None = field(default=None, metadata={"api": "name"})
-    currency: str | None = field(default=None, metadata={"api": "currency"})
-    stock_exchange: str | None = field(default=None, metadata={"api": "stockExchange"})
-    exchange_short_name: str | None = field(default=None, metadata={"api": "exchangeShortName"})
+    name: str | None = field(default=None, metadata={"api": "name"})
+    exchange: str | None = field(default=None, metadata={"api": "exchange"})
+    circulating_supply: float | None = field(default=None, metadata={"api": "circulatingSupply"})
+    total_supply: float | None = field(default=None, metadata={"api": "totalSupply"})
+    ico_date: str | None = field(default=None, metadata={"api": "icoDate"})
 
     @property
     def key_date(self) -> date:

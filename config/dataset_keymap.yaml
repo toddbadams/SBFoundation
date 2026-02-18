@@ -8634,10 +8634,10 @@ datasets:
     - name: currency
       type: str
       nullable: true
-    - name: stock_exchange
+    - name: exchange
       type: str
       nullable: true
-    - name: exchange_short_name
+    - name: trade_month
       type: str
       nullable: true
 
@@ -8697,7 +8697,7 @@ datasets:
     - name: volume
       type: int
       nullable: true
-    - name: adj_close
+    - name: vwap
       type: float
       nullable: true
     - name: change
@@ -8744,16 +8744,19 @@ datasets:
     - name: symbol
       type: str
       nullable: false
-    - name: company_name
+    - name: name
       type: str
       nullable: true
-    - name: currency
+    - name: exchange
       type: str
       nullable: true
-    - name: stock_exchange
-      type: str
+    - name: circulating_supply
+      type: float
       nullable: true
-    - name: exchange_short_name
+    - name: total_supply
+      type: float
+      nullable: true
+    - name: ico_date
       type: str
       nullable: true
 
@@ -8813,7 +8816,7 @@ datasets:
     - name: volume
       type: int
       nullable: true
-    - name: adj_close
+    - name: vwap
       type: float
       nullable: true
     - name: change
@@ -8855,27 +8858,21 @@ datasets:
     - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#forex-list
   dto_schema:
-    dto_type: sbfoundation.dtos.instrument.forex_list_dto.ForexListDTO
+    dto_type: sbfoundation.dtos.fx.fx_list_dto.FxListDTO
     columns:
     - name: symbol
       type: str
       nullable: false
-    - name: company_name
+    - name: from_currency
       type: str
       nullable: true
-    - name: currency
+    - name: from_name
       type: str
       nullable: true
-    - name: stock_exchange
+    - name: to_currency
       type: str
       nullable: true
-    - name: exchange_short_name
-      type: str
-      nullable: true
-    - name: base_currency
-      type: str
-      nullable: true
-    - name: quote_currency
+    - name: to_name
       type: str
       nullable: true
 
@@ -8935,7 +8932,7 @@ datasets:
     - name: volume
       type: int
       nullable: true
-    - name: adj_close
+    - name: vwap
       type: float
       nullable: true
     - name: change

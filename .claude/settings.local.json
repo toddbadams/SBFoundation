@@ -39,7 +39,9 @@
       "WebFetch(domain:thinh-vu.github.io)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(curl:*)",
-      "Bash(/c/sb/SBFoundation/config/dataset_keymap.yaml:*)"
+      "Bash(/c/sb/SBFoundation/config/dataset_keymap.yaml:*)",
+      "Bash(cmd /c \"dir C:\\\\sb\\\\SBFoundation\\\\data 2>&1\")",
+      "Bash(cmd /c \"dir /b C:\\\\sb\\\\SBFoundation\\\\data\"\")"
     ]
   }
 }

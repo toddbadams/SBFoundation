@@ -171,6 +171,39 @@ class DuckDbOpsRepo:
             row = conn.execute(sql, [domain, source, dataset, discriminator_token, ticker_token]).fetchone()
         return row[0] if row else None
 
+    def get_latest_silver_to_date_for_dataset(
+        self,
+        *,
+        domain: str,
+        source: str,
+        dataset: str,
+    ) -> datetime.date | None:
+        """Return the MAX silver_to_date for a dataset across all discriminators and tickers.
+
+        Used by date-loop ingestion (e.g. market-sector-performance) where each calendar
+        day is stored under its own discriminator.  Filtering by discriminator would never
+        match, so we intentionally ignore it here.
+        """
+        sql = (
+            "SELECT MAX(silver_to_date) FROM ops.file_ingestions "
+            "WHERE domain = ? AND source = ? AND dataset = ? "
+            "AND silver_to_date IS NOT NULL"
+        )
+        with self._bootstrap.read_connection() as conn:
+            row = conn.execute(sql, [domain, source, dataset]).fetchone()
+        return row[0] if row else None
+
+    def get_tickers_with_bronze_error(self, *, dataset: str, error_contains: str) -> set[str]:
+        """Return distinct tickers that have a bronze_error containing the given substring."""
+        sql = (
+            "SELECT DISTINCT ticker FROM ops.file_ingestions "
+            "WHERE dataset = ? AND bronze_error IS NOT NULL "
+            "AND bronze_error LIKE ? AND ticker IS NOT NULL"
+        )
+        with self._bootstrap.read_connection() as conn:
+            rows = conn.execute(sql, [dataset, f"%{error_contains}%"]).fetchall()
+        return {row[0] for row in rows if row[0]}
+
     def load_input_watermarks(self, conn: duckdb.DuckDBPyConnection, *, datasets: set[str]) -> list[str]:
         params: list[object] = []
         where = ""

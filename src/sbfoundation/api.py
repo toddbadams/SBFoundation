@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import date, timedelta
+import copy
+import os
 import traceback
 
 from sbfoundation.dataset.models.dataset_recipe import DatasetRecipe
@@ -9,6 +11,7 @@ from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbfoundation.ops.services.ops_service import OpsService
 from sbfoundation.recovery.bronze_recovery_service import BronzeRecoveryService
 from sbfoundation.run.dtos.run_context import RunContext
+from sbfoundation.run.dtos.run_request import RunRequest
 from sbfoundation.run.services.orchestration_ticker_chunk_service import OrchestrationTickerChunkService
 from sbfoundation.services.bronze.bronze_service import BronzeService
 from sbfoundation.services.silver.silver_service import SilverService
@@ -61,6 +64,7 @@ class SBFoundationAPI:
         self._universe_service = universe_service or UniverseService()
         self._recovery_service = recovery_service or BronzeRecoveryService()
         self._today = today or self._universe_service.today().isoformat()
+        self._fmp_api_key = os.getenv("FMP_API_KEY")
 
     def run(self, command: RunCommand) -> RunContext:
         """
@@ -199,22 +203,28 @@ class SBFoundationAPI:
         return run
 
     def _run_market_date_loop(self, dataset_names: list[str], command: RunCommand, run: RunContext) -> RunContext:
-        """Fetch date-snapshot market datasets for each weekday from watermark to today."""
+        """Fetch date-snapshot market datasets for each weekday from watermark to today.
+
+        Collects ALL (date × recipe) requests upfront then dispatches them as a single
+        concurrent batch, honouring concurrent_requests workers instead of running
+        sequentially per calendar day.
+        """
         recipes = [r for r in self._dataset_service.recipes if r.domain == MARKET_DOMAIN and r.dataset in dataset_names]
         if not recipes:
-            self.logger.warning(f"No recipes found for {self._string_list_msg(dataset_names, "datasets")}", run_id=run.run_id)
+            self.logger.warning(f"No recipes found for {self._string_list_msg(dataset_names, 'datasets')}", run_id=run.run_id)
             return run
 
-        # Determine the earliest watermark across datasets (start from date if no watermark)
+        # Determine the earliest watermark across datasets (start from default if no watermark).
+        # Each calendar-date snapshot is stored under its own discriminator (e.g. "2013-01-01"),
+        # so we must query MAX(silver_to_date) across ALL discriminators for the dataset rather
+        # than filtering by discriminator="" which would never match.
         default_start = date(2013, 1, 1)
         watermarks: list[date] = []
         for dataset_name in dataset_names:
-            w = self.ops_service.get_silver_watermark(
+            w = self.ops_service.get_silver_watermark_for_dataset(
                 domain=MARKET_DOMAIN,
                 source=FMP_DATA_SOURCE,
                 dataset=dataset_name,
-                discriminator="",
-                ticker="",
             )
             watermarks.append(w if w else default_start)
 
@@ -222,17 +232,39 @@ class SBFoundationAPI:
         today = date.fromisoformat(self._today)
         market_days = self._market_weekdays(from_date, today)
 
-        for snapshot_date_val in market_days:
-            snapshot_str = snapshot_date_val.isoformat()
-            self.logger.info(
-                f"{self._processing_msg(command.enable_bronze, "BRONZE")} {len(recipes)} datasets: {", ".join(dataset_names)} | date: {snapshot_str}",
-                run_id=run.run_id,
+        self.logger.info(
+            f"Date-loop: {len(market_days)} market days × {len(recipes)} datasets = "
+            f"{len(market_days) * len(recipes)} requests | workers={self._concurrent_requests}",
+            run_id=run.run_id,
+        )
+
+        if command.enable_bronze and market_days:
+            # Collect ALL requests across every (date × recipe) combination upfront so the
+            # full batch can be dispatched concurrently rather than one date at a time.
+            all_requests: list[RunRequest] = []
+            for snapshot_date_val in market_days:
+                snapshot_str = snapshot_date_val.isoformat()
+                for r in recipes:
+                    patched = copy.copy(r)
+                    patched.query_vars = {k: snapshot_str if v == DATE_PLACEHOLDER else v for k, v in (r.query_vars or {}).items()}
+                    patched.discriminator = snapshot_str
+                    all_requests.append(
+                        RunRequest.from_recipe(
+                            recipe=patched,
+                            run_id=run.run_id,
+                            from_date=self._universe_service.from_date,
+                            today=run.today,
+                            api_key=self._fmp_api_key,
+                        )
+                    )
+
+            bronze_service = BronzeService(
+                ops_service=self.ops_service,
+                concurrent_requests=self._concurrent_requests,
             )
-            if command.enable_bronze:
-                run = self._process_recipe_list_with_snapshot(recipes, run, snapshot_date=snapshot_str)
+            run = bronze_service.execute_requests(all_requests, run)
 
         run = self._promote_silver(run, MARKET_DOMAIN)
-
         return run
 
     def _run_market_holidays(self, command: RunCommand, run: RunContext) -> RunContext:
@@ -269,14 +301,13 @@ class SBFoundationAPI:
         """Query silver.fmp_market_exchanges for exchange codes."""
         try:
             bootstrap = DuckDbBootstrap(logger=self.logger)
-            conn = bootstrap.connect()
-            exists = conn.execute(
-                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'silver' AND table_name = 'fmp_market_exchanges'"
-            ).fetchone()
-            if not exists or exists[0] == 0:
-                bootstrap.close()
-                return []
-            rows = conn.execute("SELECT exchange FROM silver.fmp_market_exchanges").fetchall()
+            with bootstrap.read_connection() as conn:
+                exists = conn.execute(
+                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'silver' AND table_name = 'fmp_market_exchanges'"
+                ).fetchone()
+                if not exists or exists[0] == 0:
+                    return []
+                rows = conn.execute("SELECT exchange FROM silver.fmp_market_exchanges").fetchall()
             bootstrap.close()
             return [row[0] for row in rows if row[0]]
         except Exception as exc:
@@ -295,27 +326,19 @@ class SBFoundationAPI:
             List of symbol strings, or None if no symbols found
         """
         try:
-            # Query silver table for symbols
             table_name = f"silver.fmp_{dataset.replace('-', '_')}"
             bootstrap = DuckDbBootstrap(logger=self.logger)
-            conn = bootstrap.connect()
-
-            # Check if table exists
-            exists = conn.execute(
-                f"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'silver' AND table_name = 'fmp_{dataset.replace('-', '_')}'"
-            ).fetchone()
-            if not exists or exists[0] == 0:
-                self.logger.warning(f"Table {table_name} does not exist")
-                bootstrap.close()
-                return None
-
-            # Query for symbols
-            query = f"SELECT DISTINCT {symbol_col} FROM {table_name} WHERE {symbol_col} IS NOT NULL"
-            result = conn.execute(query).fetchall()
+            with bootstrap.read_connection() as conn:
+                exists = conn.execute(
+                    f"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'silver' AND table_name = 'fmp_{dataset.replace('-', '_')}'"
+                ).fetchone()
+                if not exists or exists[0] == 0:
+                    self.logger.warning(f"Table {table_name} does not exist")
+                    return None
+                result = conn.execute(f"SELECT DISTINCT {symbol_col} FROM {table_name} WHERE {symbol_col} IS NOT NULL").fetchall()
             bootstrap.close()
 
             symbols = [row[0] for row in result if row[0]]
-
             if symbols:
                 self.logger.info(f"Retrieved {len(symbols)} symbols from {table_name}")
                 return symbols
@@ -714,7 +737,7 @@ class SBFoundationAPI:
 
 if __name__ == "__main__":
     command = RunCommand(
-        domain=MARKET_DOMAIN,
+        domain=CRYPTO_DOMAIN,
         concurrent_requests=10,  # Default: 10 workers for optimal throughput
         enable_bronze=True,
         enable_silver=True,

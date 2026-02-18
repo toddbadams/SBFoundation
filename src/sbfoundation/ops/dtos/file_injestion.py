@@ -42,6 +42,7 @@ class DatasetInjestion:
     silver_injest_end_time: datetime | None = None
     silver_can_promote: bool | None = None
 
+
     @property
     def msg(self) -> str:
         return "| ".join(

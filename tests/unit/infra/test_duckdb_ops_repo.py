@@ -20,6 +20,10 @@ class _StubBootstrap:
     def ops_transaction(self) -> duckdb.DuckDBPyConnection:
         yield self.conn
 
+    @contextmanager
+    def read_connection(self) -> duckdb.DuckDBPyConnection:
+        yield self.conn
+
 
 def _create_connection() -> duckdb.DuckDBPyConnection:
     conn = duckdb.connect(database=":memory:")
@@ -53,18 +57,7 @@ def _create_connection() -> duckdb.DuckDBPyConnection:
             silver_to_date DATE,
             silver_injest_start_time TIMESTAMP,
             silver_injest_end_time TIMESTAMP,
-            silver_can_promote BOOLEAN,
-            gold_object_type VARCHAR,
-            gold_tablename VARCHAR,
-            gold_errors VARCHAR,
-            gold_rows_created INTEGER,
-            gold_rows_updated INTEGER,
-            gold_rows_failed INTEGER,
-            gold_from_date DATE,
-            gold_to_date DATE,
-            gold_injest_start_time TIMESTAMP,
-            gold_injest_end_time TIMESTAMP,
-            gold_can_promote BOOLEAN
+            silver_can_promote BOOLEAN
         )
         """
     )

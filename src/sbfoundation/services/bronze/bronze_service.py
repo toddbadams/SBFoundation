@@ -179,6 +179,31 @@ class BronzeService:
                     # Already logged in _process_run_request, just log at executor level
                     self.logger.error(f"Worker exception for {request.msg}: {exc}", run_id=self.run.run_id)
 
+    def execute_requests(self, requests: list[RunRequest], run: RunContext) -> RunContext:
+        """Dispatch a pre-built flat list of RunRequests concurrently or sequentially.
+
+        Used for non-ticker request batches (e.g., market date-loop snapshots across
+        all dates × datasets) where concurrency must be applied at a higher level than
+        individual recipes.
+        """
+        self.run = run
+        self.request_executor.set_summary(self.run)
+
+        if self.concurrent_requests > 1 and len(requests) > 1:
+            self.logger.info(
+                f"Dispatching {len(requests)} requests concurrently (workers={self.concurrent_requests})",
+                run_id=run.run_id,
+            )
+            self._process_requests_concurrent(requests)
+        else:
+            for req in requests:
+                self._process_run_request(req)
+
+        if self._owns_ops_service:
+            self.ops_service.close()
+
+        return self.run
+
     def _process_dataset_recipe(self, recipe: DatasetRecipe):
         """Process a recipe for each ticker, or once if not ticker-based."""
         if recipe.is_ticker_based:

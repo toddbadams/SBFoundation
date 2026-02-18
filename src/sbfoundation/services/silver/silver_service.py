@@ -7,6 +7,7 @@ import duckdb
 import pandas as pd
 
 from sbfoundation.dtos.bronze_to_silver_dto import BronzeToSilverDTO
+from sbfoundation.dtos.dto_registry import DTO_REGISTRY
 from sbfoundation.run.dtos.run_context import RunContext
 from sbfoundation.run.dtos.bronze_result import BronzeResult
 from sbfoundation.folders import Folders

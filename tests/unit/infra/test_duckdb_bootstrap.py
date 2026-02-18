@@ -58,5 +58,3 @@ def test_transaction_commits_and_rolls_back(patch_folders) -> None:
         assert tx is conn
     with bootstrap.silver_transaction() as tx:
         assert tx is conn
-    with bootstrap.gold_transaction() as tx:
-        assert tx is conn

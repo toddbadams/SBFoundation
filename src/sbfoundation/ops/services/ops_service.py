@@ -155,33 +155,35 @@ class OpsService:
             ticker=ticker,
         )
 
+    def get_silver_watermark_for_dataset(
+        self,
+        *,
+        domain: str,
+        source: str,
+        dataset: str,
+    ) -> date | None:
+        """Return the latest silver_to_date across all discriminators for a dataset.
+
+        Use this instead of get_silver_watermark when each row of the date loop is
+        stored under its own discriminator (e.g. market-sector-performance stores one
+        discriminator per calendar day).  Filtering by discriminator=''" would never
+        match those records, so this method intentionally omits that filter.
+        """
+        return self._ops_repo.get_latest_silver_to_date_for_dataset(
+            domain=domain,
+            source=source,
+            dataset=dataset,
+        )
+
     def load_input_watermarks(self, conn: duckdb.DuckDBPyConnection, *, datasets: set[str]) -> list[str]:
         return self._ops_repo.load_input_watermarks(conn, datasets=datasets)
 
     def get_tickers_with_bronze_error(self, *, dataset: str, error_contains: str) -> set[str]:
-        """Get distinct tickers that have a bronze_error containing the specified string.
-
-        Args:
-            dataset: The dataset name to filter by (e.g., "company-profile")
-            error_contains: The substring to search for in bronze_error (e.g., "INVALID TICKER")
-
-        Returns:
-            Set of ticker symbols that have the specified error
-        """
+        """Get distinct tickers that have a bronze_error containing the specified string."""
         try:
-            with self._bootstrap.ops_transaction() as conn:
-                result = conn.execute(
-                    """
-                    SELECT DISTINCT ticker
-                    FROM ops.file_ingestions
-                    WHERE dataset = ?
-                      AND bronze_error IS NOT NULL
-                      AND bronze_error LIKE ?
-                      AND ticker IS NOT NULL
-                    """,
-                    [dataset, f"%{error_contains}%"],
-                ).fetchall()
-                return {row[0] for row in result if row[0]}
+            return self._ops_repo.get_tickers_with_bronze_error(
+                dataset=dataset, error_contains=error_contains
+            )
         except Exception as exc:
             self._logger.warning("Failed to get tickers with bronze error: %s", exc)
             return set()

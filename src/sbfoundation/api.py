@@ -653,7 +653,9 @@ class SBFoundationAPI:
         self.logger.info(f"Completed domain processing for: {domain}", run_id=run.run_id)
         return run
 
-    def _process_ticker_recipes(self, recipes: list[DatasetRecipe], command: RunCommand, run: RunContext, label: str, domain: str | None = None) -> RunContext:
+    def _process_ticker_recipes(
+        self, recipes: list[DatasetRecipe], command: RunCommand, run: RunContext, label: str, domain: str | None = None
+    ) -> RunContext:
         """Process ticker-based recipes using chunking for bronze → silver."""
         if not recipes:
             return run
@@ -712,7 +714,7 @@ class SBFoundationAPI:
 
 if __name__ == "__main__":
     command = RunCommand(
-        domain=FX_DOMAIN,
+        domain=MARKET_DOMAIN,
         concurrent_requests=10,  # Default: 10 workers for optimal throughput
         enable_bronze=True,
         enable_silver=True,

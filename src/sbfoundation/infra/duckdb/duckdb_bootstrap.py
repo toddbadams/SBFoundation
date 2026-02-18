@@ -153,6 +153,18 @@ class DuckDbBootstrap:
                 raise
 
     @contextmanager
+    def read_connection(self) -> Iterator[duckdb.DuckDBPyConnection]:
+        """Acquire the connection lock for a read-only query.
+
+        DuckDB in-process connections are not thread-safe, so all access—reads
+        and writes—must be serialized through the same lock to prevent
+        'Invalid Input Error: Attempting to execute an unsuccessful or closed
+        pending query result' errors under concurrent workers.
+        """
+        with self._conn_lock:
+            yield self.connect()
+
+    @contextmanager
     def ops_transaction(self) -> Iterator[duckdb.DuckDBPyConnection]:
         with self.transaction() as conn:
             yield conn

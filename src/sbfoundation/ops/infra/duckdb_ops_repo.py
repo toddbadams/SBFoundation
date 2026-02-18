@@ -110,14 +110,8 @@ class DuckDbOpsRepo:
             "WHERE domain = ? AND source = ? AND dataset = ? "
             "AND COALESCE(discriminator, '') = ? AND COALESCE(ticker, '') = ?"
         )
-        row = (
-            self._bootstrap.connect()
-            .execute(
-                sql,
-                [domain, source, dataset, discriminator_token, ticker_token],
-            )
-            .fetchone()
-        )
+        with self._bootstrap.read_connection() as conn:
+            row = conn.execute(sql, [domain, source, dataset, discriminator_token, ticker_token]).fetchone()
         return row[0] if row else None
 
     def get_latest_bronze_ingestion_time(
@@ -138,14 +132,8 @@ class DuckDbOpsRepo:
             "AND COALESCE(discriminator, '') = ? AND COALESCE(ticker, '') = ? "
             "AND bronze_error IS NULL"
         )
-        row = (
-            self._bootstrap.connect()
-            .execute(
-                sql,
-                [domain, source, dataset, discriminator_token, ticker_token],
-            )
-            .fetchone()
-        )
+        with self._bootstrap.read_connection() as conn:
+            row = conn.execute(sql, [domain, source, dataset, discriminator_token, ticker_token]).fetchone()
         return row[0] if row else None
 
     def list_promotable_file_ingestions(self) -> list[DatasetInjestion]:
@@ -158,10 +146,10 @@ class DuckDbOpsRepo:
         return [DatasetInjestion.from_row(row) for row in rows]
 
     def _fetch_dicts(self, sql: str, params: list[Any]) -> list[dict[str, Any]]:
-        conn = self._bootstrap.connect()
-        cursor = conn.execute(sql, params)
-        cols = [desc[0] for desc in cursor.description] if cursor.description else []
-        return [dict(zip(cols, row)) for row in cursor.fetchall()]
+        with self._bootstrap.read_connection() as conn:
+            cursor = conn.execute(sql, params)
+            cols = [desc[0] for desc in cursor.description] if cursor.description else []
+            return [dict(zip(cols, row)) for row in cursor.fetchall()]
 
     def get_latest_silver_to_date(
         self,
@@ -179,14 +167,8 @@ class DuckDbOpsRepo:
             "WHERE domain = ? AND source = ? AND dataset = ? "
             "AND COALESCE(discriminator, '') = ? AND COALESCE(ticker, '') = ?"
         )
-        row = (
-            self._bootstrap.connect()
-            .execute(
-                sql,
-                [domain, source, dataset, discriminator_token, ticker_token],
-            )
-            .fetchone()
-        )
+        with self._bootstrap.read_connection() as conn:
+            row = conn.execute(sql, [domain, source, dataset, discriminator_token, ticker_token]).fetchone()
         return row[0] if row else None
 
     def load_input_watermarks(self, conn: duckdb.DuckDBPyConnection, *, datasets: set[str]) -> list[str]:

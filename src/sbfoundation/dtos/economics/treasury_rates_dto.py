@@ -15,9 +15,8 @@ class TreasuryRatesDTO(BronzeToSilverDTO):
     API docs: https://site.financialmodelingprep.com/developer/docs#treasury-rates
     """
 
-    KEY_COLS = ["ticker"]
+    KEY_COLS = ["date"]
 
-    ticker: str = field(default="_none_", metadata={"api": "ticker"})
     date: str | None = field(default=None, metadata={"api": "date"})
     month1: float | None = field(default=None, metadata={"api": "month1"})
     month2: float | None = field(default=None, metadata={"api": "month2"})

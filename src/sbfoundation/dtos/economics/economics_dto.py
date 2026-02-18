@@ -15,9 +15,8 @@ class EconomicsDTO(BronzeToSilverDTO):
     API docs: https://site.financialmodelingprep.com/developer/docs#economics-indicators
     """
 
-    KEY_COLS = ["ticker"]
+    KEY_COLS = ["date"]
 
-    ticker: str = field(default="_none_", metadata={"api": "ticker"})
     name: str = field(default="", metadata={"api": "name"})
     date: str | None = field(default=None, metadata={"api": "date"})
     value: float | None = field(default=None, metadata={"api": "value"})

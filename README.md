@@ -112,7 +112,7 @@ The defaults (`DATA_ROOT_FOLDER=c:/sb/SBFoundation/data`, `REPO_ROOT_FOLDER=c:/s
 | Testing | pytest `^9`, pytest-httpserver, freezegun, pandera |
 | Code quality | Black (line-length 150), isort (Black profile), flake8, mypy |
 | Primary data source | Financial Modeling Prep (FMP) via REST |
-| Planned / future | Alpha Vantage, Alpaca (simulation), Charles Schwab (live execution) |
+| Planned / future | Alpha Vantage, FRED, BIS |
 | Orchestration | Prefect OSS (nightly batch; not in this package) |
 | UI | Streamlit + streamlit-echarts + Altair (separate package) |
 | Deployment | Docker Compose; used for PROD deploy |
@@ -343,6 +343,213 @@ con.execute("SELECT * FROM silver.fmp_company_profile LIMIT 5").fetchdf()
 ### Logs
 
 Plain-text logs are written to `$DATA_ROOT_FOLDER/logs/`. Each log line carries the `run_id` for correlation.
+
+---
+
+## Economics Data
+
+The Economics domain provides macroeconomic indicators, treasury rates, and market risk premium data for top-down economic analysis and risk assessment.
+
+**Load Order:** Economics data is loaded after instrument data in the domain execution sequence.
+
+### Datasets
+
+#### 1. treasury-rates
+- **Purpose:** Daily U.S. Treasury rates across the yield curve (1-month to 30-year maturities)
+- **Scope:** Global (non-ticker-based)
+- **Refresh:** Daily (min_age_days: 1)
+- **Silver Table:** `silver.fmp_treasury_rates`
+- **Key Columns:** `date`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/treasury-rates?from=__from__&to=__to__`
+- **Documentation:** [FMP Treasury Rates](https://site.financialmodelingprep.com/developer/docs#treasury-rates)
+- **Use Case:** Risk-free rate analysis, yield curve modeling, interest rate tracking
+
+#### 2. market-risk-premium
+- **Purpose:** Historical market risk premium for CAPM calculations
+- **Scope:** Global (non-ticker-based)
+- **Refresh:** Yearly (min_age_days: 365)
+- **Silver Table:** `silver.fmp_market_risk_premium`
+- **Key Columns:** `country`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/market-risk-premium`
+- **Documentation:** [FMP Market Risk Premium](https://site.financialmodelingprep.com/developer/docs#market-risk-premium)
+- **Use Case:** Equity risk modeling, expected return calculations
+
+#### 3. economic-indicators (27 indicators)
+- **Purpose:** U.S. macroeconomic time series data
+- **Scope:** Global (non-ticker-based)
+- **Refresh:** Varies by indicator (daily to monthly)
+- **Silver Table:** `silver.fmp_economic_indicators`
+- **Key Columns:** `ticker`, `date`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/economic-indicator/{indicator}?from=__from__&to=__to__`
+- **Documentation:** [FMP Economic Indicators](https://site.financialmodelingprep.com/developer/docs#economic-indicators)
+
+**Available Indicators:**
+- **GDP & Growth:** GDP, Real GDP, Nominal Potential GDP, Real GDP Per Capita
+- **Inflation:** CPI, Inflation Rate, Inflation
+- **Labor Market:** Unemployment Rate, Total Nonfarm Payroll, Initial Jobless Claims
+- **Consumer:** Consumer Sentiment, Retail Sales
+- **Manufacturing:** Industrial Production Total Index, Durable Goods Orders
+- **Housing:** Housing Starts, 15-Year Mortgage Average, 30-Year Mortgage Average
+- **Financial:** Federal Funds Rate, 3-Month CD Rates, Commercial Bank Credit Card Rates, Retail Money Funds
+- **Trade:** Trade Balance (Goods and Services)
+- **Other:** Total Vehicle Sales, Smoothed US Recession Probabilities
+
+---
+
+## Fundamentals Data
+
+The Fundamentals domain provides comprehensive financial statement data, key metrics, ratios, and growth rates for fundamental analysis of equities.
+
+**Load Order:** Fundamentals data is loaded after company data in the domain execution sequence. All fundamentals datasets are ticker-based and run for every symbol in the active universe.
+
+### Dataset Categories
+
+#### 1. Financial Statements (Base, Annual, Quarterly)
+
+**Three core financial statements** with multiple period variants:
+- **income-statement** - Revenue, expenses, EBITDA, net income, EPS
+- **balance-sheet-statement** - Assets, liabilities, equity, working capital
+- **cashflow-statement** - Operating, investing, and financing cash flows
+
+**Period Variants** (each statement has three discriminators):
+- Base (discriminator: '') - Most recent data without period specification
+- Annual (discriminator: FY) - Fiscal year data
+- Quarterly (discriminator: quarter) - Quarterly data
+
+**Scope:** Per-ticker (runs for each symbol in universe)
+**Refresh:** Quarterly (min_age_days: 90)
+**Silver Tables:** `silver.fmp_income_statement`, `silver.fmp_balance_sheet_statement`, `silver.fmp_cashflow_statement`
+**Key Columns:** `ticker`, `date`, `period`
+**API Endpoints:**
+- `https://financialmodelingprep.com/stable/income-statement?symbol={ticker}&period={FY|quarter}&limit=__limit__`
+- `https://financialmodelingprep.com/stable/balance-sheet-statement?symbol={ticker}&period={FY|quarter}&limit=__limit__`
+- `https://financialmodelingprep.com/stable/cashflow-statement?symbol={ticker}&period={FY|quarter}&limit=__limit__`
+
+**Documentation:**
+- [Income Statement](https://site.financialmodelingprep.com/developer/docs#income-statement)
+- [Balance Sheet](https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement)
+- [Cash Flow](https://site.financialmodelingprep.com/developer/docs#cashflow-statement)
+
+#### 2. latest-financial-statements
+- **Purpose:** Most recently reported financial statements (all three statements in one call)
+- **Scope:** Per-ticker
+- **Refresh:** Daily (min_age_days: 1)
+- **Silver Table:** `silver.fmp_latest_financial_statements`
+- **Key Columns:** `ticker`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/latest-financial-statements?symbol={ticker}`
+- **Documentation:** [Latest Financial Statements](https://site.financialmodelingprep.com/developer/docs#latest-financial-statements)
+
+#### 3. Key Metrics (Base, Annual, Quarterly, TTM)
+
+**key-metrics** - Comprehensive valuation and performance metrics including P/E ratio, price-to-book, ROE, ROA
+- Period variants: Base (''), Annual (FY), Quarterly (quarter)
+- Refresh: Quarterly (min_age_days: 90)
+- Silver Table: `silver.fmp_key_metrics`
+
+**key-metrics-ttm** - Trailing twelve month key metrics for most current analysis
+- Refresh: Daily (min_age_days: 1)
+- Silver Table: `silver.fmp_key_metrics_ttm`
+
+**API Endpoints:**
+- `https://financialmodelingprep.com/stable/key-metrics?symbol={ticker}&period={FY|quarter}&limit=__limit__`
+- `https://financialmodelingprep.com/stable/key-metrics-ttm?symbol={ticker}`
+
+**Documentation:** [Key Metrics](https://site.financialmodelingprep.com/developer/docs#key-metrics)
+
+#### 4. Financial Ratios (Base, Annual, Quarterly, TTM)
+
+**metric-ratios** - Liquidity, solvency, profitability, and efficiency ratios
+- Period variants: Base (''), Annual (FY), Quarterly (quarter)
+- Refresh: Quarterly (min_age_days: 90)
+- Silver Table: `silver.fmp_metric_ratios`
+
+**ratios-ttm** - Trailing twelve month financial ratios
+- Refresh: Daily (min_age_days: 1)
+- Silver Table: `silver.fmp_ratios_ttm`
+
+**API Endpoints:**
+- `https://financialmodelingprep.com/stable/financial-ratios?symbol={ticker}&period={FY|quarter}&limit=__limit__`
+- `https://financialmodelingprep.com/stable/financial-ratios-ttm?symbol={ticker}`
+
+**Documentation:** [Financial Ratios](https://site.financialmodelingprep.com/developer/docs#financial-ratios)
+
+#### 5. financial-scores
+- **Purpose:** Composite financial health metrics (Altman Z-Score, Piotroski F-Score)
+- **Scope:** Per-ticker
+- **Refresh:** Quarterly (min_age_days: 90)
+- **Silver Table:** `silver.fmp_financial_scores`
+- **Key Columns:** `ticker`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/financial-scores?symbol={ticker}`
+- **Documentation:** [Financial Scores](https://site.financialmodelingprep.com/developer/docs#financial-scores)
+- **Use Case:** Bankruptcy prediction (Z-Score), quality investing (F-Score)
+
+#### 6. owner-earnings
+- **Purpose:** Owner earnings metrics (Buffett's preferred profitability measure)
+- **Scope:** Per-ticker
+- **Refresh:** Quarterly (min_age_days: 90)
+- **Silver Table:** `silver.fmp_owner_earnings`
+- **Key Columns:** `ticker`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/owner-earnings?symbol={ticker}`
+- **Documentation:** [Owner Earnings](https://site.financialmodelingprep.com/developer/docs#owner-earnings)
+- **Use Case:** Value investing, owner-oriented profitability analysis
+
+#### 7. enterprise-values
+- **Purpose:** Enterprise value and related valuation metrics
+- **Scope:** Per-ticker
+- **Refresh:** Quarterly (min_age_days: 90)
+- **Silver Table:** `silver.fmp_enterprise_values`
+- **Key Columns:** `ticker`, `date`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/enterprise-values?symbol={ticker}&limit=__limit__`
+- **Documentation:** [Enterprise Values](https://site.financialmodelingprep.com/developer/docs#enterprise-values)
+- **Use Case:** Capital structure-neutral valuation, M&A analysis
+
+#### 8. Growth Metrics (Base, Annual, Quarterly)
+
+**Year-over-year and quarter-over-quarter growth rates** for all financial statements:
+- **income-statement-growth** - Revenue growth, earnings growth, margin expansion
+- **balance-sheet-statement-growth** - Asset growth, equity growth, debt changes
+- **cashflow-statement-growth** - Cash flow growth, capex trends
+
+**Period Variants** (each has three discriminators):
+- Base (discriminator: '') - Most recent growth data
+- Annual (discriminator: FY) - Year-over-year growth rates
+- Quarterly (discriminator: quarter) - Quarter-over-quarter growth rates
+
+**Refresh:** Quarterly (min_age_days: 90)
+**Silver Tables:** `silver.fmp_income_statement_growth`, `silver.fmp_balance_sheet_statement_growth`, `silver.fmp_cashflow_statement_growth`
+**API Endpoints:**
+- `https://financialmodelingprep.com/stable/income-statement-growth?symbol={ticker}&period={FY|quarter}&limit=__limit__`
+- `https://financialmodelingprep.com/stable/balance-sheet-statement-growth?symbol={ticker}&period={FY|quarter}&limit=__limit__`
+- `https://financialmodelingprep.com/stable/cashflow-statement-growth?symbol={ticker}&period={FY|quarter}&limit=__limit__`
+
+**Documentation:** [Growth Metrics](https://site.financialmodelingprep.com/developer/docs#income-statement-growth)
+
+#### 9. financial-statement-growth
+- **Purpose:** Comprehensive growth metrics across all three financial statements
+- **Scope:** Per-ticker
+- **Refresh:** Quarterly (min_age_days: 90)
+- **Silver Table:** `silver.fmp_financial_statement_growth`
+- **Key Columns:** `ticker`, `date`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/financial-statement-growth?symbol={ticker}&limit=__limit__`
+- **Documentation:** [Financial Statement Growth](https://site.financialmodelingprep.com/developer/docs#financial-statement-growth)
+
+#### 10. Revenue Segmentation
+
+**revenue-product-segmentation** - Revenue breakdown by product line or business segment
+- **Scope:** Per-ticker
+- **Refresh:** Quarterly (min_age_days: 90)
+- **Silver Table:** `silver.fmp_revenue_product_segmentation`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/revenue-product-segmentation?symbol={ticker}`
+- **Documentation:** [Product Segmentation](https://site.financialmodelingprep.com/developer/docs#revenue-product-segmentation)
+
+**revenue-geographic-segmentation** - Revenue breakdown by geographic region
+- **Scope:** Per-ticker
+- **Refresh:** Quarterly (min_age_days: 90)
+- **Silver Table:** `silver.fmp_revenue_geographic_segmentation`
+- **API Endpoint:** `https://financialmodelingprep.com/stable/revenue-geographic-segmentation?symbol={ticker}`
+- **Documentation:** [Geographic Segmentation](https://site.financialmodelingprep.com/developer/docs#revenue-geographic-segmentation)
+
+**Use Case:** Business mix analysis, geographic diversification assessment, segment-level performance
 
 ---
 

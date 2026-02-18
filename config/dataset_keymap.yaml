@@ -658,6 +658,65 @@ datasets:
       nullable: true
 - domain: company
   source: fmp
+  dataset: company-compensation
+  discriminator: ''
+  ticker_scope: per_ticker
+  silver_schema: silver
+  silver_table: fmp_company_compensation
+  key_cols:
+  - ticker
+  - year
+  row_date_col: year
+  recipes:
+  - plans:
+    - basic
+    data_source_path: governance/executive_compensation
+    query_vars:
+      symbol: __ticker__
+    date_key: year
+    cadence_mode: interval
+    min_age_days: 365
+    run_days:
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#executive-compensation
+  dto_schema:
+    dto_type: sbfoundation.dtos.company.company_compensation_dto.CompanyCompensationDTO
+    columns:
+    - name: ticker
+      type: str
+      nullable: false
+    - name: year
+      type: int
+      nullable: false
+    - name: name_and_position
+      type: str
+      nullable: true
+    - name: year_fiscal_year_ending
+      type: str
+      nullable: true
+    - name: salary
+      type: float
+      nullable: true
+    - name: bonus
+      type: float
+      nullable: true
+    - name: stock_award
+      type: float
+      nullable: true
+    - name: incentive_plan_compensation
+      type: float
+      nullable: true
+    - name: all_other_compensation
+      type: float
+      nullable: true
+    - name: total
+      type: float
+      nullable: true
+    - name: url
+      type: str
+      nullable: true
+- domain: company
+  source: fmp
   dataset: company-peers
   discriminator: ''
   ticker_scope: per_ticker
@@ -2542,6 +2601,104 @@ datasets:
       nullable: true
 - domain: fundamentals
   source: fmp
+  dataset: ratios-ttm
+  discriminator: ''
+  ticker_scope: per_ticker
+  silver_schema: silver
+  silver_table: fmp_ratios_ttm
+  key_cols:
+  - ticker
+  row_date_col: null
+  recipes:
+  - plans:
+    - basic
+    data_source_path: ratios-ttm
+    query_vars:
+      symbol: __ticker__
+    date_key: null
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    help_url: https://site.financialmodelingprep.com/developer/docs#financial-ratios-ttm
+  dto_schema:
+    dto_type: sbfoundation.dtos.fundamentals.ratios_ttm_dto.RatiosTtmDTO
+    columns:
+    - name: ticker
+      type: str
+      nullable: false
+    - name: symbol
+      type: str
+      nullable: false
+    - name: current_ratio_ttm
+      type: float | None
+      nullable: true
+    - name: quick_ratio_ttm
+      type: float | None
+      nullable: true
+    - name: cash_ratio_ttm
+      type: float | None
+      nullable: true
+    - name: debt_equity_ratio_ttm
+      type: float | None
+      nullable: true
+    - name: return_on_assets_ttm
+      type: float | None
+      nullable: true
+    - name: return_on_equity_ttm
+      type: float | None
+      nullable: true
+    - name: return_on_capital_employed_ttm
+      type: float | None
+      nullable: true
+    - name: gross_profit_margin_ttm
+      type: float | None
+      nullable: true
+    - name: operating_profit_margin_ttm
+      type: float | None
+      nullable: true
+    - name: pretax_profit_margin_ttm
+      type: float | None
+      nullable: true
+    - name: net_profit_margin_ttm
+      type: float | None
+      nullable: true
+    - name: effective_tax_rate_ttm
+      type: float | None
+      nullable: true
+    - name: asset_turnover_ttm
+      type: float | None
+      nullable: true
+    - name: inventory_turnover_ttm
+      type: float | None
+      nullable: true
+    - name: receivables_turnover_ttm
+      type: float | None
+      nullable: true
+    - name: payables_turnover_ttm
+      type: float | None
+      nullable: true
+    - name: price_earnings_ratio_ttm
+      type: float | None
+      nullable: true
+    - name: price_to_book_ratio_ttm
+      type: float | None
+      nullable: true
+    - name: price_to_sales_ratio_ttm
+      type: float | None
+      nullable: true
+    - name: dividend_yield_ttm
+      type: float | None
+      nullable: true
+    - name: payout_ratio_ttm
+      type: float | None
+      nullable: true
+- domain: fundamentals
+  source: fmp
   dataset: financial-scores
   discriminator: ''
   ticker_scope: per_ticker
@@ -3739,11 +3896,11 @@ datasets:
       nullable: true
 - domain: fundamentals
   source: fmp
-  dataset: finanical-statement-growth
+  dataset: financial-statement-growth
   discriminator: FY
   ticker_scope: per_ticker
   silver_schema: silver
-  silver_table: fmp_finanical_statement_growth
+  silver_table: fmp_financial_statement_growth
   key_cols:
   - ticker
   - date
@@ -3907,11 +4064,11 @@ datasets:
       nullable: true
 - domain: fundamentals
   source: fmp
-  dataset: finanical-statement-growth
+  dataset: financial-statement-growth
   discriminator: quarter
   ticker_scope: per_ticker
   silver_schema: silver
-  silver_table: fmp_finanical_statement_growth
+  silver_table: fmp_financial_statement_growth
   key_cols:
   - ticker
   - date
@@ -4075,11 +4232,11 @@ datasets:
       nullable: true
 - domain: fundamentals
   source: fmp
-  dataset: revenue-product-segementation
+  dataset: revenue-product-segmentation
   discriminator: FY
   ticker_scope: per_ticker
   silver_schema: silver
-  silver_table: fmp_revenue_product_segementation
+  silver_table: fmp_revenue_product_segmentation
   key_cols:
   - ticker
   - date
@@ -4087,7 +4244,7 @@ datasets:
   recipes:
   - plans:
     - basic
-    data_source_path: revenue-product-segementation
+    data_source_path: revenue-product-segmentation
     query_vars:
       symbol: __ticker__
       period: FY
@@ -4123,11 +4280,11 @@ datasets:
       nullable: true
 - domain: fundamentals
   source: fmp
-  dataset: revenue-geographic-segementation
+  dataset: revenue-geographic-segmentation
   discriminator: FY
   ticker_scope: per_ticker
   silver_schema: silver
-  silver_table: fmp_revenue_geographic_segementation
+  silver_table: fmp_revenue_geographic_segmentation
   key_cols:
   - ticker
   - date
@@ -4135,7 +4292,7 @@ datasets:
   recipes:
   - plans:
     - basic
-    data_source_path: revenue-geographic-segementation
+    data_source_path: revenue-geographic-segmentation
     query_vars:
       symbol: __ticker__
       period: FY
@@ -4150,7 +4307,7 @@ datasets:
     - wed
     - thurs
     - fri
-    help_url: https://site.financialmodelingprep.com/developer/docs#revenue-geographic-segementation
+    help_url: https://site.financialmodelingprep.com/developer/docs#revenue-geographic-segmentation
   dto_schema:
     dto_type: sbfoundation.dtos.fundamentals.revenue_segmentation_dto.RevenueSegmentationDTO
     columns:
@@ -4199,9 +4356,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.treasury_rates_dto.TreasuryRatesDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -4270,9 +4424,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.market_risk_premium_dto.MarketRiskPremiumDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: country
       type: str
       nullable: false
@@ -4317,9 +4468,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4361,9 +4509,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4405,9 +4550,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4449,9 +4591,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4493,9 +4632,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4537,9 +4673,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4581,9 +4714,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4625,9 +4755,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4669,9 +4796,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4713,9 +4837,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4757,9 +4878,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4801,9 +4919,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4845,9 +4960,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4889,9 +5001,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4933,9 +5042,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -4977,9 +5083,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -5021,9 +5124,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -5065,9 +5165,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -5109,9 +5206,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -5153,9 +5247,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -5197,9 +5288,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -5241,9 +5329,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -5285,9 +5370,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -5329,9 +5411,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.economics.economics_dto.EconomicsDTO
     columns:
-    - name: ticker
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: false
@@ -7940,11 +8019,11 @@ datasets:
       nullable: true
 - domain: fundamentals
   source: fmp
-  dataset: finanical-statement-growth
+  dataset: financial-statement-growth
   discriminator: ''
   ticker_scope: per_ticker
   silver_schema: silver
-  silver_table: fmp_finanical_statement_growth
+  silver_table: fmp_financial_statement_growth
   key_cols:
   - ticker
   - date

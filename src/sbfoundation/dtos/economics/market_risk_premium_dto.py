@@ -15,9 +15,8 @@ class MarketRiskPremiumDTO(BronzeToSilverDTO):
     API docs: https://site.financialmodelingprep.com/developer/docs#market-risk-premium
     """
 
-    KEY_COLS = ["ticker"]
+    KEY_COLS = ["country"]
 
-    ticker: str = field(default="_none_", metadata={"api": "ticker"})
     country: str = field(default="", metadata={"api": "country"})
     continent: str = field(default="", metadata={"api": "continent"})
     country_risk_premium: float | None = field(default=None, metadata={"api": "countryRiskPremium"})

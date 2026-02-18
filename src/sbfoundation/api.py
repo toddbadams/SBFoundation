@@ -91,6 +91,17 @@ class SBFoundationAPI:
         return run
 
     def _handle_instruments(self, command: RunCommand, run: RunContext) -> RunContext:
+        """
+        Handle instrument domain and dependent ticker-based domains.
+
+        Execution sequence:
+        1. Load instruments (stock-list) → silver.fmp_stock_list
+        2. Load company-profile → silver.fmp_company_profile
+        3. Load ticker-based domains (company, fundamentals, technicals)
+           - Company: peers, employees, market cap, shares float, officers, compensation, delisted
+           - Fundamentals: financial statements, metrics, ratios, scores, growth, segmentation
+           - Technicals: price history, volume, technical indicators
+        """
 
         # Step 1: Load instrument via stock-list recipe
         run = self._load_instrument(command, run)
@@ -103,12 +114,42 @@ class SBFoundationAPI:
         return run
 
     def _handle_economics(self, command: RunCommand, run: RunContext) -> RunContext:
-        return run  # todo: add method to handle
+        """
+        Handle economics domain datasets.
+
+        All economics datasets are global (non-ticker-based):
+        - treasury-rates (daily U.S. Treasury yield curve)
+        - market-risk-premium (annual market risk premium for CAPM)
+        - economic-indicators (27 macroeconomic time series with discriminators)
+        """
+        self.logger.log_section(run.run_id, "Processing economics domain")
+
+        # Get all economics recipes (all are global/non-ticker-based)
+        recipes = [r for r in self._dataset_service.recipes if r.domain == ECONOMICS_DOMAIN]
+
+        if not recipes:
+            self.logger.warning("No economics recipes found", run_id=run.run_id)
+            return run
+
+        self.logger.info(
+            f"{self._processing_msg(command.enable_bronze, 'BRONZE')} {len(recipes)} economics datasets",
+            run_id=run.run_id,
+        )
+
+        # Process all economics recipes through bronze
+        if command.enable_bronze:
+            run = self._process_recipe_list(recipes, run)
+
+        # Promote to silver
+        run = self._promote_silver(run, ECONOMICS_DOMAIN)
+
+        self.logger.info(f"Economics domain complete: {len(recipes)} datasets processed", run_id=run.run_id)
+        return run
 
     def _handle_market(self, command: RunCommand, run: RunContext) -> RunContext:
         # Phase 1a: countries (no dependencies — must run first)
         run = self._run_market_baseline([MARKET_COUNTRIES_DATASET], command, run)
-        run = self._promote_silver(run)
+        run = self._promote_silver(run, MARKET_DOMAIN)
 
         # Phase 1b: exchanges, sectors, industries
         run = self._run_market_baseline(
@@ -116,11 +157,11 @@ class SBFoundationAPI:
             command,
             run,
         )
-        run = self._promote_silver(run)
+        run = self._promote_silver(run, MARKET_DOMAIN)
 
         # Phase 2a: market-hours (daily snapshot, as_of_date = today from DTO default)
         run = self._run_market_baseline([MARKET_HOURS_DATASET], command, run)
-        run = self._promote_silver(run)
+        run = self._promote_silver(run, MARKET_DOMAIN)
 
         # Phase 2b: date-loop datasets (sector/industry performance + PE)
         date_datasets = [
@@ -190,7 +231,7 @@ class SBFoundationAPI:
             if command.enable_bronze:
                 run = self._process_recipe_list_with_snapshot(recipes, run, snapshot_date=snapshot_str)
 
-        run = self._promote_silver(run)
+        run = self._promote_silver(run, MARKET_DOMAIN)
 
         return run
 
@@ -217,7 +258,7 @@ class SBFoundationAPI:
             chunk_size=10,
             logger=self.logger,
             process_chunk=self._process_recipe_list,
-            promote_silver=self._promote_silver,
+            promote_silver=lambda r: self._promote_silver(r, MARKET_DOMAIN),
             silver_enabled=command.enable_silver,
         )
         run = chunk_service.process(recipes, run)
@@ -341,7 +382,7 @@ class SBFoundationAPI:
         if recipes:
             self.logger.log_section(run.run_id, "Phase 1: Loading commodities list")
             run = self._process_recipe_list(recipes, run)
-            run = self._promote_silver(run)
+            run = self._promote_silver(run, COMMODITIES_DOMAIN)
 
         # Step 2: Load commodities price-eod data (ticker-based)
         recipes = [r for r in self._dataset_service.recipes if r.domain == COMMODITIES_DOMAIN and r.dataset == COMMODITIES_PRICE_EOD_DATASET]
@@ -352,7 +393,7 @@ class SBFoundationAPI:
             if universe:
                 original_tickers = run.tickers
                 run.tickers = universe
-                run = self._process_ticker_recipes(recipes, command, run, label="commodities-price-eod")
+                run = self._process_ticker_recipes(recipes, command, run, label="commodities-price-eod", domain=COMMODITIES_DOMAIN)
                 run.tickers = original_tickers
 
         return run
@@ -372,7 +413,7 @@ class SBFoundationAPI:
         if recipes:
             self.logger.log_section(run.run_id, "Phase 1: Loading fx list")
             run = self._process_recipe_list(recipes, run)
-            run = self._promote_silver(run)
+            run = self._promote_silver(run, FX_DOMAIN)
 
         # Step 2: Load fx price-eod data (ticker-based)
         recipes = [r for r in self._dataset_service.recipes if r.domain == FX_DOMAIN and r.dataset == FX_PRICE_EOD_DATASET]
@@ -383,7 +424,7 @@ class SBFoundationAPI:
             if universe:
                 original_tickers = run.tickers
                 run.tickers = universe
-                run = self._process_ticker_recipes(recipes, command, run, label="fx-price-eod")
+                run = self._process_ticker_recipes(recipes, command, run, label="fx-price-eod", domain=FX_DOMAIN)
                 run.tickers = original_tickers
 
         return run
@@ -403,7 +444,7 @@ class SBFoundationAPI:
         if recipes:
             self.logger.log_section(run.run_id, "Phase 1: Loading crypto list")
             run = self._process_recipe_list(recipes, run)
-            run = self._promote_silver(run)
+            run = self._promote_silver(run, CRYPTO_DOMAIN)
 
         # Step 2: Load crypto price-eod data (ticker-based)
         recipes = [r for r in self._dataset_service.recipes if r.domain == CRYPTO_DOMAIN and r.dataset == CRYPTO_PRICE_EOD_DATASET]
@@ -414,7 +455,7 @@ class SBFoundationAPI:
             if universe:
                 original_tickers = run.tickers
                 run.tickers = universe
-                run = self._process_ticker_recipes(recipes, command, run, label="crypto-price-eod")
+                run = self._process_ticker_recipes(recipes, command, run, label="crypto-price-eod", domain=CRYPTO_DOMAIN)
                 run.tickers = original_tickers
 
         return run
@@ -468,7 +509,7 @@ class SBFoundationAPI:
             run = self._process_recipe_list(stock_list_recipes, run)
 
         # Promote to silver
-        run = self._promote_silver(run)
+        run = self._promote_silver(run, INSTRUMENT_DOMAIN)
 
         self.logger.info("Step 1 complete: Instrument data loaded", run_id=run.run_id)
         return run
@@ -537,7 +578,7 @@ class SBFoundationAPI:
             return run
 
         # Process ticker-based recipes for company-profile
-        run = self._process_ticker_recipes(company_profile_recipes, command, run, "company-profile")
+        run = self._process_ticker_recipes(company_profile_recipes, command, run, "company-profile", domain=COMPANY_DOMAIN)
 
         self.logger.info("Company-profile data loaded", run_id=run.run_id)
         return run
@@ -545,7 +586,14 @@ class SBFoundationAPI:
     def _domain_recipes(self, command: RunCommand, run: RunContext) -> RunContext:
         """Run domain recipes (company, fundamentals, technicals).
 
-        These all relate back to the instrument via instrument_sk.
+        Fundamentals domain contains:
+        - Financial statements (income, balance sheet, cash flow) with FY/quarter variants
+        - Key metrics and ratios (including TTM variants)
+        - Financial scores, owner earnings, enterprise values
+        - Growth metrics (income/balance/cashflow growth)
+        - Revenue segmentation (product, geographic)
+
+        All fundamentals datasets are ticker-based and processed after company-profile.
         If settings.exchanges is specified, tickers are filtered to only include
         instruments on those exchanges.
         """
@@ -596,16 +644,16 @@ class SBFoundationAPI:
         if non_ticker_recipes:
             if command.enable_bronze:
                 run = self._process_recipe_list(non_ticker_recipes, run)
-            run = self._promote_silver(run)
+            run = self._promote_silver(run, domain)
 
         # Process ticker recipes for this domain
         if ticker_recipes:
-            run = self._process_ticker_recipes(ticker_recipes, command, run, domain)
+            run = self._process_ticker_recipes(ticker_recipes, command, run, domain, domain=domain)
 
         self.logger.info(f"Completed domain processing for: {domain}", run_id=run.run_id)
         return run
 
-    def _process_ticker_recipes(self, recipes: list[DatasetRecipe], command: RunCommand, run: RunContext, label: str) -> RunContext:
+    def _process_ticker_recipes(self, recipes: list[DatasetRecipe], command: RunCommand, run: RunContext, label: str, domain: str | None = None) -> RunContext:
         """Process ticker-based recipes using chunking for bronze → silver."""
         if not recipes:
             return run
@@ -617,7 +665,7 @@ class SBFoundationAPI:
             chunk_size=command.ticker_recipe_chunk_size,
             logger=self.logger,
             process_chunk=self._process_recipe_list,
-            promote_silver=self._promote_silver,
+            promote_silver=lambda r: self._promote_silver(r, domain),
             silver_enabled=command.enable_silver,
         )
         run = chunk_service.process(recipes, run)
@@ -641,15 +689,15 @@ class SBFoundationAPI:
             traceback.print_exc()
             return run
 
-    def _promote_silver(self, run: RunContext) -> RunContext:
-        """Promote bronze data to silver layer."""
+    def _promote_silver(self, run: RunContext, domain: str | None = None) -> RunContext:
+        """Promote bronze data to silver layer, restricted to files whose domain matches."""
         silver_service = SilverService(
             enabled=self._enable_silver,
             ops_service=self.ops_service,
             keymap_service=self._dataset_service,
         )
         try:
-            promoted_ids, promoted_rows = silver_service.promote(run)
+            promoted_ids, promoted_rows = silver_service.promote(run, domain=domain)
         except Exception as e:
             self.logger.error(f"Silver promotion: {e}", run_id=run.run_id)
             promoted_ids = []
@@ -664,11 +712,11 @@ class SBFoundationAPI:
 
 if __name__ == "__main__":
     command = RunCommand(
-        domain=COMMODITIES_DOMAIN,
-        concurrent_requests=1,  # Default: 10 workers for optimal throughput
+        domain=FX_DOMAIN,
+        concurrent_requests=10,  # Default: 10 workers for optimal throughput
         enable_bronze=True,
         enable_silver=True,
-        ticker_limit=10,
+        ticker_limit=100,
         ticker_recipe_chunk_size=10,
     )
     result = SBFoundationAPI(today=date.today().isoformat()).run(command)

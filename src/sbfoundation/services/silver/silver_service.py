@@ -65,9 +65,11 @@ class SilverService:
         if self._owns_ops_service:
             self._ops_service.close()
 
-    def promote(self, run: RunContext) -> tuple[list[str], int]:
+    def promote(self, run: RunContext, domain: str | None = None) -> tuple[list[str], int]:
         prefix = "PROCESSING SILVER" if self._enabled else "DRY-RUN SILVER"
         ingestions = self._ops_service.load_promotable_file_ingestions()
+        if domain is not None:
+            ingestions = [i for i in ingestions if i.domain == domain]
         if not ingestions:
             self._logger.info("%s | No promotable Bronze rows found.", prefix, run_id=run.run_id)
             return [], 0

@@ -25,15 +25,21 @@ The pipeline ingests financial data from external providers (primarily Financial
 - No foreign key relationships between tables
 - Lineage metadata: `bronze_file_id`, `run_id`, `ingested_at`
 
-**Data domains ingested:**
+**Data domains ingested** (9 domains, ~109 datasets):
 
-| Domain | Content |
-|---|---|
-| `instrument` | Stock, ETF, index, crypto, and forex lists; ETF holdings |
-| `economics` | Macro indicators (GDP, CPI, unemployment, Fed funds), treasury rates, market risk premium |
-| `company` | Company profile, peers, employees, market cap, shares float, officers, compensation, delisted |
-| `fundamentals` | Income/balance sheet/cash flow statements and growth series, key metrics, financial scores, owner earnings, enterprise values, revenue segmentation |
-| `technicals` | EOD price history (full, split-adjusted, dividend-adjusted), SMA/EMA/WMA/DEMA/TEMA, RSI, ADX, Williams %R, standard deviation |
+| # | Domain | Scope | Content | Datasets |
+|---|---|---|---|---|
+| 1 | `instrument` | global + per ticker | Stock, ETF, index, crypto, and forex lists; ETF holdings | 6 |
+| 2 | `economics` | global | GDP, CPI, unemployment, Fed funds, treasury rates, mortgage rates, market risk premium | 29 |
+| 3 | `company` | per ticker | Profile, peers, employees, market cap, shares float, officers, compensation, delisted | 9 |
+| 4 | `fundamentals` | per ticker | Income/balance sheet/cash flow statements + growth series, key metrics, ratios, scores, owner earnings, enterprise values, revenue segmentation | 25 |
+| 5 | `technicals` | per ticker | EOD price history (full/split/dividend-adjusted), SMA/EMA/WMA/DEMA/TEMA, RSI, ADX, Williams %R, std deviation | 24 |
+| 6 | `commodities` | global + per symbol | Commodities universe list and historical EOD prices | 2 |
+| 7 | `fx` | global + per pair | Forex pair universe list and historical EOD exchange rates | 2 |
+| 8 | `crypto` | global + per symbol | Cryptocurrency universe list and historical EOD prices | 2 |
+| 9 | `market` | global + per exchange | Countries, exchanges, sectors, industries, trading hours, holidays, sector/industry performance & PE (back to 2013) | 10 |
+
+**📖 For full dataset details, refresh cadences, Silver table names, and API links, see [Domain & Dataset Reference](docs/domain_datasets_reference.md)**
 
 ---
 

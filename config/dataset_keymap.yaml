@@ -1,7 +1,7 @@
 version: 1
 datasets:
 # ---- INSTRUMENT DOMAIN (discovery endpoints - run first) ----
-- domain: instrument
+- domain: market
   source: fmp
   dataset: stock-list
   discriminator: ''
@@ -40,7 +40,7 @@ datasets:
       type: str
       nullable: true
 
-- domain: instrument
+- domain: market
   source: fmp
   dataset: etf-list
   discriminator: ''
@@ -91,7 +91,7 @@ datasets:
       type: str
       nullable: true
 
-- domain: instrument
+- domain: market
   source: fmp
   dataset: index-list
   discriminator: ''
@@ -142,7 +142,7 @@ datasets:
       type: str
       nullable: true
 
-- domain: instrument
+- domain: crypto
   source: fmp
   dataset: cryptocurrency-list
   discriminator: ''
@@ -193,7 +193,7 @@ datasets:
       type: str
       nullable: true
 
-- domain: instrument
+- domain: fx
   source: fmp
   dataset: forex-list
   discriminator: ''
@@ -250,7 +250,7 @@ datasets:
       type: str
       nullable: true
 
-- domain: instrument
+- domain: market
   source: fmp
   dataset: etf-holdings
   discriminator: ''

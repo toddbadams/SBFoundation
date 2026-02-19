@@ -23,11 +23,8 @@ class _StubUniverse:
     def run_id(self) -> str:
         return "stub-run"
 
-    def update_tickers(self, *, start: int = 0, limit: int = 50, instrument_type: str | None = None, is_active: bool = True) -> list[str]:
+    def update_tickers(self, *, start: int = 0, limit: int = 50) -> list[str]:
         return [f"T{i}" for i in range(start, start + limit)]
-
-    def new_tickers(self, *, start: int = 0, limit: int = 50, instrument_type: str | None = None, is_active: bool = True) -> list[str]:
-        return [f"N{i}" for i in range(start, start + limit)]
 
 
 class _StubRepo:
@@ -76,7 +73,7 @@ def test_start_and_finish_run_closes_repo() -> None:
     universe = _StubUniverse()
     repo = _StubRepo()
     service = OpsService(ops_repo=repo, universe=universe)
-    summary = service.start_run(update_ticker_limit=2, enable_update_tickers=True, enable_new_tickers=False)
+    summary = service.start_run(update_ticker_limit=2, enable_update_tickers=True)
     assert summary.run_id == "stub-run"
     assert summary.update_tickers == ["T0", "T1"]
     assert summary.tickers == ["T0", "T1"]
@@ -84,22 +81,6 @@ def test_start_and_finish_run_closes_repo() -> None:
     service.finish_run(summary)
     assert summary.finished_at == universe.now()
     assert repo.closed
-
-
-def test_start_run_with_new_tickers() -> None:
-    universe = _StubUniverse()
-    repo = _StubRepo()
-    service = OpsService(ops_repo=repo, universe=universe)
-    summary = service.start_run(
-        update_ticker_limit=2,
-        new_ticker_limit=3,
-        enable_update_tickers=True,
-        enable_new_tickers=True,
-    )
-    assert summary.run_id == "stub-run"
-    assert summary.update_tickers == ["T0", "T1"]
-    assert summary.new_tickers == ["N0", "N1", "N2"]
-    assert summary.tickers == ["T0", "T1", "N0", "N1", "N2"]
 
 
 def test_insert_bronze_manifest_surfaces_repo_errors() -> None:
@@ -156,5 +137,3 @@ def test_get_watermark_date_increments_previous_day() -> None:
     service = OpsService(ops_repo=repo, universe=universe)
     got = service.get_watermark_date(domain="company", source="fmp", dataset="company-profile", discriminator="", ticker="AAPL")
     assert got == repo.latest_date + timedelta(days=1)
-
-

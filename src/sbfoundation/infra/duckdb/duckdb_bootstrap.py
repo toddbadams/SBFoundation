@@ -49,18 +49,6 @@ CREATE TABLE IF NOT EXISTS ops.file_ingestions (
 );
 """
 
-OPS_INSTRUMENT_CATALOG_DDL = """
-CREATE TABLE IF NOT EXISTS ops.instrument_catalog (
-    symbol VARCHAR NOT NULL,
-    instrument_type VARCHAR NOT NULL,
-    source_endpoint VARCHAR NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    discovered_at TIMESTAMP NOT NULL,
-    last_enriched_at TIMESTAMP,
-    PRIMARY KEY (symbol, instrument_type)
-);
-"""
-
 
 class DuckDbBootstrap:
     """Manages a single DuckDB connection, initializes schema on first connect, and exposes scoped transactions.
@@ -101,7 +89,6 @@ class DuckDbBootstrap:
         Creates:
         - ops, silver schemas
         - ops.file_ingestions table (core metadata table)
-        - ops.instrument_catalog table (operational instrument metadata)
 
         Raises:
             Exception: If schema creation fails (transaction is rolled back)
@@ -110,7 +97,6 @@ class DuckDbBootstrap:
             self._conn.execute("BEGIN")
             self._conn.execute(SCHEMA_DDL)
             self._conn.execute(OPS_FILE_INGESTIONS_DDL)
-            self._conn.execute(OPS_INSTRUMENT_CATALOG_DDL)
             self._conn.execute("COMMIT")
             self._logger.debug("Schema initialization complete")
         except Exception as e:

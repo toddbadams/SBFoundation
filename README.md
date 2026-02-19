@@ -25,11 +25,11 @@ The pipeline ingests financial data from external providers (primarily Financial
 - No foreign key relationships between tables
 - Lineage metadata: `bronze_file_id`, `run_id`, `ingested_at`
 
-**Data domains ingested** (9 domains, ~109 datasets):
+**Data domains ingested** (8 domains, ~107 datasets):
 
 | # | Domain | Scope | Content | Datasets |
 |---|---|---|---|---|
-| 1 | `instrument` | global + per ticker | Stock, ETF, index, crypto, and forex lists; ETF holdings | 6 |
+| 1 | `market` | global + per exchange | Universe discovery (stock/ETF/index lists, ETF holdings) + countries, exchanges, sectors, industries, trading hours, holidays, sector/industry performance & PE (back to 2013) | 14 |
 | 2 | `economics` | global | GDP, CPI, unemployment, Fed funds, treasury rates, mortgage rates, market risk premium | 29 |
 | 3 | `company` | per ticker | Profile, peers, employees, market cap, shares float, officers, compensation, delisted | 9 |
 | 4 | `fundamentals` | per ticker | Income/balance sheet/cash flow statements + growth series, key metrics, ratios, scores, owner earnings, enterprise values, revenue segmentation | 25 |
@@ -37,7 +37,6 @@ The pipeline ingests financial data from external providers (primarily Financial
 | 6 | `commodities` | global + per symbol | Commodities universe list and historical EOD prices | 2 |
 | 7 | `fx` | global + per pair | Forex pair universe list and historical EOD exchange rates | 2 |
 | 8 | `crypto` | global + per symbol | Cryptocurrency universe list and historical EOD prices | 2 |
-| 9 | `market` | global + per exchange | Countries, exchanges, sectors, industries, trading hours, holidays, sector/industry performance & PE (back to 2013) | 10 |
 
 **📖 For full dataset details, refresh cadences, Silver table names, and API links, see [Domain & Dataset Reference](docs/domain_datasets_reference.md)**
 
@@ -68,7 +67,7 @@ Silver promotion uses the dataset's `key_cols` from the keymap to MERGE rows. Re
 The `RunProvider` computes `from_date` from the last successfully ingested `to_date` stored as a dataset watermark, not from a fixed schedule. A recipe's `min_age_days` gates whether a dataset is due for re-ingestion.
 
 ### 7. Domain execution order is enforced
-The `instrument` domain always runs first to populate the ticker universe before per-ticker domains (company, fundamentals, technicals) execute.
+The `market` domain should run first — it populates `silver.fmp_stock_list` which seeds the ticker universe for company/fundamentals/technicals. Company/fundamentals/technicals each require `exchanges` in their `RunCommand` and are run as separate, standalone commands.
 
 ### 8. Failures are audit-first, not crash-first
 A failed ingestion request does not abort the run. A `BronzeResult` error record is written to Bronze, counters are updated, and the run continues. Every run produces a manifest (`ops.bronze_manifest`) regardless of outcome.
@@ -182,7 +181,7 @@ SBFoundation/
 
 | Module | Responsibility |
 |---|---|
-| `api.py` | Main entry point. Provides `SBFoundationAPI` class and `RunCommand` dataclass. Orchestrates domain-specific ingestion flows (Bronze → Silver) for instrument, market, economics, commodities, forex, and crypto domains. |
+| `api.py` | Main entry point. Provides `SBFoundationAPI` class and `RunCommand` dataclass. Orchestrates domain-specific ingestion flows (Bronze → Silver) for market, economics, company, fundamentals, technicals, commodities, forex, and crypto domains. `RunCommand.validate()` enforces domain validity and exchange requirements. |
 | `dataset/services/dataset_service.py` | Loads `dataset_keymap.yaml`, validates entries, exposes filtered recipe lists by plan/domain. |
 | `run/dtos/run_request.py` | Encapsulates a single API call spec: URL, query vars (placeholders expanded), cadence metadata, `from_date`/`to_date`. |
 | `run/dtos/bronze_result.py` | Wraps the HTTP response + metadata. Computes `is_valid_bronze` and `canPromoteToSilverWith` gates. |
@@ -236,7 +235,7 @@ silver.<table_name>  (DuckDB)
   [Downstream: Gold layer, Feature Engineer, Signals,  backtesting, portfolio optimization, execution — separate packages]
 ```
 
-**Ticker based domain execution order:** `instrument` → `company` → `fundamentals` → `technicals`
+**Recommended domain execution order:** `market` → `economics` → `company` → `fundamentals` → `technicals` → `commodities` → `fx` → `crypto`
 
 Per-ticker recipes run in chunks of 10 tickers to bound memory and allow incremental Silver promotion between chunks.
 
@@ -322,7 +321,7 @@ Edit `api.py`'s `__main__` block and configure the `RunCommand` for the domain o
 
 ```python
 command = RunCommand(
-    domain=MARKET_DOMAIN,           # Choose domain: MARKET, INSTRUMENT, COMPANY, etc.
+    domain=MARKET_DOMAIN,           # Choose domain: MARKET, ECONOMICS, COMPANY, FUNDAMENTALS, TECHNICALS, COMMODITIES, FX, CRYPTO
     concurrent_requests=1,           # Set to 1 for synchronous debugging, 10+ for concurrent mode
     enable_bronze=True,             # True to fetch from APIs
     enable_silver=False,            # False to inspect Bronze only (skip Silver promotion)

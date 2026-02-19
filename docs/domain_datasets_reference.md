@@ -11,56 +11,55 @@ This document is the single authoritative reference for all data domains and dat
 
 1. [Domain Overview](#1-domain-overview)
 2. [Dataset Loading Order](#2-dataset-loading-order)
-3. [Instrument Domain](#3-instrument-domain)
-4. [Company Domain](#4-company-domain)
-5. [Fundamentals Domain](#5-fundamentals-domain)
-6. [Technicals Domain](#6-technicals-domain)
-7. [Economics Domain](#7-economics-domain)
-8. [Market Domain](#8-market-domain)
-9. [Commodities Domain](#9-commodities-domain)
-10. [FX Domain](#10-fx-domain)
-11. [Crypto Domain](#11-crypto-domain)
-12. [Dataset Summary Table](#12-dataset-summary-table)
+3. [Company Domain](#3-company-domain)
+4. [Fundamentals Domain](#4-fundamentals-domain)
+5. [Technicals Domain](#5-technicals-domain)
+6. [Economics Domain](#6-economics-domain)
+7. [Market Domain](#7-market-domain)
+8. [Commodities Domain](#8-commodities-domain)
+9. [FX Domain](#9-fx-domain)
+10. [Crypto Domain](#10-crypto-domain)
+11. [Dataset Summary Table](#11-dataset-summary-table)
 
 ---
 
 ## 1. Domain Overview
 
-SBFoundation ingests data across **9 domains** covering equities, macro economics, market structure, and alternative assets.
+SBFoundation ingests data across **8 domains** covering equities, macro economics, market structure, and alternative assets.
 
 | Domain | Scope | Purpose | Datasets |
 |---|---|---|---|
-| **instrument** | global + per ticker | Ticker universe discovery; lists of equities, ETFs, indices, crypto, forex; ETF holdings | 6 |
+| **market** | global + per exchange | Universe discovery (stock/ETF/index lists, ETF holdings) + market structure (countries, exchanges, sectors, industries, hours, holidays, performance & PE) | 14 |
 | **company** | per ticker | Company metadata: profiles, peers, employees, compensation, corporate structure | 9 |
 | **fundamentals** | per ticker | Financial statements, key metrics, ratios, growth rates, revenue segmentation | 25 |
 | **technicals** | per ticker | Price history (OHLCV), moving averages, momentum, volatility indicators | 24 |
 | **economics** | global | Macroeconomic time series: GDP, CPI, employment, treasury rates, mortgage rates | 29 |
-| **market** | global + per exchange | Market structure: countries, exchanges, sectors, industries, hours, holidays, performance & PE | 10 |
 | **commodities** | global + per symbol | Commodities universe and historical EOD prices | 2 |
 | **fx** | global + per pair | Forex pair universe and historical EOD prices | 2 |
 | **crypto** | global + per symbol | Cryptocurrency universe and historical EOD prices | 2 |
 
-**Total: ~109 datasets** across 9 domains (economics has 27 discriminated series under one dataset name).
+**Total: ~107 datasets** across 8 domains (economics has 27 discriminated series under one dataset name).
 
 ---
 
 ## 2. Dataset Loading Order
 
-`SBFoundationAPI.run()` accepts a `domain` command. The canonical execution sequence is defined in `DOMAIN_EXECUTION_ORDER` in `src/sbfoundation/settings.py`. Company, fundamentals, and technicals have no standalone API entry point — they are executed internally within the `instrument` domain handler.
+`SBFoundationAPI.run()` accepts a `domain` command. Each domain is a separate `RunCommand`. Company, fundamentals, and technicals require `exchanges` to be specified in the command; tickers are resolved from `silver.fmp_stock_list` filtered by `silver.fmp_company_profile.exchange_short_name`.
+
+> **`RunCommand.validate()`** enforces: (1) domain must be in `DOMAINS`; (2) company/fundamentals/technicals require at least one exchange.
 
 ```mermaid
 flowchart TD
     START([SBFoundationAPI.run])
 
-    subgraph INST["RunCommand: domain = instrument  — step 1"]
+    subgraph MKT["RunCommand: domain = market  — step 1"]
         direction TB
-        SL["stock-list\nglobal · refresh every 7 days\nsilver: fmp_stock_list"]
-        CP["company-profile\nper ticker · refresh every 365 days\nsilver: fmp_company_profile"]
-        CO["company domain\n9 datasets · per ticker\npeers, employees, market-cap,\nshares-float, officers,\ncompensation, delisted"]
-        FU["fundamentals domain\n25 datasets · per ticker\nstatements, key-metrics, ratios,\ngrowth, revenue segmentation"]
-        TE["technicals domain\n24 datasets · per ticker\nprice-eod-history, SMA/EMA/WMA/\nDEMA/TEMA, RSI, MACD, Bollinger,\nADX, Williams %R, std dev"]
-        SL -->|"ticker universe → silver"| CP
-        CP --> CO --> FU --> TE
+        P0["Phase 0: Universe discovery\nstock-list · etf-list · index-list · etf-holdings\nglobal · silver: fmp_stock_list / etf_list / index_list / etf_holdings"]
+        MC["Phase 1a: countries"] --> ME["Phase 1b: exchanges · sectors · industries"]
+        ME --> MH["Phase 2a: market-hours\ndaily snapshot"]
+        MH --> MP["Phase 2b: sector-performance · industry-performance\nsector-pe · industry-pe\ndate-loop from 2013-01-01"]
+        MP --> MHO["Phase 2c: market-holidays\nper exchange ← codes from silver"]
+        P0 --> MC
     end
 
     subgraph ECON["RunCommand: domain = economics  — step 2"]
@@ -70,136 +69,68 @@ flowchart TD
         EI["economic-indicators · 27 series · global\nGDP, CPI, unemployment, housing,\nretail sales, consumer sentiment, ..."]
     end
 
-    subgraph COMM["RunCommand: domain = commodities  — step 3"]
+    subgraph CO["RunCommand: domain = company  — step 3\nexchanges required"]
+        direction TB
+        EFC1["_get_exchange_filtered_universe\nstock-list ⨝ company-profile by exchange"]
+        EFC1 --> CPR["company-profile (first)\nsilver: fmp_company_profile"]
+        CPR --> CDS["company datasets\npeers · employees · market-cap\nshares-float · officers · compensation · delisted"]
+    end
+
+    subgraph FU["RunCommand: domain = fundamentals  — step 4\nexchanges required"]
+        direction TB
+        EFC2["_get_exchange_filtered_universe"]
+        EFC2 --> FDS["fundamentals datasets\n25 datasets · per ticker\nstatements · key-metrics · ratios\ngrowth · revenue segmentation"]
+    end
+
+    subgraph TE["RunCommand: domain = technicals  — step 5\nexchanges required"]
+        direction TB
+        EFC3["_get_exchange_filtered_universe"]
+        EFC3 --> TDS["technicals datasets\n24 datasets · per ticker\nprice-eod-history · SMA/EMA/WMA\nDEMA/TEMA · RSI · ADX · Williams %R · std dev"]
+    end
+
+    subgraph COMM["RunCommand: domain = commodities  — step 6"]
         direction TB
         CL["commodities-list\nglobal · yearly"] -->|"symbol universe → silver"| CE["commodities-price-eod\nper symbol · daily"]
     end
 
-    subgraph FX["RunCommand: domain = fx  — step 4"]
+    subgraph FX["RunCommand: domain = fx  — step 7"]
         direction TB
         FL["fx-list\nglobal · yearly"] -->|"pair universe → silver"| FE["fx-price-eod\nper pair · daily"]
     end
 
-    subgraph CRYPTO["RunCommand: domain = crypto  — step 5"]
+    subgraph CRYPTO["RunCommand: domain = crypto  — step 8"]
         direction TB
         CRL["crypto-list\nglobal · yearly"] -->|"symbol universe → silver"| CRE["crypto-price-eod\nper symbol · daily"]
     end
 
-    subgraph MKT["RunCommand: domain = market  — optional / separate run"]
-        direction TB
-        MC["countries"] --> ME["exchanges · sectors · industries"]
-        ME --> MH["market-hours\ndaily snapshot"]
-        MH --> MP["sector-performance · industry-performance\nsector-pe · industry-pe\ndate-loop from 2013-01-01"]
-        MP --> MHO["market-holidays\nper exchange\n← exchange codes from silver"]
-    end
-
-    START -->|"step 1"| INST
-    INST  -->|"step 2"| ECON
-    ECON  -->|"step 3"| COMM
-    COMM  -->|"step 4"| FX
-    FX    -->|"step 5"| CRYPTO
-    MKT   -. "optional separate run" .-> START
+    START -->|"step 1"| MKT
+    MKT   -->|"step 2"| ECON
+    ECON  -->|"step 3"| CO
+    CO    -->|"step 4"| FU
+    FU    -->|"step 5"| TE
+    TE    -->|"step 6"| COMM
+    COMM  -->|"step 7"| FX
+    FX    -->|"step 8"| CRYPTO
 ```
 
 **Dependency rules:**
-- `instrument` must run first — `stock-list` populates `silver.fmp_stock_list` which seeds the ticker universe for all per-ticker domains.
-- `company-profile` runs before the rest of company/fundamentals/technicals within the same instrument run.
+- `market` should run first — `stock-list` populates `silver.fmp_stock_list` which is used as the base universe for company/fundamentals/technicals.
+- `company-profile` runs before the rest of company datasets within the company domain run.
+- Exchange filtering: company/fundamentals/technicals join `silver.fmp_stock_list` to `silver.fmp_company_profile` by `exchange_short_name`. If `fmp_company_profile` is not yet populated, all stock-list symbols are returned with a warning.
 - In commodities, fx, and crypto: the **list dataset must load before price-eod** — price-eod queries silver for the symbol universe.
 - In market: **exchanges must load before market-holidays** — holidays queries `silver.fmp_market_exchanges` for exchange codes.
 
 ---
 
-## 3. Instrument Domain
-
-**Purpose**: Discover and maintain the universe of tradeable instruments. Provides ticker lists for equities, ETFs, indices, cryptocurrencies, and forex pairs. ETF holdings enriches the universe with constituent relationships.
-
-**Execution**: Step 1 of the main pipeline. Global list datasets run first (instrument discovery phase), then ETF holdings runs per-ticker (data acquisition phase).
-
-**API Source**: Financial Modeling Prep (FMP)
-
-### 3.1 stock-list
-
-| Property | Value |
-|---|---|
-| **Purpose** | All available stock symbols; seeds the equity ticker universe |
-| **Scope** | Global (single request) |
-| **Silver Table** | `silver.fmp_stock_list` |
-| **Key Columns** | `symbol` |
-| **Refresh** | Every 7 days (Mon–Sat) |
-| **FMP Plan** | basic |
-| **API Docs** | [stock-list](https://site.financialmodelingprep.com/developer/docs#stock-list) |
-
-### 3.2 etf-list
-
-| Property | Value |
-|---|---|
-| **Purpose** | All available ETF symbols |
-| **Scope** | Global (single request) |
-| **Silver Table** | `silver.fmp_etf_list` |
-| **Key Columns** | `symbol` |
-| **Refresh** | Every 7 days (Mon–Sat) |
-| **FMP Plan** | basic |
-| **API Docs** | [etf-list](https://site.financialmodelingprep.com/developer/docs#etf-list) |
-
-### 3.3 index-list
-
-| Property | Value |
-|---|---|
-| **Purpose** | All available market index symbols from global exchanges |
-| **Scope** | Global (single request) |
-| **Silver Table** | `silver.fmp_index_list` |
-| **Key Columns** | `symbol` |
-| **Refresh** | Every 7 days (Mon–Sat) |
-| **FMP Plan** | basic |
-| **API Docs** | [index-list](https://site.financialmodelingprep.com/developer/docs#index-list) |
-
-### 3.4 cryptocurrency-list
-
-| Property | Value |
-|---|---|
-| **Purpose** | All cryptocurrencies traded on exchanges worldwide |
-| **Scope** | Global (single request) |
-| **Silver Table** | `silver.fmp_cryptocurrency_list` |
-| **Key Columns** | `symbol` |
-| **Refresh** | Every 7 days (Mon–Sat) |
-| **FMP Plan** | basic |
-| **API Docs** | [cryptocurrency-list](https://site.financialmodelingprep.com/developer/docs#cryptocurrency-list) |
-
-### 3.5 forex-list
-
-| Property | Value |
-|---|---|
-| **Purpose** | All forex currency pairs available for trading |
-| **Scope** | Global (single request) |
-| **Silver Table** | `silver.fmp_forex_list` |
-| **Key Columns** | `symbol` |
-| **Refresh** | Every 7 days (Mon–Sat) |
-| **FMP Plan** | basic |
-| **API Docs** | [forex-list](https://site.financialmodelingprep.com/developer/docs#forex-list) |
-
-### 3.6 etf-holdings
-
-| Property | Value |
-|---|---|
-| **Purpose** | Constituent holdings, weights, and market values for each ETF |
-| **Scope** | Per ticker (every symbol in etf-list) |
-| **Silver Table** | `silver.fmp_etf_holdings` |
-| **Key Columns** | `ticker`, `asset`, `as_of_date` |
-| **Refresh** | Every 7 days (Mon–Sat) |
-| **FMP Plan** | basic |
-| **API Docs** | [etf-holdings](https://site.financialmodelingprep.com/developer/docs#etf-holdings) |
-
----
-
-## 4. Company Domain
+## 3. Company Domain
 
 **Purpose**: Per-ticker company metadata including business profiles, peer groups, workforce history, market capitalization, ownership structure, executive information, and compensation.
 
-**Execution**: Runs within the `instrument` domain handler, after `company-profile` is loaded. All datasets except `company-delisted` are ticker-based.
+**Execution**: Standalone `RunCommand(domain="company", exchanges=[...])`. Exchange filtering resolves tickers from `silver.fmp_stock_list` filtered by `silver.fmp_company_profile.exchange_short_name`. Company-profile is loaded first; remaining datasets follow. All datasets except `company-delisted` are ticker-based.
 
 **API Source**: Financial Modeling Prep (FMP)
 
-### 4.1 company-profile
+### 3.1 company-profile
 
 | Property | Value |
 |---|---|
@@ -211,9 +142,9 @@ flowchart TD
 | **FMP Plan** | basic |
 | **API Docs** | [profile-symbol](https://site.financialmodelingprep.com/developer/docs#profile-symbol) |
 
-> **Note**: Loaded before all other company/fundamentals/technicals datasets in the instrument pipeline. Tickers with prior `INVALID TICKER` errors are automatically filtered out.
+> **Note**: Loaded first in the company domain run. Tickers with prior `INVALID TICKER` errors are automatically filtered out.
 
-### 4.2 company-notes
+### 3.2 company-notes
 
 | Property | Value |
 |---|---|
@@ -225,7 +156,7 @@ flowchart TD
 | **FMP Plan** | basic |
 | **API Docs** | [company-notes](https://site.financialmodelingprep.com/developer/docs#company-notes) |
 
-### 4.3 company-peers
+### 3.3 company-peers
 
 | Property | Value |
 |---|---|
@@ -237,7 +168,7 @@ flowchart TD
 | **FMP Plan** | basic |
 | **API Docs** | [company-peers](https://site.financialmodelingprep.com/developer/docs#company-peers) |
 
-### 4.4 company-employees
+### 3.4 company-employees
 
 | Property | Value |
 |---|---|
@@ -249,7 +180,7 @@ flowchart TD
 | **FMP Plan** | basic |
 | **API Docs** | [historical-employee-count](https://site.financialmodelingprep.com/developer/docs#historical-employee-count) |
 
-### 4.5 company-market-cap
+### 3.5 company-market-cap
 
 | Property | Value |
 |---|---|
@@ -261,7 +192,7 @@ flowchart TD
 | **FMP Plan** | basic |
 | **API Docs** | [historical-market-capitalization](https://site.financialmodelingprep.com/developer/docs#historical-market-capitalization) |
 
-### 4.6 company-shares-float
+### 3.6 company-shares-float
 
 | Property | Value |
 |---|---|
@@ -273,7 +204,7 @@ flowchart TD
 | **FMP Plan** | basic |
 | **API Docs** | [historical-shares-float](https://site.financialmodelingprep.com/developer/docs#historical-shares-float) |
 
-### 4.7 company-officers
+### 3.7 company-officers
 
 | Property | Value |
 |---|---|
@@ -285,7 +216,7 @@ flowchart TD
 | **FMP Plan** | basic |
 | **API Docs** | [company-officers](https://site.financialmodelingprep.com/developer/docs#company-officers) |
 
-### 4.8 company-compensation
+### 3.8 company-compensation
 
 | Property | Value |
 |---|---|
@@ -297,7 +228,7 @@ flowchart TD
 | **FMP Plan** | basic |
 | **API Docs** | [executive-compensation](https://site.financialmodelingprep.com/developer/docs#executive-compensation) |
 
-### 4.9 company-delisted
+### 3.9 company-delisted
 
 | Property | Value |
 |---|---|
@@ -311,11 +242,11 @@ flowchart TD
 
 ---
 
-## 5. Fundamentals Domain
+## 4. Fundamentals Domain
 
 **Purpose**: Per-ticker financial statement data, valuation metrics, ratios, health scores, growth rates, and revenue segmentation. The primary source for quantitative fundamental analysis.
 
-**Execution**: Runs within the `instrument` domain handler, after company domain. All datasets are per-ticker. Many datasets have three forms: base (no period), annual (`FY`), and quarterly (`quarter`) — each stored as a separate keymap entry with a discriminator.
+**Execution**: Standalone `RunCommand(domain="fundamentals", exchanges=[...])`. Exchange filtering resolves tickers from silver. All datasets are per-ticker. Many datasets have three forms: base (no period), annual (`FY`), and quarterly (`quarter`) — each stored as a separate keymap entry with a discriminator.
 
 **API Source**: Financial Modeling Prep (FMP)
 
@@ -384,11 +315,11 @@ flowchart TD
 
 ---
 
-## 6. Technicals Domain
+## 5. Technicals Domain
 
 **Purpose**: Per-ticker price history and technical indicators for quantitative and technical analysis. Covers three price series variants (split-adjusted, non-split-adjusted, dividend-adjusted) and a comprehensive set of moving averages, momentum, and volatility indicators.
 
-**Execution**: Runs within the `instrument` domain handler, after fundamentals. All datasets are per-ticker and refresh daily on weekdays.
+**Execution**: Standalone `RunCommand(domain="technicals", exchanges=[...])`. Exchange filtering resolves tickers from silver. All datasets are per-ticker and refresh daily on weekdays.
 
 **API Source**: Financial Modeling Prep (FMP) — all indicators via `stable/technical_indicator/daily`
 
@@ -444,15 +375,15 @@ All momentum/volatility datasets use FMP basic plan.
 
 ---
 
-## 7. Economics Domain
+## 6. Economics Domain
 
 **Purpose**: Global macroeconomic time series for top-down analysis, macro-regime identification, and risk-free rate modeling. All datasets are globally scoped (no ticker dependency) and run independently of the instrument pipeline.
 
-**Execution**: Step 2 of the main pipeline. Can run concurrently with the instrument domain since there are no data dependencies between them.
+**Execution**: Standalone `RunCommand(domain="economics")`. Can run concurrently with other domains since there are no data dependencies.
 
 **API Source**: Financial Modeling Prep (FMP)
 
-### 7.1 treasury-rates
+### 6.1 treasury-rates
 
 | Property | Value |
 |---|---|
@@ -464,7 +395,7 @@ All momentum/volatility datasets use FMP basic plan.
 | **FMP Plan** | basic |
 | **API Docs** | [treasury-rates](https://site.financialmodelingprep.com/developer/docs#treasury-rates) |
 
-### 7.2 market-risk-premium
+### 6.2 market-risk-premium
 
 | Property | Value |
 |---|---|
@@ -476,7 +407,7 @@ All momentum/volatility datasets use FMP basic plan.
 | **FMP Plan** | basic |
 | **API Docs** | [market-risk-premium](https://site.financialmodelingprep.com/developer/docs#market-risk-premium) |
 
-### 7.3 economic-indicators (27 series)
+### 6.3 economic-indicators (27 series)
 
 All 27 series share the dataset name `economic-indicators` with a unique discriminator per series. Silver table: `silver.fmp_economic_indicators`.
 
@@ -515,17 +446,67 @@ All economic indicator series use FMP basic plan. Key columns: `date`, `discrimi
 
 ---
 
-## 8. Market Domain
+## 7. Market Domain
 
-**Purpose**: Market structure reference data for exchanges, sectors, industries, and countries. Provides daily performance snapshots and PE ratio time series from 2013 onward, and historical market holidays per exchange.
+**Purpose**: Universe discovery (stock/ETF/index lists, ETF holdings) plus market structure reference data for exchanges, sectors, industries, and countries. Provides daily performance snapshots and PE ratio time series from 2013 onward, and historical market holidays per exchange.
 
-**Execution**: Optional separate run — market data does not feed into the main instrument pipeline and is typically run independently (e.g., weekly or on demand). Internal execution phases are sequential due to silver dependencies.
+**Execution**: Standalone `RunCommand(domain="market")`. No exchanges required. Internal execution phases are sequential due to silver dependencies. This domain should run before company/fundamentals/technicals since it populates `silver.fmp_stock_list` which seeds the ticker universe.
 
 **API Source**: Financial Modeling Prep (FMP)
 
-### Phase 1a — Baseline (runs first)
+### Phase 0 — Universe Discovery (runs first)
 
-#### 8.1 market-countries
+#### 7.1 stock-list
+
+| Property | Value |
+|---|---|
+| **Purpose** | All available stock symbols; seeds the equity ticker universe for company/fundamentals/technicals |
+| **Scope** | Global (single request) |
+| **Silver Table** | `silver.fmp_stock_list` |
+| **Key Columns** | `symbol` |
+| **Refresh** | Every 7 days (Mon–Sat) |
+| **FMP Plan** | basic |
+| **API Docs** | [stock-list](https://site.financialmodelingprep.com/developer/docs#stock-list) |
+
+#### 7.2 etf-list
+
+| Property | Value |
+|---|---|
+| **Purpose** | All available ETF symbols |
+| **Scope** | Global (single request) |
+| **Silver Table** | `silver.fmp_etf_list` |
+| **Key Columns** | `symbol` |
+| **Refresh** | Every 7 days (Mon–Sat) |
+| **FMP Plan** | basic |
+| **API Docs** | [etf-list](https://site.financialmodelingprep.com/developer/docs#etf-list) |
+
+#### 7.3 index-list
+
+| Property | Value |
+|---|---|
+| **Purpose** | All available market index symbols from global exchanges |
+| **Scope** | Global (single request) |
+| **Silver Table** | `silver.fmp_index_list` |
+| **Key Columns** | `symbol` |
+| **Refresh** | Every 7 days (Mon–Sat) |
+| **FMP Plan** | basic |
+| **API Docs** | [index-list](https://site.financialmodelingprep.com/developer/docs#index-list) |
+
+#### 7.4 etf-holdings
+
+| Property | Value |
+|---|---|
+| **Purpose** | Constituent holdings, weights, and market values for each ETF |
+| **Scope** | Per ticker (every symbol in etf-list) |
+| **Silver Table** | `silver.fmp_etf_holdings` |
+| **Key Columns** | `ticker`, `asset`, `as_of_date` |
+| **Refresh** | Every 7 days (Mon–Sat) |
+| **FMP Plan** | basic |
+| **API Docs** | [etf-holdings](https://site.financialmodelingprep.com/developer/docs#etf-holdings) |
+
+### Phase 1a — Baseline (runs after Phase 0)
+
+#### 7.5 market-countries
 
 | Property | Value |
 |---|---|
@@ -539,7 +520,7 @@ All economic indicator series use FMP basic plan. Key columns: `date`, `discrimi
 
 ### Phase 1b — Reference Dimensions (run after countries)
 
-#### 8.2 market-exchanges
+#### 7.6 market-exchanges
 
 | Property | Value |
 |---|---|
@@ -551,7 +532,7 @@ All economic indicator series use FMP basic plan. Key columns: `date`, `discrimi
 | **FMP Plan** | basic |
 | **API Docs** | [available-exchanges](https://site.financialmodelingprep.com/developer/docs#available-exchanges) |
 
-#### 8.3 market-sectors
+#### 7.7 market-sectors
 
 | Property | Value |
 |---|---|
@@ -563,7 +544,7 @@ All economic indicator series use FMP basic plan. Key columns: `date`, `discrimi
 | **FMP Plan** | basic |
 | **API Docs** | [available-sectors](https://site.financialmodelingprep.com/developer/docs#available-sectors) |
 
-#### 8.4 market-industries
+#### 7.8 market-industries
 
 | Property | Value |
 |---|---|
@@ -577,7 +558,7 @@ All economic indicator series use FMP basic plan. Key columns: `date`, `discrimi
 
 ### Phase 2a — Daily Snapshots
 
-#### 8.5 market-hours
+#### 7.9 market-hours
 
 | Property | Value |
 |---|---|
@@ -593,7 +574,7 @@ All economic indicator series use FMP basic plan. Key columns: `date`, `discrimi
 
 All four datasets below are fetched for **every market weekday from 2013-01-01** through today. The date is used as the discriminator in the keymap, enabling idempotent re-ingestion.
 
-#### 8.6 market-sector-performance
+#### 7.10 market-sector-performance
 
 | Property | Value |
 |---|---|
@@ -605,7 +586,7 @@ All four datasets below are fetched for **every market weekday from 2013-01-01**
 | **FMP Plan** | basic |
 | **API Docs** | [sector-performance-snapshot](https://site.financialmodelingprep.com/developer/docs#sector-performance-snapshot) |
 
-#### 8.7 market-industry-performance
+#### 7.11 market-industry-performance
 
 | Property | Value |
 |---|---|
@@ -617,7 +598,7 @@ All four datasets below are fetched for **every market weekday from 2013-01-01**
 | **FMP Plan** | basic |
 | **API Docs** | [industry-performance-snapshot](https://site.financialmodelingprep.com/developer/docs#industry-performance-snapshot) |
 
-#### 8.8 market-sector-pe
+#### 7.12 market-sector-pe
 
 | Property | Value |
 |---|---|
@@ -629,7 +610,7 @@ All four datasets below are fetched for **every market weekday from 2013-01-01**
 | **FMP Plan** | basic |
 | **API Docs** | [sector-pe-snapshot](https://site.financialmodelingprep.com/developer/docs#industry-performance-snapshot) |
 
-#### 8.9 market-industry-pe
+#### 7.13 market-industry-pe
 
 | Property | Value |
 |---|---|
@@ -643,7 +624,7 @@ All four datasets below are fetched for **every market weekday from 2013-01-01**
 
 ### Phase 2c — Per-Exchange (requires exchanges in silver)
 
-#### 8.10 market-holidays
+#### 7.14 market-holidays
 
 | Property | Value |
 |---|---|
@@ -657,15 +638,15 @@ All four datasets below are fetched for **every market weekday from 2013-01-01**
 
 ---
 
-## 9. Commodities Domain
+## 8. Commodities Domain
 
 **Purpose**: Universe of tradeable commodities (energy, metals, agricultural) and historical end-of-day prices. The list is loaded first, then prices are fetched per symbol using the list as the universe.
 
-**Execution**: Step 3 of the main pipeline. `commodities-list` must be loaded before `commodities-price-eod`.
+**Execution**: Standalone `RunCommand(domain="commodities")`. `commodities-list` must be loaded before `commodities-price-eod`.
 
 **API Source**: Financial Modeling Prep (FMP)
 
-### 9.1 commodities-list
+### 8.1 commodities-list
 
 | Property | Value |
 |---|---|
@@ -677,7 +658,7 @@ All four datasets below are fetched for **every market weekday from 2013-01-01**
 | **FMP Plan** | basic |
 | **API Docs** | [commodities-list](https://site.financialmodelingprep.com/developer/docs#Commoditiescurrency-list) |
 
-### 9.2 commodities-price-eod
+### 8.2 commodities-price-eod
 
 | Property | Value |
 |---|---|
@@ -691,15 +672,15 @@ All four datasets below are fetched for **every market weekday from 2013-01-01**
 
 ---
 
-## 10. FX Domain
+## 9. FX Domain
 
 **Purpose**: Universe of forex currency pairs and historical end-of-day exchange rates. Parallel structure to commodities — list loads first, then prices per pair.
 
-**Execution**: Step 4 of the main pipeline. `fx-list` must be loaded before `fx-price-eod`.
+**Execution**: Standalone `RunCommand(domain="fx")`. `fx-list` must be loaded before `fx-price-eod`.
 
 **API Source**: Financial Modeling Prep (FMP)
 
-### 10.1 fx-list
+### 9.1 fx-list
 
 | Property | Value |
 |---|---|
@@ -711,7 +692,7 @@ All four datasets below are fetched for **every market weekday from 2013-01-01**
 | **FMP Plan** | basic |
 | **API Docs** | [forex-list](https://site.financialmodelingprep.com/developer/docs#forex-list) |
 
-### 10.2 fx-price-eod
+### 9.2 fx-price-eod
 
 | Property | Value |
 |---|---|
@@ -725,15 +706,15 @@ All four datasets below are fetched for **every market weekday from 2013-01-01**
 
 ---
 
-## 11. Crypto Domain
+## 10. Crypto Domain
 
 **Purpose**: Universe of cryptocurrencies and historical end-of-day prices. Parallel structure to commodities and FX — list loads first, then prices per symbol.
 
-**Execution**: Step 5 of the main pipeline. `crypto-list` must be loaded before `crypto-price-eod`.
+**Execution**: Standalone `RunCommand(domain="crypto")`. `crypto-list` must be loaded before `crypto-price-eod`.
 
 **API Source**: Financial Modeling Prep (FMP)
 
-### 11.1 crypto-list
+### 10.1 crypto-list
 
 | Property | Value |
 |---|---|
@@ -745,7 +726,7 @@ All four datasets below are fetched for **every market weekday from 2013-01-01**
 | **FMP Plan** | basic |
 | **API Docs** | [cryptocurrency-list](https://site.financialmodelingprep.com/developer/docs#cryptocurrency-list) |
 
-### 11.2 crypto-price-eod
+### 10.2 crypto-price-eod
 
 | Property | Value |
 |---|---|
@@ -759,16 +740,24 @@ All four datasets below are fetched for **every market weekday from 2013-01-01**
 
 ---
 
-## 12. Dataset Summary Table
+## 11. Dataset Summary Table
 
 | Domain | Dataset | Discriminator | Scope | Refresh (days) | Run Days | FMP Plan | Silver Table |
 |---|---|---|---|---|---|---|---|
-| instrument | stock-list | — | global | 7 | Mon–Sat | basic | fmp_stock_list |
-| instrument | etf-list | — | global | 7 | Mon–Sat | basic | fmp_etf_list |
-| instrument | index-list | — | global | 7 | Mon–Sat | basic | fmp_index_list |
-| instrument | cryptocurrency-list | — | global | 7 | Mon–Sat | basic | fmp_cryptocurrency_list |
-| instrument | forex-list | — | global | 7 | Mon–Sat | basic | fmp_forex_list |
-| instrument | etf-holdings | — | per ticker | 7 | Mon–Sat | basic | fmp_etf_holdings |
+| market | stock-list | — | global | 7 | Mon–Sat | basic | fmp_stock_list |
+| market | etf-list | — | global | 7 | Mon–Sat | basic | fmp_etf_list |
+| market | index-list | — | global | 7 | Mon–Sat | basic | fmp_index_list |
+| market | etf-holdings | — | per ticker | 7 | Mon–Sat | basic | fmp_etf_holdings |
+| market | market-countries | — | global | 365 | Mon–Sat | basic | fmp_market_countries |
+| market | market-exchanges | — | global | 365 | Mon–Sat | basic | fmp_market_exchanges |
+| market | market-sectors | — | global | 365 | Mon–Sat | basic | fmp_market_sectors |
+| market | market-industries | — | global | 365 | Mon–Sat | basic | fmp_market_industries |
+| market | market-hours | — | global | 1 | Mon–Fri | basic | fmp_market_hours |
+| market | market-sector-performance | date | global | 1 | Mon–Fri | basic | fmp_market_sector_performance |
+| market | market-industry-performance | date | global | 1 | Mon–Fri | basic | fmp_market_industry_performance |
+| market | market-sector-pe | date | global | 1 | Mon–Fri | basic | fmp_market_sector_pe |
+| market | market-industry-pe | date | global | 1 | Mon–Fri | basic | fmp_market_industry_pe |
+| market | market-holidays | exchange | per exchange | 365 | Mon–Sat | basic | fmp_market_holidays |
 | company | company-profile | — | per ticker | 365 | Mon–Sat | basic | fmp_company_profile |
 | company | company-notes | — | per ticker | 365 | Sat | basic | fmp_company_notes |
 | company | company-peers | — | per ticker | 365 | Sat | basic | fmp_company_peers |
@@ -845,16 +834,6 @@ All four datasets below are fetched for **every market weekday from 2013-01-01**
 | economics | economic-indicators | 30YearFixedRateMortgageAverage | global | 7 | Mon–Sat | basic | fmp_economic_indicators |
 | economics | economic-indicators | 3MonthOr90DayRatesAndYieldsCertificatesOfDeposit | global | 7 | Mon–Sat | basic | fmp_economic_indicators |
 | economics | economic-indicators | commercialBankInterestRateOnCreditCardPlansAllAccounts | global | 30 | Mon–Sat | basic | fmp_economic_indicators |
-| market | market-countries | — | global | 365 | Mon–Sat | basic | fmp_market_countries |
-| market | market-exchanges | — | global | 365 | Mon–Sat | basic | fmp_market_exchanges |
-| market | market-sectors | — | global | 365 | Mon–Sat | basic | fmp_market_sectors |
-| market | market-industries | — | global | 365 | Mon–Sat | basic | fmp_market_industries |
-| market | market-hours | — | global | 1 | Mon–Fri | basic | fmp_market_hours |
-| market | market-sector-performance | date | global | 1 | Mon–Fri | basic | fmp_market_sector_performance |
-| market | market-industry-performance | date | global | 1 | Mon–Fri | basic | fmp_market_industry_performance |
-| market | market-sector-pe | date | global | 1 | Mon–Fri | basic | fmp_market_sector_pe |
-| market | market-industry-pe | date | global | 1 | Mon–Fri | basic | fmp_market_industry_pe |
-| market | market-holidays | exchange | per exchange | 365 | Mon–Sat | basic | fmp_market_holidays |
 | commodities | commodities-list | — | global | 365 | Mon–Sat | basic | fmp_commodities_list |
 | commodities | commodities-price-eod | — | per symbol | 1 | Mon–Fri | basic | fmp_commodities_price_eod |
 | fx | fx-list | — | global | 365 | Mon–Sat | basic | fmp_fx_list |
@@ -868,15 +847,15 @@ All four datasets below are fetched for **every market weekday from 2013-01-01**
 
 | Stat | Value |
 |---|---|
-| Total domains | 9 |
-| Total datasets (keymap entries) | ~109 |
+| Total domains | 8 |
+| Total datasets (keymap entries) | ~107 |
 | Per-ticker datasets | ~65 |
-| Global datasets | ~44 |
+| Global datasets | ~42 |
 | Daily refresh datasets (1 day) | ~38 |
-| Weekly refresh datasets (7 days) | ~12 |
+| Weekly refresh datasets (7 days) | ~8 |
 | Monthly refresh datasets (30 days) | ~23 |
 | Quarterly refresh datasets (90 days) | ~22 |
-| Annual refresh datasets (365 days) | ~14 |
+| Annual refresh datasets (365 days) | ~16 |
 | Requires starter+ plan | 2 (revenue segmentation) |
 | All others | basic plan |
 

@@ -29,41 +29,29 @@ class OpsService:
         self,
         *,
         update_ticker_limit: int = 0,
-        new_ticker_limit: int = 0,
         enable_update_tickers: bool = True,
-        enable_new_tickers: bool = False,
     ) -> RunContext:
-        """Start a new orchestration run with separate update and new ticker lists.
+        """Start a new orchestration run.
 
         Args:
             update_ticker_limit: Max tickers to process from already-ingested pool
-            new_ticker_limit: Max tickers to process from new instrument dimensions
             enable_update_tickers: Whether to include update tickers
-            enable_new_tickers: Whether to include new tickers
 
         Returns:
-            RunContext with combined ticker list
+            RunContext with ticker list
         """
         today = self._universe.today()
 
-        tickers: list[str] = []
         update_tickers: list[str] = []
-        new_tickers: list[str] = []
 
         if enable_update_tickers and update_ticker_limit > 0:
             update_tickers = self._universe.update_tickers(limit=update_ticker_limit)
-            tickers.extend(update_tickers)
-
-        if enable_new_tickers and new_ticker_limit > 0:
-            new_tickers = self._universe.new_tickers(limit=new_ticker_limit)
-            tickers.extend(new_tickers)
 
         return RunContext(
             run_id=self._universe.run_id(),
             started_at=self._universe.now(),
-            tickers=tickers,
+            tickers=list(update_tickers),
             update_tickers=update_tickers,
-            new_tickers=new_tickers,
             today=today.isoformat(),
         )
 

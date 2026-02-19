@@ -28,11 +28,8 @@ class _StubUniverse:
     def run_id(self) -> str:
         return "stub-run"
 
-    def update_tickers(self, *, start: int = 0, limit: int = 50, instrument_type: str | None = None, is_active: bool = True) -> list[str]:
+    def update_tickers(self, *, start: int = 0, limit: int = 50) -> list[str]:
         return [f"T{i}" for i in range(start, start + limit)]
-
-    def new_tickers(self, *, start: int = 0, limit: int = 50, instrument_type: str | None = None, is_active: bool = True) -> list[str]:
-        return [f"N{i}" for i in range(start, start + limit)]
 
 
 class _StubRepo:
@@ -182,53 +179,31 @@ class TestGetSilverWatermark:
 
 
 class TestStartRunFlags:
-    def test_empty_tickers_when_both_disabled(self) -> None:
+    def test_empty_tickers_when_update_disabled(self) -> None:
         universe = _StubUniverse()
         repo = _StubRepo()
         service = OpsService(ops_repo=repo, universe=universe)
 
         summary = service.start_run(
             update_ticker_limit=10,
-            new_ticker_limit=10,
             enable_update_tickers=False,
-            enable_new_tickers=False,
         )
 
         assert summary.tickers == []
         assert summary.update_tickers == []
-        assert summary.new_tickers == []
 
-    def test_only_update_tickers_when_new_disabled(self) -> None:
+    def test_update_tickers_returned_when_enabled(self) -> None:
         universe = _StubUniverse()
         repo = _StubRepo()
         service = OpsService(ops_repo=repo, universe=universe)
 
         summary = service.start_run(
             update_ticker_limit=2,
-            new_ticker_limit=3,
             enable_update_tickers=True,
-            enable_new_tickers=False,
         )
 
         assert summary.update_tickers == ["T0", "T1"]
-        assert summary.new_tickers == []
         assert summary.tickers == ["T0", "T1"]
-
-    def test_only_new_tickers_when_update_disabled(self) -> None:
-        universe = _StubUniverse()
-        repo = _StubRepo()
-        service = OpsService(ops_repo=repo, universe=universe)
-
-        summary = service.start_run(
-            update_ticker_limit=2,
-            new_ticker_limit=3,
-            enable_update_tickers=False,
-            enable_new_tickers=True,
-        )
-
-        assert summary.update_tickers == []
-        assert summary.new_tickers == ["N0", "N1", "N2"]
-        assert summary.tickers == ["N0", "N1", "N2"]
 
     def test_zero_limit_returns_empty(self) -> None:
         universe = _StubUniverse()
@@ -237,13 +212,11 @@ class TestStartRunFlags:
 
         summary = service.start_run(
             update_ticker_limit=0,
-            new_ticker_limit=0,
             enable_update_tickers=True,
-            enable_new_tickers=True,
         )
 
         assert summary.update_tickers == []
-        assert summary.new_tickers == []
+        assert summary.tickers == []
 
 
 # --- Tests for finish_run ---

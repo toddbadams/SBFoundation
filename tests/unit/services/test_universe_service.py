@@ -23,11 +23,6 @@ def test_update_tickers_with_non_positive_limit_returns_empty() -> None:
     assert service.update_tickers(limit=-1) == []
 
 
-def test_new_tickers_with_non_positive_limit_returns_empty() -> None:
-    service = UniverseService()
-    assert service.new_tickers(limit=0) == []
-    assert service.new_tickers(limit=-1) == []
-
 
 def test_run_id_has_expected_format() -> None:
     service = UniverseService()

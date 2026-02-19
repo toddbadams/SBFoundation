@@ -157,7 +157,7 @@ DTO_REGISTRY = DTORegistry(
         "technicals-standard-deviation-20": StandardDeviationDTO,
         "technicals-williams-14": WilliamsDTO,
         "technicals-adx-14": AverageDirectionalIndexDTO,
-        # Instrument domain
+        # Market domain (list datasets)
         "stock-list": StockListDTO,
         "etf-list": ETFListDTO,
         "index-list": IndexListDTO,

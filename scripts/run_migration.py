@@ -41,7 +41,7 @@ def run_migration(migration_file: str) -> None:
         conn.execute("BEGIN")
         conn.execute(migration_sql)
         conn.execute("COMMIT")
-        print("✓ Migration completed successfully")
+        print("Migration completed successfully")
 
         # Verify the changes for the pe column migration
         if "fix_pe_column_types" in migration_path.name:

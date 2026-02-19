@@ -23,9 +23,6 @@ class KeyMetricsTtmDTO(BronzeToSilverDTO):
     # identifiers
     ticker: str = field(default="_none_", metadata={"api": "symbol"})
 
-    # vendor fields (snake_case)
-    symbol: str = field(default="", metadata={"api": "symbol"})
-
     # valuation / ratios (TTM)
     market_cap: float | None = field(default=None, metadata={"api": "marketCap"})
     enterprise_value_ttm: float | None = field(default=None, metadata={"api": "enterpriseValueTTM"})

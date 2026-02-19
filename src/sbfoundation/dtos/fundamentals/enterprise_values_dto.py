@@ -24,7 +24,6 @@ class EnterpriseValuesDTO(BronzeToSilverDTO):
     ticker: str = field(default="_none_", metadata={"api": "symbol"})
 
     # vendor fields (snake_case)
-    symbol: str = field(default="", metadata={"api": "symbol"})
     date: str | None = field(default=None, metadata={"api": "date"})
 
     stock_price: float | None = field(default=None, metadata={"api": "stockPrice"})

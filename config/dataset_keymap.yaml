@@ -33,9 +33,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.instrument.stock_list_dto.StockListDTO
     columns:
-    - name: symbol
-      type: str
-      nullable: false
     - name: company_name
       type: str
       nullable: true
@@ -72,9 +69,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.instrument.etf_list_dto.ETFListDTO
     columns:
-    - name: symbol
-      type: str
-      nullable: false
     - name: company_name
       type: str
       nullable: true
@@ -111,9 +105,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.instrument.index_list_dto.IndexListDTO
     columns:
-    - name: symbol
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: true
@@ -156,9 +147,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.instrument.cryptocurrency_list_dto.CryptocurrencyListDTO
     columns:
-    - name: symbol
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: true
@@ -207,9 +195,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.instrument.forex_list_dto.ForexListDTO
     columns:
-    - name: symbol
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: true
@@ -777,9 +762,6 @@ datasets:
     - name: ticker
       type: str
       nullable: false
-    - name: symbol
-      type: str
-      nullable: false
     - name: company_name
       type: str | None
       nullable: true
@@ -843,6 +825,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   recipes:
   - plans:
@@ -850,7 +833,7 @@ datasets:
     data_source_path: income-statement
     query_vars:
       symbol: __ticker__
-      period: FY
+      period: annual
       limit: __limit__
     date_key: date
     cadence_mode: interval
@@ -872,9 +855,6 @@ datasets:
     - name: date
       type: str | None
       nullable: true
-    - name: symbol
-      type: str
-      nullable: false
     - name: reported_currency
       type: str
       nullable: false
@@ -996,6 +976,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   recipes:
   - plans:
@@ -1025,9 +1006,6 @@ datasets:
     - name: date
       type: str | None
       nullable: true
-    - name: symbol
-      type: str
-      nullable: false
     - name: reported_currency
       type: str
       nullable: false
@@ -1149,6 +1127,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   recipes:
   - plans:
@@ -1156,7 +1135,7 @@ datasets:
     data_source_path: balance-sheet-statement
     query_vars:
       symbol: __ticker__
-      period: FY
+      period: annual
       limit: __limit__
     date_key: date
     cadence_mode: interval
@@ -1178,9 +1157,6 @@ datasets:
     - name: date
       type: str | None
       nullable: true
-    - name: symbol
-      type: str
-      nullable: false
     - name: reported_currency
       type: str
       nullable: false
@@ -1365,6 +1341,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   recipes:
   - plans:
@@ -1394,9 +1371,6 @@ datasets:
     - name: date
       type: str | None
       nullable: true
-    - name: symbol
-      type: str
-      nullable: false
     - name: reported_currency
       type: str
       nullable: false
@@ -1581,6 +1555,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   recipes:
   - plans:
@@ -1588,7 +1563,7 @@ datasets:
     data_source_path: cash-flow-statement
     query_vars:
       symbol: __ticker__
-      period: FY
+      period: annual
       limit: __limit__
     date_key: date
     cadence_mode: interval
@@ -1610,9 +1585,6 @@ datasets:
     - name: date
       type: str | None
       nullable: true
-    - name: symbol
-      type: str
-      nullable: false
     - name: reported_currency
       type: str
       nullable: false
@@ -1758,6 +1730,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   recipes:
   - plans:
@@ -1787,9 +1760,6 @@ datasets:
     - name: date
       type: str | None
       nullable: true
-    - name: symbol
-      type: str
-      nullable: false
     - name: reported_currency
       type: str
       nullable: false
@@ -1958,9 +1928,6 @@ datasets:
     dto_type: sbfoundation.dtos.fundamentals.key_metrics_dto.KeyMetricsDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -2134,9 +2101,6 @@ datasets:
     dto_type: sbfoundation.dtos.fundamentals.metrics_ratios_dto.MetricsRatiosDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -2357,9 +2321,6 @@ datasets:
     - name: ticker
       type: str
       nullable: false
-    - name: symbol
-      type: str
-      nullable: false
     - name: market_cap
       type: float | None
       nullable: true
@@ -2518,9 +2479,6 @@ datasets:
     - name: ticker
       type: str
       nullable: false
-    - name: symbol
-      type: str
-      nullable: false
     - name: current_ratio_ttm
       type: float | None
       nullable: true
@@ -2616,9 +2574,6 @@ datasets:
     - name: ticker
       type: str
       nullable: false
-    - name: symbol
-      type: str
-      nullable: false
     - name: reported_currency
       type: str
       nullable: false
@@ -2684,9 +2639,6 @@ datasets:
     - name: ticker
       type: str
       nullable: false
-    - name: symbol
-      type: str
-      nullable: false
     - name: reported_currency
       type: str
       nullable: false
@@ -2749,9 +2701,6 @@ datasets:
     - name: ticker
       type: str
       nullable: false
-    - name: symbol
-      type: str
-      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -2783,6 +2732,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   recipes:
   - plans:
@@ -2790,7 +2740,7 @@ datasets:
     data_source_path: income-statement-growth
     query_vars:
       symbol: __ticker__
-      period: FY
+      period: annual
       limit: __limit__
     date_key: date
     cadence_mode: interval
@@ -2807,9 +2757,6 @@ datasets:
     dto_type: sbfoundation.dtos.fundamentals.income_statement_growth_dto.IncomeStatementGrowthDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -2921,6 +2868,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   recipes:
   - plans:
@@ -2945,9 +2893,6 @@ datasets:
     dto_type: sbfoundation.dtos.fundamentals.income_statement_growth_dto.IncomeStatementGrowthDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -3059,6 +3004,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   recipes:
   - plans:
@@ -3066,7 +3012,7 @@ datasets:
     data_source_path: balance-sheet-statement-growth
     query_vars:
       symbol: __ticker__
-      period: FY
+      period: annual
       limit: __limit__
     date_key: date
     cadence_mode: interval
@@ -3083,9 +3029,6 @@ datasets:
     dto_type: sbfoundation.dtos.fundamentals.balance_sheet_statement_growth_dto.BalanceSheetStatementGrowthDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -3263,6 +3206,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   recipes:
   - plans:
@@ -3287,9 +3231,6 @@ datasets:
     dto_type: sbfoundation.dtos.fundamentals.balance_sheet_statement_growth_dto.BalanceSheetStatementGrowthDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -3467,6 +3408,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   recipes:
   - plans:
@@ -3474,7 +3416,7 @@ datasets:
     data_source_path: cash-flow-statement-growth
     query_vars:
       symbol: __ticker__
-      period: FY
+      period: annual
       limit: __limit__
     date_key: date
     cadence_mode: interval
@@ -3491,9 +3433,6 @@ datasets:
     dto_type: sbfoundation.dtos.fundamentals.cashflow_statement_growth_dto.CashflowStatementGrowthDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -3629,6 +3568,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   recipes:
   - plans:
@@ -3653,9 +3593,6 @@ datasets:
     dto_type: sbfoundation.dtos.fundamentals.cashflow_statement_growth_dto.CashflowStatementGrowthDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -3815,9 +3752,6 @@ datasets:
     dto_type: sbfoundation.dtos.fundamentals.financial_statement_growth_dto.FinancialStatementGrowthDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -3983,9 +3917,6 @@ datasets:
     dto_type: sbfoundation.dtos.fundamentals.financial_statement_growth_dto.FinancialStatementGrowthDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -4153,9 +4084,6 @@ datasets:
     - name: ticker
       type: str
       nullable: false
-    - name: symbol
-      type: str
-      nullable: false
     - name: date
       type: date
       nullable: false
@@ -4199,9 +4127,6 @@ datasets:
     dto_type: sbfoundation.dtos.fundamentals.revenue_segmentation_dto.RevenueSegmentationDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -5342,9 +5267,6 @@ datasets:
     - name: ticker
       type: str
       nullable: false
-    - name: symbol
-      type: str
-      nullable: false
     - name: date
       type: str
       nullable: true
@@ -5407,9 +5329,6 @@ datasets:
     - name: ticker
       type: str
       nullable: false
-    - name: symbol
-      type: str
-      nullable: false
     - name: date
       type: str | None
       nullable: true
@@ -5461,9 +5380,6 @@ datasets:
     dto_type: sbfoundation.dtos.technicals.historical_price_eod_dividend_adjusted_dto.HistoricalPriceEodDividendAdjustedDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -6606,495 +6522,6 @@ datasets:
       nullable: true
 - domain: fundamentals
   source: fmp
-  dataset: income-statement
-  discriminator: ''
-  ticker_scope: per_ticker
-  silver_schema: silver
-  silver_table: fmp_income_statement
-  key_cols:
-  - ticker
-  - date
-  row_date_col: date
-  dto_schema:
-    dto_type: sbfoundation.dtos.fundamentals.income_statement_dto.IncomeStatementDTO
-    columns:
-    - name: ticker
-      type: str
-      nullable: false
-    - name: date
-      type: str | None
-      nullable: true
-    - name: symbol
-      type: str
-      nullable: false
-    - name: reported_currency
-      type: str
-      nullable: false
-    - name: cik
-      type: str
-      nullable: false
-    - name: filing_date
-      type: str | None
-      nullable: true
-    - name: accepted_date
-      type: str
-      nullable: false
-    - name: fiscal_year
-      type: str
-      nullable: false
-    - name: period
-      type: str
-      nullable: false
-    - name: revenue
-      type: float | None
-      nullable: true
-    - name: cost_of_revenue
-      type: float | None
-      nullable: true
-    - name: gross_profit
-      type: float | None
-      nullable: true
-    - name: research_and_development_expenses
-      type: float | None
-      nullable: true
-    - name: general_and_administrative_expenses
-      type: float | None
-      nullable: true
-    - name: selling_and_marketing_expenses
-      type: float | None
-      nullable: true
-    - name: selling_general_and_administrative_expenses
-      type: float | None
-      nullable: true
-    - name: other_expenses
-      type: float | None
-      nullable: true
-    - name: operating_expenses
-      type: float | None
-      nullable: true
-    - name: cost_and_expenses
-      type: float | None
-      nullable: true
-    - name: net_interest_income
-      type: float | None
-      nullable: true
-    - name: interest_income
-      type: float | None
-      nullable: true
-    - name: interest_expense
-      type: float | None
-      nullable: true
-    - name: depreciation_and_amortization
-      type: float | None
-      nullable: true
-    - name: ebitda
-      type: float | None
-      nullable: true
-    - name: ebit
-      type: float | None
-      nullable: true
-    - name: non_operating_income_excluding_interest
-      type: float | None
-      nullable: true
-    - name: operating_income
-      type: float | None
-      nullable: true
-    - name: total_other_income_expenses_net
-      type: float | None
-      nullable: true
-    - name: income_before_tax
-      type: float | None
-      nullable: true
-    - name: income_tax_expense
-      type: float | None
-      nullable: true
-    - name: net_income_from_continuing_operations
-      type: float | None
-      nullable: true
-    - name: net_income_from_discontinued_operations
-      type: float | None
-      nullable: true
-    - name: other_adjustments_to_net_income
-      type: float | None
-      nullable: true
-    - name: net_income
-      type: float | None
-      nullable: true
-    - name: net_income_deductions
-      type: float | None
-      nullable: true
-    - name: bottom_line_net_income
-      type: float | None
-      nullable: true
-    - name: eps
-      type: float | None
-      nullable: true
-    - name: eps_diluted
-      type: float | None
-      nullable: true
-    - name: weighted_average_shs_out
-      type: float | None
-      nullable: true
-    - name: weighted_average_shs_out_dil
-      type: float | None
-      nullable: true
-- domain: fundamentals
-  source: fmp
-  dataset: balance-sheet-statement
-  discriminator: ''
-  ticker_scope: per_ticker
-  silver_schema: silver
-  silver_table: fmp_balance_sheet_statement
-  key_cols:
-  - ticker
-  - date
-  row_date_col: date
-  dto_schema:
-    dto_type: sbfoundation.dtos.fundamentals.balance_sheet_statement_dto.BalanceSheetStatementDTO
-    columns:
-    - name: ticker
-      type: str
-      nullable: false
-    - name: date
-      type: str | None
-      nullable: true
-    - name: symbol
-      type: str
-      nullable: false
-    - name: reported_currency
-      type: str
-      nullable: false
-    - name: cik
-      type: str
-      nullable: false
-    - name: filing_date
-      type: str | None
-      nullable: true
-    - name: accepted_date
-      type: str
-      nullable: false
-    - name: fiscal_year
-      type: str
-      nullable: false
-    - name: period
-      type: str
-      nullable: false
-    - name: cash_and_cash_equivalents
-      type: float | None
-      nullable: true
-    - name: short_term_investments
-      type: float | None
-      nullable: true
-    - name: cash_and_short_term_investments
-      type: float | None
-      nullable: true
-    - name: net_receivables
-      type: float | None
-      nullable: true
-    - name: accounts_receivables
-      type: float | None
-      nullable: true
-    - name: other_receivables
-      type: float | None
-      nullable: true
-    - name: inventory
-      type: float | None
-      nullable: true
-    - name: prepaids
-      type: float | None
-      nullable: true
-    - name: other_current_assets
-      type: float | None
-      nullable: true
-    - name: total_current_assets
-      type: float | None
-      nullable: true
-    - name: property_plant_equipment_net
-      type: float | None
-      nullable: true
-    - name: goodwill
-      type: float | None
-      nullable: true
-    - name: intangible_assets
-      type: float | None
-      nullable: true
-    - name: goodwill_and_intangible_assets
-      type: float | None
-      nullable: true
-    - name: long_term_investments
-      type: float | None
-      nullable: true
-    - name: tax_assets
-      type: float | None
-      nullable: true
-    - name: other_non_current_assets
-      type: float | None
-      nullable: true
-    - name: total_non_current_assets
-      type: float | None
-      nullable: true
-    - name: other_assets
-      type: float | None
-      nullable: true
-    - name: total_assets
-      type: float | None
-      nullable: true
-    - name: total_payables
-      type: float | None
-      nullable: true
-    - name: account_payables
-      type: float | None
-      nullable: true
-    - name: other_payables
-      type: float | None
-      nullable: true
-    - name: accrued_expenses
-      type: float | None
-      nullable: true
-    - name: short_term_debt
-      type: float | None
-      nullable: true
-    - name: capital_lease_obligations_current
-      type: float | None
-      nullable: true
-    - name: tax_payables
-      type: float | None
-      nullable: true
-    - name: deferred_revenue
-      type: float | None
-      nullable: true
-    - name: other_current_liabilities
-      type: float | None
-      nullable: true
-    - name: total_current_liabilities
-      type: float | None
-      nullable: true
-    - name: long_term_debt
-      type: float | None
-      nullable: true
-    - name: deferred_revenue_non_current
-      type: float | None
-      nullable: true
-    - name: deferred_tax_liabilities_non_current
-      type: float | None
-      nullable: true
-    - name: other_non_current_liabilities
-      type: float | None
-      nullable: true
-    - name: total_non_current_liabilities
-      type: float | None
-      nullable: true
-    - name: other_liabilities
-      type: float | None
-      nullable: true
-    - name: capital_lease_obligations
-      type: float | None
-      nullable: true
-    - name: total_liabilities
-      type: float | None
-      nullable: true
-    - name: treasury_stock
-      type: float | None
-      nullable: true
-    - name: preferred_stock
-      type: float | None
-      nullable: true
-    - name: common_stock
-      type: float | None
-      nullable: true
-    - name: retained_earnings
-      type: float | None
-      nullable: true
-    - name: additional_paid_in_capital
-      type: float | None
-      nullable: true
-    - name: accumulated_other_comprehensive_income_loss
-      type: float | None
-      nullable: true
-    - name: other_total_stockholders_equity
-      type: float | None
-      nullable: true
-    - name: total_stockholders_equity
-      type: float | None
-      nullable: true
-    - name: total_equity
-      type: float | None
-      nullable: true
-    - name: minority_interest
-      type: float | None
-      nullable: true
-    - name: total_liabilities_and_total_equity
-      type: float | None
-      nullable: true
-    - name: total_investments
-      type: float | None
-      nullable: true
-    - name: total_debt
-      type: float | None
-      nullable: true
-    - name: net_debt
-      type: float | None
-      nullable: true
-- domain: fundamentals
-  source: fmp
-  dataset: cashflow-statement
-  discriminator: ''
-  ticker_scope: per_ticker
-  silver_schema: silver
-  silver_table: fmp_cashflow_statement
-  key_cols:
-  - ticker
-  - date
-  row_date_col: date
-  dto_schema:
-    dto_type: sbfoundation.dtos.fundamentals.cashflow_statement_dto.CashflowStatementDTO
-    columns:
-    - name: ticker
-      type: str
-      nullable: false
-    - name: date
-      type: str | None
-      nullable: true
-    - name: symbol
-      type: str
-      nullable: false
-    - name: reported_currency
-      type: str
-      nullable: false
-    - name: cik
-      type: str
-      nullable: false
-    - name: filing_date
-      type: str | None
-      nullable: true
-    - name: accepted_date
-      type: str
-      nullable: false
-    - name: fiscal_year
-      type: str
-      nullable: false
-    - name: period
-      type: str
-      nullable: false
-    - name: net_income
-      type: float | None
-      nullable: true
-    - name: depreciation_and_amortization
-      type: float | None
-      nullable: true
-    - name: deferred_income_tax
-      type: float | None
-      nullable: true
-    - name: stock_based_compensation
-      type: float | None
-      nullable: true
-    - name: change_in_working_capital
-      type: float | None
-      nullable: true
-    - name: accounts_receivables
-      type: float | None
-      nullable: true
-    - name: inventory
-      type: float | None
-      nullable: true
-    - name: accounts_payables
-      type: float | None
-      nullable: true
-    - name: other_working_capital
-      type: float | None
-      nullable: true
-    - name: other_non_cash_items
-      type: float | None
-      nullable: true
-    - name: net_cash_provided_by_operating_activities
-      type: float | None
-      nullable: true
-    - name: investments_in_property_plant_and_equipment
-      type: float | None
-      nullable: true
-    - name: acquisitions_net
-      type: float | None
-      nullable: true
-    - name: purchases_of_investments
-      type: float | None
-      nullable: true
-    - name: sales_maturities_of_investments
-      type: float | None
-      nullable: true
-    - name: other_investing_activities
-      type: float | None
-      nullable: true
-    - name: net_cash_provided_by_investing_activities
-      type: float | None
-      nullable: true
-    - name: net_debt_issuance
-      type: float | None
-      nullable: true
-    - name: long_term_net_debt_issuance
-      type: float | None
-      nullable: true
-    - name: short_term_net_debt_issuance
-      type: float | None
-      nullable: true
-    - name: net_stock_issuance
-      type: float | None
-      nullable: true
-    - name: net_common_stock_issuance
-      type: float | None
-      nullable: true
-    - name: common_stock_issuance
-      type: float | None
-      nullable: true
-    - name: common_stock_repurchased
-      type: float | None
-      nullable: true
-    - name: net_preferred_stock_issuance
-      type: float | None
-      nullable: true
-    - name: net_dividends_paid
-      type: float | None
-      nullable: true
-    - name: common_dividends_paid
-      type: float | None
-      nullable: true
-    - name: preferred_dividends_paid
-      type: float | None
-      nullable: true
-    - name: other_financing_activities
-      type: float | None
-      nullable: true
-    - name: net_cash_provided_by_financing_activities
-      type: float | None
-      nullable: true
-    - name: effect_of_forex_changes_on_cash
-      type: float | None
-      nullable: true
-    - name: net_change_in_cash
-      type: float | None
-      nullable: true
-    - name: cash_at_end_of_period
-      type: float | None
-      nullable: true
-    - name: cash_at_beginning_of_period
-      type: float | None
-      nullable: true
-    - name: operating_cash_flow
-      type: float | None
-      nullable: true
-    - name: capital_expenditure
-      type: float | None
-      nullable: true
-    - name: free_cash_flow
-      type: float | None
-      nullable: true
-    - name: income_taxes_paid
-      type: float | None
-      nullable: true
-    - name: interest_paid
-      type: float | None
-      nullable: true
-- domain: fundamentals
-  source: fmp
   dataset: key-metrics
   discriminator: ''
   ticker_scope: per_ticker
@@ -7108,9 +6535,6 @@ datasets:
     dto_type: sbfoundation.dtos.fundamentals.key_metrics_dto.KeyMetricsDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -7266,9 +6690,6 @@ datasets:
     dto_type: sbfoundation.dtos.fundamentals.metrics_ratios_dto.MetricsRatiosDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -7459,453 +6880,6 @@ datasets:
       nullable: true
 - domain: fundamentals
   source: fmp
-  dataset: income-statement-growth
-  discriminator: ''
-  ticker_scope: per_ticker
-  silver_schema: silver
-  silver_table: fmp_income_statement_growth
-  key_cols:
-  - ticker
-  - date
-  row_date_col: date
-  dto_schema:
-    dto_type: sbfoundation.dtos.fundamentals.income_statement_growth_dto.IncomeStatementGrowthDTO
-    columns:
-    - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
-      type: str
-      nullable: false
-    - name: date
-      type: str | None
-      nullable: true
-    - name: fiscal_year
-      type: str
-      nullable: false
-    - name: period
-      type: str
-      nullable: false
-    - name: reported_currency
-      type: str
-      nullable: false
-    - name: growth_revenue
-      type: float | None
-      nullable: true
-    - name: growth_cost_of_revenue
-      type: float | None
-      nullable: true
-    - name: growth_gross_profit
-      type: float | None
-      nullable: true
-    - name: growth_gross_profit_ratio
-      type: float | None
-      nullable: true
-    - name: growth_research_and_development_expenses
-      type: float | None
-      nullable: true
-    - name: growth_general_and_administrative_expenses
-      type: float | None
-      nullable: true
-    - name: growth_selling_and_marketing_expenses
-      type: float | None
-      nullable: true
-    - name: growth_other_expenses
-      type: float | None
-      nullable: true
-    - name: growth_operating_expenses
-      type: float | None
-      nullable: true
-    - name: growth_cost_and_expenses
-      type: float | None
-      nullable: true
-    - name: growth_interest_income
-      type: float | None
-      nullable: true
-    - name: growth_interest_expense
-      type: float | None
-      nullable: true
-    - name: growth_depreciation_and_amortization
-      type: float | None
-      nullable: true
-    - name: growth_ebitda
-      type: float | None
-      nullable: true
-    - name: growth_operating_income
-      type: float | None
-      nullable: true
-    - name: growth_income_before_tax
-      type: float | None
-      nullable: true
-    - name: growth_income_tax_expense
-      type: float | None
-      nullable: true
-    - name: growth_net_income
-      type: float | None
-      nullable: true
-    - name: growth_eps
-      type: float | None
-      nullable: true
-    - name: growth_eps_diluted
-      type: float | None
-      nullable: true
-    - name: growth_weighted_average_shs_out
-      type: float | None
-      nullable: true
-    - name: growth_weighted_average_shs_out_dil
-      type: float | None
-      nullable: true
-    - name: growth_ebit
-      type: float | None
-      nullable: true
-    - name: growth_non_operating_income_excluding_interest
-      type: float | None
-      nullable: true
-    - name: growth_net_interest_income
-      type: float | None
-      nullable: true
-    - name: growth_total_other_income_expenses_net
-      type: float | None
-      nullable: true
-    - name: growth_net_income_from_continuing_operations
-      type: float | None
-      nullable: true
-    - name: growth_other_adjustments_to_net_income
-      type: float | None
-      nullable: true
-    - name: growth_net_income_deductions
-      type: float | None
-      nullable: true
-- domain: fundamentals
-  source: fmp
-  dataset: balance-sheet-statement-growth
-  discriminator: ''
-  ticker_scope: per_ticker
-  silver_schema: silver
-  silver_table: fmp_balance_sheet_statement_growth
-  key_cols:
-  - ticker
-  - date
-  row_date_col: date
-  dto_schema:
-    dto_type: sbfoundation.dtos.fundamentals.balance_sheet_statement_growth_dto.BalanceSheetStatementGrowthDTO
-    columns:
-    - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
-      type: str
-      nullable: false
-    - name: date
-      type: str | None
-      nullable: true
-    - name: fiscal_year
-      type: str
-      nullable: false
-    - name: period
-      type: str
-      nullable: false
-    - name: reported_currency
-      type: str
-      nullable: false
-    - name: growth_cash_and_cash_equivalents
-      type: float | None
-      nullable: true
-    - name: growth_short_term_investments
-      type: float | None
-      nullable: true
-    - name: growth_cash_and_short_term_investments
-      type: float | None
-      nullable: true
-    - name: growth_net_receivables
-      type: float | None
-      nullable: true
-    - name: growth_inventory
-      type: float | None
-      nullable: true
-    - name: growth_other_current_assets
-      type: float | None
-      nullable: true
-    - name: growth_total_current_assets
-      type: float | None
-      nullable: true
-    - name: growth_property_plant_equipment_net
-      type: float | None
-      nullable: true
-    - name: growth_goodwill
-      type: float | None
-      nullable: true
-    - name: growth_intangible_assets
-      type: float | None
-      nullable: true
-    - name: growth_goodwill_and_intangible_assets
-      type: float | None
-      nullable: true
-    - name: growth_long_term_investments
-      type: float | None
-      nullable: true
-    - name: growth_tax_assets
-      type: float | None
-      nullable: true
-    - name: growth_other_non_current_assets
-      type: float | None
-      nullable: true
-    - name: growth_total_non_current_assets
-      type: float | None
-      nullable: true
-    - name: growth_other_assets
-      type: float | None
-      nullable: true
-    - name: growth_total_assets
-      type: float | None
-      nullable: true
-    - name: growth_account_payables
-      type: float | None
-      nullable: true
-    - name: growth_short_term_debt
-      type: float | None
-      nullable: true
-    - name: growth_tax_payables
-      type: float | None
-      nullable: true
-    - name: growth_deferred_revenue
-      type: float | None
-      nullable: true
-    - name: growth_other_current_liabilities
-      type: float | None
-      nullable: true
-    - name: growth_total_current_liabilities
-      type: float | None
-      nullable: true
-    - name: growth_long_term_debt
-      type: float | None
-      nullable: true
-    - name: growth_deferred_revenue_non_current
-      type: float | None
-      nullable: true
-    - name: growth_deferred_tax_liabilities_non_current
-      type: float | None
-      nullable: true
-    - name: growth_other_non_current_liabilities
-      type: float | None
-      nullable: true
-    - name: growth_total_non_current_liabilities
-      type: float | None
-      nullable: true
-    - name: growth_other_liabilities
-      type: float | None
-      nullable: true
-    - name: growth_total_liabilities
-      type: float | None
-      nullable: true
-    - name: growth_preferred_stock
-      type: float | None
-      nullable: true
-    - name: growth_common_stock
-      type: float | None
-      nullable: true
-    - name: growth_retained_earnings
-      type: float | None
-      nullable: true
-    - name: growth_accumulated_other_comprehensive_income_loss
-      type: float | None
-      nullable: true
-    - name: growth_other_total_stockholders_equity
-      type: float | None
-      nullable: true
-    - name: growth_total_stockholders_equity
-      type: float | None
-      nullable: true
-    - name: growth_minority_interest
-      type: float | None
-      nullable: true
-    - name: growth_total_equity
-      type: float | None
-      nullable: true
-    - name: growth_total_liabilities_and_stockholders_equity
-      type: float | None
-      nullable: true
-    - name: growth_total_investments
-      type: float | None
-      nullable: true
-    - name: growth_total_debt
-      type: float | None
-      nullable: true
-    - name: growth_net_debt
-      type: float | None
-      nullable: true
-    - name: growth_accounts_receivables
-      type: float | None
-      nullable: true
-    - name: growth_other_receivables
-      type: float | None
-      nullable: true
-    - name: growth_prepaids
-      type: float | None
-      nullable: true
-    - name: growth_total_payables
-      type: float | None
-      nullable: true
-    - name: growth_other_payables
-      type: float | None
-      nullable: true
-    - name: growth_accrued_expenses
-      type: float | None
-      nullable: true
-    - name: growth_capital_lease_obligations_current
-      type: float | None
-      nullable: true
-    - name: growth_additional_paid_in_capital
-      type: float | None
-      nullable: true
-    - name: growth_treasury_stock
-      type: float | None
-      nullable: true
-- domain: fundamentals
-  source: fmp
-  dataset: cashflow-statement-growth
-  discriminator: ''
-  ticker_scope: per_ticker
-  silver_schema: silver
-  silver_table: fmp_cashflow_statement_growth
-  key_cols:
-  - ticker
-  - date
-  row_date_col: date
-  dto_schema:
-    dto_type: sbfoundation.dtos.fundamentals.cashflow_statement_growth_dto.CashflowStatementGrowthDTO
-    columns:
-    - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
-      type: str
-      nullable: false
-    - name: date
-      type: str | None
-      nullable: true
-    - name: fiscal_year
-      type: str
-      nullable: false
-    - name: period
-      type: str
-      nullable: false
-    - name: reported_currency
-      type: str
-      nullable: false
-    - name: growth_net_income
-      type: float | None
-      nullable: true
-    - name: growth_depreciation_and_amortization
-      type: float | None
-      nullable: true
-    - name: growth_deferred_income_tax
-      type: float | None
-      nullable: true
-    - name: growth_stock_based_compensation
-      type: float | None
-      nullable: true
-    - name: growth_change_in_working_capital
-      type: float | None
-      nullable: true
-    - name: growth_accounts_receivables
-      type: float | None
-      nullable: true
-    - name: growth_inventory
-      type: float | None
-      nullable: true
-    - name: growth_accounts_payables
-      type: float | None
-      nullable: true
-    - name: growth_other_working_capital
-      type: float | None
-      nullable: true
-    - name: growth_other_non_cash_items
-      type: float | None
-      nullable: true
-    - name: growth_net_cash_provided_by_operating_activites
-      type: float | None
-      nullable: true
-    - name: growth_investments_in_property_plant_and_equipment
-      type: float | None
-      nullable: true
-    - name: growth_acquisitions_net
-      type: float | None
-      nullable: true
-    - name: growth_purchases_of_investments
-      type: float | None
-      nullable: true
-    - name: growth_sales_maturities_of_investments
-      type: float | None
-      nullable: true
-    - name: growth_other_investing_activites
-      type: float | None
-      nullable: true
-    - name: growth_net_cash_used_for_investing_activites
-      type: float | None
-      nullable: true
-    - name: growth_debt_repayment
-      type: float | None
-      nullable: true
-    - name: growth_common_stock_issued
-      type: float | None
-      nullable: true
-    - name: growth_common_stock_repurchased
-      type: float | None
-      nullable: true
-    - name: growth_dividends_paid
-      type: float | None
-      nullable: true
-    - name: growth_other_financing_activites
-      type: float | None
-      nullable: true
-    - name: growth_net_cash_used_provided_by_financing_activities
-      type: float | None
-      nullable: true
-    - name: growth_effect_of_forex_changes_on_cash
-      type: float | None
-      nullable: true
-    - name: growth_net_change_in_cash
-      type: float | None
-      nullable: true
-    - name: growth_cash_at_end_of_period
-      type: float | None
-      nullable: true
-    - name: growth_cash_at_beginning_of_period
-      type: float | None
-      nullable: true
-    - name: growth_operating_cash_flow
-      type: float | None
-      nullable: true
-    - name: growth_capital_expenditure
-      type: float | None
-      nullable: true
-    - name: growth_free_cash_flow
-      type: float | None
-      nullable: true
-    - name: growth_net_debt_issuance
-      type: float | None
-      nullable: true
-    - name: growth_long_term_net_debt_issuance
-      type: float | None
-      nullable: true
-    - name: growth_short_term_net_debt_issuance
-      type: float | None
-      nullable: true
-    - name: growth_net_stock_issuance
-      type: float | None
-      nullable: true
-    - name: growth_preferred_dividends_paid
-      type: float | None
-      nullable: true
-    - name: growth_income_taxes_paid
-      type: float | None
-      nullable: true
-    - name: growth_interest_paid
-      type: float | None
-      nullable: true
-- domain: fundamentals
-  source: fmp
   dataset: financial-statement-growth
   discriminator: ''
   ticker_scope: per_ticker
@@ -7919,9 +6893,6 @@ datasets:
     dto_type: sbfoundation.dtos.fundamentals.financial_statement_growth_dto.FinancialStatementGrowthDTO
     columns:
     - name: ticker
-      type: str
-      nullable: false
-    - name: symbol
       type: str
       nullable: false
     - name: date
@@ -8083,9 +7054,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.fundamentals.latest_financial_statements_dto.LatestFinancialStatementsDTO
     columns:
-    - name: symbol
-      type: str
-      nullable: false
     - name: date
       type: date
       nullable: false
@@ -8292,9 +7260,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.market.market_screener_dto.MarketScreenerDTO
     columns:
-    - name: symbol
-      type: str
-      nullable: false
     - name: company_name
       type: str
       nullable: true
@@ -8673,9 +7638,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.commodities.commodities_list_dto.CommoditiesListDTO
     columns:
-    - name: symbol
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: true
@@ -8724,9 +7686,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.commodities.commodities_price_eod_dto.CommoditiesPriceEodDTO
     columns:
-    - name: symbol
-      type: str
-      nullable: false
     - name: date
       type: str
       nullable: true
@@ -8789,9 +7748,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.instrument.cryptocurrency_list_dto.CryptocurrencyListDTO
     columns:
-    - name: symbol
-      type: str
-      nullable: false
     - name: name
       type: str
       nullable: true
@@ -8843,9 +7799,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.crypto.crypto_price_eod_dto.CryptoPriceEodDTO
     columns:
-    - name: symbol
-      type: str
-      nullable: false
     - name: date
       type: str
       nullable: true
@@ -8908,9 +7861,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.fx.fx_list_dto.FxListDTO
     columns:
-    - name: symbol
-      type: str
-      nullable: false
     - name: from_currency
       type: str
       nullable: true
@@ -8959,9 +7909,6 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.fx.fx_price_eod_dto.FxPriceEodDTO
     columns:
-    - name: symbol
-      type: str
-      nullable: false
     - name: date
       type: str
       nullable: true

@@ -24,7 +24,6 @@ class FinancialScoresDTO(BronzeToSilverDTO):
     ticker: str = field(default="_none_", metadata={"api": "symbol"})
 
     # vendor fields (snake_case)
-    symbol: str = field(default="", metadata={"api": "symbol"})
     reported_currency: str = field(default="", metadata={"api": "reportedCurrency"})
 
     # scores / components

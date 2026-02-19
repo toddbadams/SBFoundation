@@ -235,7 +235,7 @@ flowchart TD
 | **Purpose** | Global list of companies removed from major exchanges |
 | **Scope** | Global (single request) |
 | **Silver Table** | `silver.fmp_company_delisted` |
-| **Key Columns** | `symbol` |
+| **Key Columns** | `ticker`, `delisted_date` |
 | **Refresh** | Every 7 days (Sat) |
 | **FMP Plan** | basic |
 | **API Docs** | [delisted-companies](https://site.financialmodelingprep.com/developer/docs#delisted-companies) |
@@ -246,24 +246,21 @@ flowchart TD
 
 **Purpose**: Per-ticker financial statement data, valuation metrics, ratios, health scores, growth rates, and revenue segmentation. The primary source for quantitative fundamental analysis.
 
-**Execution**: Standalone `RunCommand(domain="fundamentals", exchanges=[...])`. Exchange filtering resolves tickers from silver. All datasets are per-ticker. Many datasets have three forms: base (no period), annual (`FY`), and quarterly (`quarter`) — each stored as a separate keymap entry with a discriminator.
+**Execution**: Standalone `RunCommand(domain="fundamentals", exchanges=[...])`. Exchange filtering resolves tickers from silver. All datasets are per-ticker. Financial statement datasets have two period forms: annual (`FY`, requests `period=annual`) and quarterly (`quarter`, requests `period=quarter`) — each stored as a separate keymap entry with a discriminator. The annual response returns rows with `period="FY"`; quarterly returns `period` in `{Q1, Q2, Q3, Q4}`.
 
 **API Source**: Financial Modeling Prep (FMP)
 
 ### Financial Statements
 
-| Dataset | Discriminator | Period | Silver Table | Refresh | API Docs |
-|---|---|---|---|---|---|
-| `income-statement` | `` (base) | most recent | `fmp_income_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#income-statement) |
-| `income-statement` | `FY` | annual | `fmp_income_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#income-statement) |
-| `income-statement` | `quarter` | quarterly | `fmp_income_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#income-statement) |
-| `balance-sheet-statement` | `` (base) | most recent | `fmp_balance_sheet_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement) |
-| `balance-sheet-statement` | `FY` | annual | `fmp_balance_sheet_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement) |
-| `balance-sheet-statement` | `quarter` | quarterly | `fmp_balance_sheet_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement) |
-| `cashflow-statement` | `` (base) | most recent | `fmp_cashflow_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#cashflow-statement) |
-| `cashflow-statement` | `FY` | annual | `fmp_cashflow_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#cashflow-statement) |
-| `cashflow-statement` | `quarter` | quarterly | `fmp_cashflow_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#cashflow-statement) |
-| `latest-financial-statements` | — | most recent | `fmp_latest_financial_statements` | 1 day (Mon–Fri) | [link](https://site.financialmodelingprep.com/developer/docs#latest-financial-statements) |
+| Dataset | Discriminator | Period param | Response `period` values | Silver Table | Refresh | API Docs |
+|---|---|---|---|---|---|---|
+| `income-statement` | `FY` | `annual` | `FY` | `fmp_income_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#income-statement) |
+| `income-statement` | `quarter` | `quarter` | `Q1`–`Q4` | `fmp_income_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#income-statement) |
+| `balance-sheet-statement` | `FY` | `annual` | `FY` | `fmp_balance_sheet_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement) |
+| `balance-sheet-statement` | `quarter` | `quarter` | `Q1`–`Q4` | `fmp_balance_sheet_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement) |
+| `cashflow-statement` | `FY` | `annual` | `FY` | `fmp_cashflow_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#cashflow-statement) |
+| `cashflow-statement` | `quarter` | `quarter` | `Q1`–`Q4` | `fmp_cashflow_statement` | 90 days (Mon–Sat) | [link](https://site.financialmodelingprep.com/developer/docs#cashflow-statement) |
+| `latest-financial-statements` | — | — | — | `fmp_latest_financial_statements` | 1 day (Mon–Fri) | [link](https://site.financialmodelingprep.com/developer/docs#latest-financial-statements) |
 
 **Income Statement** covers: revenue, cost of revenue, gross profit, operating income, EBITDA, net income, EPS (basic + diluted).
 
@@ -291,18 +288,15 @@ flowchart TD
 
 ### Growth Metrics
 
-| Dataset | Discriminator | Purpose | Silver Table | Refresh | API Docs |
-|---|---|---|---|---|---|
-| `income-statement-growth` | `` (base) | Revenue/income growth — no period filter | `fmp_income_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#income-statement-growth) |
-| `income-statement-growth` | `FY` | Year-over-year income statement growth rates | `fmp_income_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#income-statement-growth) |
-| `income-statement-growth` | `quarter` | Quarter-over-quarter income statement growth rates | `fmp_income_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#income-statement-growth) |
-| `balance-sheet-statement-growth` | `` (base) | Balance sheet growth — no period filter | `fmp_balance_sheet_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement-growth) |
-| `balance-sheet-statement-growth` | `FY` | Year-over-year balance sheet growth rates | `fmp_balance_sheet_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement-growth) |
-| `balance-sheet-statement-growth` | `quarter` | Quarter-over-quarter balance sheet growth rates | `fmp_balance_sheet_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement-growth) |
-| `cashflow-statement-growth` | `` (base) | Cash flow growth — no period filter | `fmp_cashflow_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#cashflow-statement-growth) |
-| `cashflow-statement-growth` | `FY` | Year-over-year cash flow growth rates | `fmp_cashflow_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#cashflow-statement-growth) |
-| `cashflow-statement-growth` | `quarter` | Quarter-over-quarter cash flow growth rates | `fmp_cashflow_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#cashflow-statement-growth) |
-| `financial-statement-growth` | — | Comprehensive growth metrics across all three statements | `fmp_financial_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#financial-statement-growth) |
+| Dataset | Discriminator | Period param | Response `period` values | Purpose | Silver Table | Refresh | API Docs |
+|---|---|---|---|---|---|---|---|
+| `income-statement-growth` | `FY` | `annual` | `FY` | Year-over-year income statement growth rates | `fmp_income_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#income-statement-growth) |
+| `income-statement-growth` | `quarter` | `quarter` | `Q1`–`Q4` | Quarter-over-quarter income statement growth rates | `fmp_income_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#income-statement-growth) |
+| `balance-sheet-statement-growth` | `FY` | `annual` | `FY` | Year-over-year balance sheet growth rates | `fmp_balance_sheet_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement-growth) |
+| `balance-sheet-statement-growth` | `quarter` | `quarter` | `Q1`–`Q4` | Quarter-over-quarter balance sheet growth rates | `fmp_balance_sheet_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement-growth) |
+| `cashflow-statement-growth` | `FY` | `annual` | `FY` | Year-over-year cash flow growth rates | `fmp_cashflow_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#cashflow-statement-growth) |
+| `cashflow-statement-growth` | `quarter` | `quarter` | `Q1`–`Q4` | Quarter-over-quarter cash flow growth rates | `fmp_cashflow_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#cashflow-statement-growth) |
+| `financial-statement-growth` | — | — | — | Comprehensive growth metrics across all three statements | `fmp_financial_statement_growth` | 90 days | [link](https://site.financialmodelingprep.com/developer/docs#financial-statement-growth) |
 
 ### Revenue Segmentation
 

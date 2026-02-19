@@ -18,7 +18,6 @@ class HistoricalPriceEodDividendAdjustedDTO(BronzeToSilverDTO):
     KEY_COLS = ["ticker"]
 
     ticker: str = field(default="_none_", metadata={"api": "symbol"})
-    symbol: str = field(default="", metadata={"api": "symbol"})
     date: str | None = field(default=None, metadata={"api": "date"})
     adj_open: float | None = field(default=None, metadata={"api": "adjOpen"})
     adj_high: float | None = field(default=None, metadata={"api": "adjHigh"})

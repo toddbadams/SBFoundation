@@ -22,7 +22,7 @@ class CompanyPeersDTO(BronzeToSilverDTO):
     @property
     def msg(self) -> str:
         name = self.company_name or "unknown"
-        return f"symbol={self.symbol} | name={name}"
+        return f"peer={self.peer} | name={name}"
 
     @property
     def key_date(self) -> date:

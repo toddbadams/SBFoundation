@@ -43,7 +43,10 @@
       "Bash(cmd /c \"dir C:\\\\sb\\\\SBFoundation\\\\data 2>&1\")",
       "Bash(cmd /c \"dir /b C:\\\\sb\\\\SBFoundation\\\\data\"\")",
       "Bash(poetry run python:*)",
-      "Bash(exit:*)"
+      "Bash(exit:*)",
+      "Bash(git restore:*)",
+      "Bash(poetry run mypy:*)",
+      "Bash(uv run mypy:*)"
     ]
   }
 }

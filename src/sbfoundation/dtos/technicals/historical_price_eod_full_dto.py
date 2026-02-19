@@ -16,7 +16,6 @@ class HistoricalPriceEodFullDTO(BronzeToSilverDTO):
     KEY_COLS = ["ticker"]
 
     ticker: str = field(default="_none_", metadata={"api": "symbol"})
-    symbol: str = field(default="", metadata={"api": "symbol"})
     date: str | None = field(default=None, metadata={"api": "date"})
     open: float | None = field(default=None, metadata={"api": "open"})
     high: float | None = field(default=None, metadata={"api": "high"})

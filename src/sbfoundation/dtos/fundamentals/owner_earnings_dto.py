@@ -24,7 +24,6 @@ class OwnerEarningsDTO(BronzeToSilverDTO):
     ticker: str = field(default="_none_", metadata={"api": "symbol"})
 
     # vendor fields (snake_case)
-    symbol: str = field(default="", metadata={"api": "symbol"})
     reported_currency: str = field(default="", metadata={"api": "reportedCurrency"})
     fiscal_year: str = field(default="", metadata={"api": "fiscalYear"})
     period: str = field(default="", metadata={"api": "period"})

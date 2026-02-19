@@ -25,7 +25,6 @@ class CashflowStatementDTO(BronzeToSilverDTO):
 
     # vendor fields (snake_case)
     date: str | None = field(default=None, metadata={"api": "date"})
-    symbol: str = field(default="", metadata={"api": "symbol"})
     reported_currency: str = field(default="", metadata={"api": "reportedCurrency"})
     cik: str = field(default="", metadata={"api": "cik"})
     filing_date: str | None = field(default=None, metadata={"api": "filingDate"})

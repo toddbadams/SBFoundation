@@ -416,19 +416,18 @@ The Fundamentals domain provides comprehensive financial statement data, key met
 - **balance-sheet-statement** - Assets, liabilities, equity, working capital
 - **cashflow-statement** - Operating, investing, and financing cash flows
 
-**Period Variants** (each statement has three discriminators):
-- Base (discriminator: '') - Most recent data without period specification
-- Annual (discriminator: FY) - Fiscal year data
-- Quarterly (discriminator: quarter) - Quarterly data
+**Period Variants** (each statement has two discriminators):
+- Annual (discriminator: FY) - Full-year data; requests `period=annual`, response `period` field contains `FY`
+- Quarterly (discriminator: quarter) - Quarterly data; requests `period=quarter`, response `period` field contains `Q1`–`Q4`
 
 **Scope:** Per-ticker (runs for each symbol in universe)
 **Refresh:** Quarterly (min_age_days: 90)
 **Silver Tables:** `silver.fmp_income_statement`, `silver.fmp_balance_sheet_statement`, `silver.fmp_cashflow_statement`
 **Key Columns:** `ticker`, `date`, `period`
 **API Endpoints:**
-- `https://financialmodelingprep.com/stable/income-statement?symbol={ticker}&period={FY|quarter}&limit=__limit__`
-- `https://financialmodelingprep.com/stable/balance-sheet-statement?symbol={ticker}&period={FY|quarter}&limit=__limit__`
-- `https://financialmodelingprep.com/stable/cashflow-statement?symbol={ticker}&period={FY|quarter}&limit=__limit__`
+- `https://financialmodelingprep.com/stable/income-statement?symbol={ticker}&period={annual|quarter}&limit=__limit__`
+- `https://financialmodelingprep.com/stable/balance-sheet-statement?symbol={ticker}&period={annual|quarter}&limit=__limit__`
+- `https://financialmodelingprep.com/stable/cashflow-statement?symbol={ticker}&period={annual|quarter}&limit=__limit__`
 
 **Documentation:**
 - [Income Statement](https://site.financialmodelingprep.com/developer/docs#income-statement)

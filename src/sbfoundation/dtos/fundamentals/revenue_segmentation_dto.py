@@ -22,7 +22,6 @@ class RevenueSegmentationDTO(BronzeToSilverDTO):
 
     # identifiers
     ticker: str = field(default="_none_", metadata={"api": "symbol"})
-    symbol: str = field(default="", metadata={"api": "symbol"})
 
     # period
     date: date_type | None = field(default=None, metadata={"api": "date"})

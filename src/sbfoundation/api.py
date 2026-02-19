@@ -742,7 +742,7 @@ class SBFoundationAPI:
 if __name__ == "__main__":
     #     COMMODITIES_DOMAIN, COMPANY_DOMAIN, CRYPTO_DOMAIN, FX_DOMAIN, FUNDAMENTALS_DOMAIN, MARKET_DOMAIN, TECHNICALS_DOMAIN
     command = RunCommand(
-        domain=TECHNICALS_DOMAIN,
+        domain=FUNDAMENTALS_DOMAIN,
         concurrent_requests=10,  # Default: 10 workers for optimal throughput
         enable_bronze=True,
         enable_silver=True,

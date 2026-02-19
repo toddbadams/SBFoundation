@@ -28,6 +28,16 @@ class BronzeToSilverDTO:
 
     # ---- MAPPING ----#
     @classmethod
+    def transform_df_content(cls, df: pd.DataFrame) -> pd.DataFrame:
+        """Override in subclasses to reshape df_content before schema projection.
+
+        Called by SilverService before DTOProjection when the dataset's dto_schema
+        declares a dto_type. Use this to explode nested structures (e.g. a 'data'
+        dict column) into flat rows prior to column-level projection.
+        """
+        return df
+
+    @classmethod
     @abstractmethod
     def from_row(cls, row: typing.Mapping[str, typing.Any], ticker: typing.Optional[str] = None) -> "BronzeToSilverDTO":
         raise NotImplementedError

@@ -1,5 +1,6 @@
 ﻿from __future__ import annotations
 
+import importlib
 from datetime import date
 from pathlib import Path
 
@@ -150,9 +151,15 @@ class SilverService:
         if dto_schema is None:
             dto_type = self._resolve_dto_type(row, batch.result)
 
+        df_content = batch.df_content
+        if dto_schema is not None and dto_schema.dto_type:
+            dto_cls = self._resolve_dto_class(dto_schema.dto_type)
+            if dto_cls is not None:
+                df_content = dto_cls.transform_df_content(df_content)
+
         ticker_override = row.ticker if entry.ticker_scope == "per_ticker" and row.ticker else None
         df_projected = self._dto_projection.project(
-            batch.df_content,
+            df_content,
             dto_type=dto_type,
             dto_schema=dto_schema,
             ticker_override=ticker_override,
@@ -252,6 +259,25 @@ class SilverService:
         if not isinstance(result, BronzeResult):
             raise ValueError(f"Bronze payload is not a BronzeResult: {abs_path}")
         return result
+
+    @staticmethod
+    def _resolve_dto_class(class_path: str) -> type[BronzeToSilverDTO] | None:
+        """Resolve a DTO class from its fully-qualified dotted path string.
+
+        Returns None (rather than raising) so a missing or broken path degrades
+        gracefully — the promotion still runs but without a content transform.
+        """
+        try:
+            module_name, _, class_name = class_path.rpartition(".")
+            if not module_name:
+                return None
+            mod = importlib.import_module(module_name)
+            cls = getattr(mod, class_name, None)
+            if cls is not None and issubclass(cls, BronzeToSilverDTO):
+                return cls
+            return None
+        except Exception:
+            return None
 
     def _resolve_dto_type(self, row: BronzeManifestRow, result: BronzeResult) -> type[BronzeToSilverDTO]:
         dto_type = None

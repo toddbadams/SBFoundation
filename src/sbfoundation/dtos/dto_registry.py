@@ -4,6 +4,7 @@ from typing import Iterable
 
 from sbfoundation.dtos.company.company_delisted_dto import CompanyDelistedDTO
 from sbfoundation.dtos.company.company_dto import CompanyDTO
+from sbfoundation.dtos.company.company_notes_dto import CompanyNotesDTO
 from sbfoundation.dtos.company.company_employees_dto import CompanyEmployeesDTO
 from sbfoundation.dtos.company.company_market_cap_dto import CompanyMarketCapDTO
 from sbfoundation.dtos.company.company_officers_dto import CompanyOfficerDTO
@@ -54,6 +55,7 @@ from sbfoundation.dtos.market.market_countries_dto import MarketCountriesDTO
 from sbfoundation.dtos.market.market_exchanges_dto import MarketExchangesDTO
 from sbfoundation.dtos.market.market_sectors_dto import MarketSectorsDTO
 from sbfoundation.dtos.market.market_industries_dto import MarketIndustriesDTO
+from sbfoundation.dtos.market.market_screener_dto import MarketScreenerDTO
 from sbfoundation.dtos.market.market_sector_performance_dto import MarketSectorPerformanceDTO
 from sbfoundation.dtos.market.market_industry_performance_dto import MarketIndustryPerformanceDTO
 from sbfoundation.dtos.market.market_sector_pe_dto import MarketSectorPeDTO
@@ -112,7 +114,7 @@ DTO_REGISTRY = DTORegistry(
         "treasury-rates": TreasuryRatesDTO,
         "market-risk-premium": MarketRiskPremiumDTO,
         "company-profile": CompanyDTO,
-        "company-notes": CompanyDTO,
+        "company-notes": CompanyNotesDTO,
         "company-peers": CompanyPeersDTO,
         "company-employees": CompanyEmployeesDTO,
         "company-market-cap": CompanyMarketCapDTO,
@@ -174,6 +176,7 @@ DTO_REGISTRY = DTORegistry(
         "market-industry-pe": MarketIndustryPeDTO,
         "market-hours": MarketHoursDTO,
         "market-holidays": MarketHolidaysDTO,
+        "market-screener": MarketScreenerDTO,
         # Commodities domain
         "commodities-list": CommoditiesListDTO,
         "commodities-price-eod": CommoditiesPriceEodDTO,

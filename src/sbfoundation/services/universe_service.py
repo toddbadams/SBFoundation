@@ -64,6 +64,35 @@ class UniverseService:
             self._logger.warning(f"Failed to count update tickers: {exc}")
             return 0
 
+    def get_filtered_tickers(
+        self,
+        *,
+        exchanges: list[str],
+        sectors: list[str],
+        industries: list[str],
+        countries: list[str],
+        limit: int = 0,
+    ) -> list[str]:
+        """Return ticker symbols filtered by the given dimension lists.
+
+        Filter semantics: OR within a dimension, AND across dimensions.
+        An empty list for a dimension means no filter on that dimension.
+        All four lists empty returns the full universe.
+
+        Uses a three-tier fallback: fmp_market_screener → company_profile join → all stock_list.
+        """
+        try:
+            return self._repo.get_filtered_tickers(
+                exchanges=exchanges,
+                sectors=sectors,
+                industries=industries,
+                countries=countries,
+                limit=limit,
+            )
+        except Exception as exc:
+            self._logger.warning(f"Failed to query filtered tickers: {exc}")
+            return []
+
     @staticmethod
     def now() -> datetime:
         return datetime.now(timezone.utc)

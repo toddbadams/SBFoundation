@@ -57,9 +57,6 @@ class RunCommand:
         """Validate this RunCommand. Raises ValueError on invalid input."""
         if self.domain not in DOMAINS:
             raise ValueError(f"Invalid domain '{self.domain}'. Must be one of: {DOMAINS}")
-        ticker_scoped = (COMPANY_DOMAIN, FUNDAMENTALS_DOMAIN, TECHNICALS_DOMAIN)
-        if self.domain in ticker_scoped and not self.exchanges:
-            raise ValueError(f"Domain '{self.domain}' requires at least one exchange in 'exchanges'. " f"Example: exchanges=['NASDAQ', 'NYSE']")
 
 
 class SBFoundationAPI:
@@ -171,6 +168,9 @@ class SBFoundationAPI:
         )
         run = self._promote_silver(run, MARKET_DOMAIN)
 
+        # Phase 1c: market-screener (per country — authoritative symbol→dimension mapping)
+        run = self._run_market_screener(command, run)
+
         # Phase 2a: market-hours (daily snapshot, as_of_date = today from DTO default)
         run = self._run_market_baseline([MARKET_HOURS_DATASET], command, run)
         run = self._promote_silver(run, MARKET_DOMAIN)
@@ -193,11 +193,11 @@ class SBFoundationAPI:
         """
         Handle company domain datasets.
 
-        Requires exchanges to be specified (enforced by RunCommand.validate()).
-        Tickers are filtered from silver.fmp_stock_list by exchange via silver.fmp_company_profile.
+        Tickers are filtered from silver via exchange/sector/industry/country dimension filters.
+        All filters are optional; all empty returns the full universe.
         """
         self.logger.log_section(run.run_id, "Processing company domain")
-        tickers = self._get_exchange_filtered_universe(command.exchanges, command.ticker_limit, run.run_id)
+        tickers = self._get_filtered_universe(command, run.run_id)
         if not tickers:
             self.logger.warning("No tickers found for company domain — skipping", run_id=run.run_id)
             return run
@@ -209,11 +209,11 @@ class SBFoundationAPI:
         """
         Handle fundamentals domain datasets.
 
-        Requires exchanges to be specified (enforced by RunCommand.validate()).
-        Tickers are filtered from silver.fmp_stock_list by exchange via silver.fmp_company_profile.
+        Tickers are filtered from silver via exchange/sector/industry/country dimension filters.
+        All filters are optional; all empty returns the full universe.
         """
         self.logger.log_section(run.run_id, "Processing fundamentals domain")
-        tickers = self._get_exchange_filtered_universe(command.exchanges, command.ticker_limit, run.run_id)
+        tickers = self._get_filtered_universe(command, run.run_id)
         if not tickers:
             self.logger.warning("No tickers found for fundamentals domain — skipping", run_id=run.run_id)
             return run
@@ -225,11 +225,11 @@ class SBFoundationAPI:
         """
         Handle technicals domain datasets.
 
-        Requires exchanges to be specified (enforced by RunCommand.validate()).
-        Tickers are filtered from silver.fmp_stock_list by exchange via silver.fmp_company_profile.
+        Tickers are filtered from silver via exchange/sector/industry/country dimension filters.
+        All filters are optional; all empty returns the full universe.
         """
         self.logger.log_section(run.run_id, "Processing technicals domain")
-        tickers = self._get_exchange_filtered_universe(command.exchanges, command.ticker_limit, run.run_id)
+        tickers = self._get_filtered_universe(command, run.run_id)
         if not tickers:
             self.logger.warning("No tickers found for technicals domain — skipping", run_id=run.run_id)
             return run
@@ -370,55 +370,89 @@ class SBFoundationAPI:
             self.logger.warning(f"Could not query silver.fmp_market_exchanges: {exc}")
             return []
 
-    def _get_exchange_filtered_universe(self, exchanges: list[str], limit: int, run_id: str) -> list[str]:
-        """Return ticker symbols from silver.fmp_stock_list filtered by exchange.
+    def _get_filtered_universe(self, command: RunCommand, run_id: str) -> list[str]:
+        """Return ticker symbols filtered by all active dimension filters in command.
 
-        Joins silver.fmp_stock_list to silver.fmp_company_profile on symbol/ticker
-        to filter by exchange_short_name. Falls back to all stock-list symbols (up to
-        limit) if company_profile is not yet populated.
+        Delegates to UniverseService.get_filtered_tickers() which uses a three-tier
+        fallback: fmp_market_screener → company_profile join → all stock_list.
         """
+        tickers = self._universe_service.get_filtered_tickers(
+            exchanges=command.exchanges,
+            sectors=command.sectors,
+            industries=command.industries,
+            countries=command.countries,
+            limit=command.ticker_limit,
+        )
+        active_filters = {
+            k: v
+            for k, v in {
+                "exchanges": command.exchanges,
+                "sectors": command.sectors,
+                "industries": command.industries,
+                "countries": command.countries,
+            }.items()
+            if v
+        }
+        self.logger.info(
+            f"Universe filter {active_filters}: {len(tickers)} tickers",
+            run_id=run_id,
+        )
+        return tickers
+
+    def _run_market_screener(self, command: RunCommand, run: RunContext) -> RunContext:
+        """Fetch company-screener data for each country in silver.fmp_market_countries.
+
+        Each country produces one request with country=<code> as query param and
+        the country code as the discriminator. Uses TICKER_PLACEHOLDER substitution
+        (country codes are temporarily loaded into run.tickers).
+        """
+        recipes = [r for r in self._dataset_service.recipes if r.domain == MARKET_DOMAIN and r.dataset == MARKET_SCREENER_DATASET]
+        if not recipes:
+            self.logger.warning("No recipe found for market-screener", run_id=run.run_id)
+            return run
+
+        country_codes = self._get_silver_country_codes()
+        if not country_codes:
+            self.logger.info(
+                "No country codes found in silver.fmp_market_countries — skipping market-screener",
+                run_id=run.run_id,
+            )
+            return run
+
+        self.logger.info(
+            f"{self._processing_msg(command.enable_bronze, 'BRONZE')} " f"market-screener for {len(country_codes)} countries",
+            run_id=run.run_id,
+        )
+
+        original_tickers = run.tickers
+        run.tickers = country_codes
+
+        chunk_service = OrchestrationTickerChunkService(
+            chunk_size=10,
+            logger=self.logger,
+            process_chunk=self._process_recipe_list,
+            promote_silver=lambda r: self._promote_silver(r, MARKET_DOMAIN),
+            silver_enabled=command.enable_silver,
+        )
+        run = chunk_service.process(recipes, run)
+        run.tickers = original_tickers
+        return run
+
+    def _get_silver_country_codes(self) -> list[str]:
+        """Query silver.fmp_market_countries for country codes."""
         try:
             bootstrap = DuckDbBootstrap(logger=self.logger)
             with bootstrap.read_connection() as conn:
-                # Check if company_profile table exists and has rows
-                profile_exists = conn.execute(
-                    "SELECT COUNT(*) FROM information_schema.tables " "WHERE table_schema = 'silver' AND table_name = 'fmp_company_profile'"
+                exists = conn.execute(
+                    "SELECT COUNT(*) FROM information_schema.tables " "WHERE table_schema = 'silver' AND table_name = 'fmp_market_countries'"
                 ).fetchone()
-                profile_populated = bool(profile_exists and profile_exists[0] > 0)
-                if profile_populated:
-                    profile_count = conn.execute("SELECT COUNT(*) FROM silver.fmp_company_profile").fetchone()
-                    profile_populated = bool(profile_count and profile_count[0] > 0)
-
-                limit_clause = f"LIMIT {limit}" if limit > 0 else ""
-
-                if profile_populated:
-                    placeholders = ", ".join(f"'{e}'" for e in exchanges)
-                    sql = (
-                        f"SELECT sl.symbol "
-                        f"FROM silver.fmp_stock_list sl "
-                        f"JOIN silver.fmp_company_profile cp ON sl.symbol = cp.ticker "
-                        f"WHERE cp.exchange_short_name IN ({placeholders}) "
-                        f"{limit_clause}"
-                    )
-                    rows = conn.execute(sql).fetchall()
-                    bootstrap.close()
-                    tickers = [row[0] for row in rows if row[0]]
-                    self.logger.info(
-                        f"Exchange filter [{', '.join(exchanges)}]: {len(tickers)} tickers",
-                        run_id=run_id,
-                    )
-                    return tickers
-
-                # Fallback: company_profile not yet populated
-                self.logger.warning(
-                    "silver.fmp_company_profile not yet populated — returning all stock-list symbols without exchange filter",
-                    run_id=run_id,
-                )
-                rows = conn.execute(f"SELECT symbol FROM silver.fmp_stock_list WHERE symbol IS NOT NULL {limit_clause}").fetchall()
+                if not exists or exists[0] == 0:
+                    return []
+                rows = conn.execute("SELECT country FROM silver.fmp_market_countries").fetchall()
             bootstrap.close()
             return [row[0] for row in rows if row[0]]
         except Exception as exc:
-            self.logger.error(f"Failed to get exchange-filtered universe: {exc}", run_id=run_id)
+            self.logger.warning(f"Could not query silver.fmp_market_countries: {exc}")
             return []
 
     def _get_universe_from_silver(self, dataset: str, symbol_col: str = "symbol") -> list[str] | None:
@@ -708,13 +742,13 @@ class SBFoundationAPI:
 if __name__ == "__main__":
     #     COMMODITIES_DOMAIN, COMPANY_DOMAIN, CRYPTO_DOMAIN, FX_DOMAIN, FUNDAMENTALS_DOMAIN, MARKET_DOMAIN, TECHNICALS_DOMAIN
     command = RunCommand(
-        domain=COMPANY_DOMAIN,
+        domain=TECHNICALS_DOMAIN,
         concurrent_requests=10,  # Default: 10 workers for optimal throughput
         enable_bronze=True,
         enable_silver=True,
         ticker_limit=100,
         ticker_recipe_chunk_size=10,
-        exchanges=["NASDAQ", "NYSE"],
+        exchanges=["NASDAQ"],
     )
     result = SBFoundationAPI(today=date.today().isoformat()).run(command)
     print(

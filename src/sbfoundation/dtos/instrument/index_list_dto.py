@@ -19,8 +19,7 @@ class IndexListDTO(BronzeToSilverDTO):
     symbol: str = field(default="_none_", metadata={"api": "symbol"})
     company_name: str | None = field(default=None, metadata={"api": "name"})
     currency: str | None = field(default=None, metadata={"api": "currency"})
-    stock_exchange: str | None = field(default=None, metadata={"api": "stockExchange"})
-    exchange_short_name: str | None = field(default=None, metadata={"api": "exchangeShortName"})
+    exchange: str | None = field(default=None, metadata={"api": "exchange"})
 
     @property
     def key_date(self) -> date:

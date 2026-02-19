@@ -75,19 +75,7 @@ datasets:
     - name: symbol
       type: str
       nullable: false
-    - name: name
-      type: str
-      nullable: true
-    - name: price
-      type: float
-      nullable: true
-    - name: exchange
-      type: str
-      nullable: true
-    - name: exchange_short_name
-      type: str
-      nullable: true
-    - name: ticker
+    - name: company_name
       type: str
       nullable: true
 
@@ -132,13 +120,7 @@ datasets:
     - name: currency
       type: str
       nullable: true
-    - name: stock_exchange
-      type: str
-      nullable: true
-    - name: exchange_short_name
-      type: str
-      nullable: true
-    - name: ticker
+    - name: exchange
       type: str
       nullable: true
 
@@ -454,6 +436,7 @@ datasets:
   silver_table: fmp_company_notes
   key_cols:
   - ticker
+  - title
   row_date_col: null
   recipes:
   - plans:
@@ -473,7 +456,7 @@ datasets:
     - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#company-notes
   dto_schema:
-    dto_type: sbfoundation.dtos.company.company_dto.CompanyDTO
+    dto_type: sbfoundation.dtos.company.company_notes_dto.CompanyNotesDTO
     columns:
     - name: ticker
       type: str
@@ -481,107 +464,11 @@ datasets:
     - name: cik
       type: str
       nullable: true
-    - name: isin
-      type: str
-      nullable: true
-    - name: cusip
+    - name: title
       type: str
       nullable: true
     - name: exchange
       type: str
-      nullable: true
-    - name: exchange_full_name
-      type: str
-      nullable: true
-    - name: currency
-      type: str
-      nullable: true
-    - name: price
-      type: float
-      nullable: true
-    - name: market_cap
-      type: int
-      nullable: true
-    - name: beta
-      type: float
-      nullable: true
-    - name: last_dividend
-      type: float
-      nullable: true
-    - name: range
-      type: str
-      nullable: true
-    - name: change
-      type: float
-      nullable: true
-    - name: change_percentage
-      type: float
-      nullable: true
-    - name: volume
-      type: bigint
-      nullable: true
-    - name: average_volume
-      type: int
-      nullable: true
-    - name: company_name
-      type: str
-      nullable: true
-    - name: industry
-      type: str
-      nullable: true
-    - name: sector
-      type: str
-      nullable: true
-    - name: description
-      type: str
-      nullable: true
-    - name: website
-      type: str
-      nullable: true
-    - name: ceo
-      type: str
-      nullable: true
-    - name: country
-      type: str
-      nullable: true
-    - name: full_time_employees
-      type: int
-      nullable: true
-    - name: phone
-      type: str
-      nullable: true
-    - name: address
-      type: str
-      nullable: true
-    - name: city
-      type: str
-      nullable: true
-    - name: state
-      type: str
-      nullable: true
-    - name: zip
-      type: str
-      nullable: true
-    - name: image
-      type: str
-      nullable: true
-    - name: ipo_date
-      type: date
-      nullable: true
-    - name: default_image
-      type: bool
-      nullable: true
-    - name: is_etf
-      type: bool
-      nullable: true
-    - name: is_actively_trading
-      type: bool
-      nullable: true
-    - name: is_adr
-      type: bool
-      nullable: true
-    - name: is_fund
-      type: bool
       nullable: true
 - domain: company
   source: fmp
@@ -8371,6 +8258,88 @@ datasets:
     - name: industry
       type: str
       nullable: false
+
+- domain: market
+  source: fmp
+  dataset: market-screener
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_market_screener
+  key_cols:
+  - symbol
+  row_date_col: null
+  recipes:
+  - plans:
+    - basic
+    - starter
+    - premium
+    - ultimate
+    data_source_path: company-screener
+    query_vars:
+      country: __ticker__
+    date_key: null
+    cadence_mode: interval
+    min_age_days: 365
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    - sat
+    help_url: https://site.financialmodelingprep.com/developer/docs#company-screener
+  dto_schema:
+    dto_type: sbfoundation.dtos.market.market_screener_dto.MarketScreenerDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: company_name
+      type: str
+      nullable: true
+    - name: market_cap
+      type: int
+      nullable: true
+    - name: sector
+      type: str
+      nullable: true
+    - name: industry
+      type: str
+      nullable: true
+    - name: beta
+      type: float
+      nullable: true
+    - name: price
+      type: float
+      nullable: true
+    - name: last_annual_dividend
+      type: float
+      nullable: true
+    - name: volume
+      type: int
+      nullable: true
+    - name: exchange
+      type: str
+      nullable: true
+    - name: exchange_short_name
+      type: str
+      nullable: true
+    - name: country
+      type: str
+      nullable: true
+    - name: is_etf
+      type: bool
+      nullable: true
+    - name: is_actively_trading
+      type: bool
+      nullable: true
+    - name: is_adr
+      type: bool
+      nullable: true
+    - name: is_fund
+      type: bool
+      nullable: true
 
 - domain: market
   source: fmp

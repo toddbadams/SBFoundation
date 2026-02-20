@@ -347,7 +347,62 @@ con.execute("SELECT * FROM silver.fmp_company_profile LIMIT 5").fetchdf()
 
 ### Logs
 
-Plain-text logs are written to `$DATA_ROOT_FOLDER/logs/`. Each log line carries the `run_id` for correlation.
+Plain-text logs are written to `$DATA_ROOT_FOLDER/logs/`. Each log file is named `logs_<YYYY-MM-DD>.txt` (one per calendar day, append mode).
+
+**Log line format:**
+```
+2026-02-20 07:15:32,412 | INFO    | SBFoundationAPI | run_id=abc123 | Run Start
+│                          │          │                  │               │
+│                          │          │                  │               message
+│                          │          │                  run_id prefix (when provided)
+│                          │          logger name (padded to 15 chars)
+│                          level (padded to 7 chars)
+timestamp
+```
+
+**Log levels** are controlled by the `ENV` environment variable and the optional `log_level` argument to `LoggerFactory`:
+
+| Condition | Effective level |
+|---|---|
+| `ENV=DEV` | `INFO` |
+| `ENV` unset / other | `WARN` |
+| `LoggerFactory(log_level="DEBUG")` | `DEBUG` (overrides env) |
+
+**`run_id` correlation** — every log method (`info`, `debug`, `warning`, `error`, `critical`, `exception`, `log`) accepts an optional `run_id` keyword argument. When provided, the message is prefixed with `run_id=<value> | `, enabling grep-based filtering across the full run:
+
+```bash
+grep "run_id=abc123" "$DATA_ROOT_FOLDER/logs/logs_2026-02-20.txt"
+```
+
+**`log_section`** — marks major pipeline phases with a prominent banner:
+```
+run_id=abc123 | ========== Processing economics domain ==========
+```
+
+**Creating a logger** — each class obtains its logger via `LoggerFactory`:
+
+```python
+from sbfoundation.infra.logger import LoggerFactory, SBLogger
+
+class MyService:
+    def __init__(self, logger: SBLogger | None = None) -> None:
+        self._logger = logger or LoggerFactory().create_logger(self.__class__.__name__)
+
+    def do_work(self, run_id: str) -> None:
+        self._logger.log_section(run_id, "Starting work")
+        self._logger.info("Processing 42 items", run_id=run_id)
+        self._logger.warning("Something looks off", run_id=run_id)
+```
+
+**Both handlers are always active** — each logger writes to `sys.stdout` and to the daily log file simultaneously. `logger.propagate = False` prevents double-writing via the root logger.
+
+**Injecting a custom logger** (for tests or controlled output):
+
+```python
+import logging
+mock_logger = logging.getLogger("test")
+service = MyService(logger=mock_logger)
+```
 
 ---
 

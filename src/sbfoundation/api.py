@@ -52,6 +52,7 @@ class RunCommand:
     sectors: list[str] = field(default_factory=list)  # Filter by sector (e.g., ["Energy"]) data from dataset=available-sector
     industries: list[str] = field(default_factory=list)  # Filter by industry (e.g., ["Oil & Gas Drilling"]) data from dataset=available-industries
     countries: list[str] = field(default_factory=list)  # Filter by country (e.g., ["NASDAQ"]) data from dataset=available-countries
+    include_indexes: bool = False  # If True, also run technicals for index symbols from silver.fmp_index_list
 
     def validate(self) -> None:
         """Validate this RunCommand. Raises ValueError on invalid input."""
@@ -227,6 +228,9 @@ class SBFoundationAPI:
 
         Tickers are filtered from silver via exchange/sector/industry/country dimension filters.
         All filters are optional; all empty returns the full universe.
+
+        If command.include_indexes is True, a second pass runs all technicals recipes
+        for index symbols sourced from silver.fmp_index_list.
         """
         self.logger.log_section(run.run_id, "Processing technicals domain")
         tickers = self._get_filtered_universe(command, run.run_id)
@@ -235,7 +239,48 @@ class SBFoundationAPI:
             return run
         run.tickers = tickers
         self.logger.info(f"Technicals domain: {len(tickers)} tickers", run_id=run.run_id)
-        return self._process_domain(TECHNICALS_DOMAIN, command, run)
+        run = self._process_domain(TECHNICALS_DOMAIN, command, run)
+
+        if command.include_indexes:
+            run = self._run_technicals_for_indexes(command, run)
+
+        return run
+
+    def _run_technicals_for_indexes(self, command: RunCommand, run: RunContext) -> RunContext:
+        """Run all technicals recipes for index symbols from silver.fmp_index_list."""
+        self.logger.log_section(run.run_id, "Processing technicals for indexes")
+
+        index_symbols = self._get_silver_index_symbols()
+        if not index_symbols:
+            self.logger.info("No index symbols found in silver.fmp_index_list — skipping", run_id=run.run_id)
+            return run
+
+        self.logger.info(f"Technicals indexes: {len(index_symbols)} symbols", run_id=run.run_id)
+
+        original_tickers = run.tickers
+        run.tickers = index_symbols
+        ticker_recipes = [r for r in self._dataset_service.recipes if r.domain == TECHNICALS_DOMAIN and r.is_ticker_based]
+        if ticker_recipes:
+            run = self._process_ticker_recipes(ticker_recipes, command, run, label="technicals-indexes", domain=TECHNICALS_DOMAIN)
+        run.tickers = original_tickers
+        return run
+
+    def _get_silver_index_symbols(self) -> list[str]:
+        """Query silver.fmp_index_list for index symbols."""
+        try:
+            bootstrap = DuckDbBootstrap(logger=self.logger)
+            with bootstrap.read_connection() as conn:
+                exists = conn.execute(
+                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'silver' AND table_name = 'fmp_index_list'"
+                ).fetchone()
+                if not exists or exists[0] == 0:
+                    return []
+                rows = conn.execute("SELECT DISTINCT symbol FROM silver.fmp_index_list WHERE symbol IS NOT NULL").fetchall()
+            bootstrap.close()
+            return [row[0] for row in rows if row[0]]
+        except Exception as exc:
+            self.logger.warning(f"Could not query silver.fmp_index_list: {exc}")
+            return []
 
     def _processing_msg(self, enabled: bool, layer: str) -> str:
         return f"PROCESSING {layer} | " if enabled else f"DRY-RUN {layer} |"
@@ -746,9 +791,10 @@ if __name__ == "__main__":
         concurrent_requests=10,  # Default: 10 workers for optimal throughput
         enable_bronze=True,
         enable_silver=True,
-        ticker_limit=100,
+        ticker_limit=1000,
         ticker_recipe_chunk_size=10,
         exchanges=["NASDAQ"],
+        include_indexes=True,
     )
     result = SBFoundationAPI(today=date.today().isoformat()).run(command)
     print(

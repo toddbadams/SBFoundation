@@ -1,7 +1,7 @@
 # Strawberry Context
 
-**Version**: 3.1
-**Last Updated**: 2026-02-17
+**Version**: 3.2
+**Last Updated**: 2026-02-20
 **Maintenance**: Update when changing architecture patterns, modifying dataset_keymap.yaml structure, or adding new domains/contracts.
 
 ## Purpose
@@ -19,6 +19,7 @@ Strawberry Foundation is a **Bronze + Silver ONLY data acquisition and validatio
 - **Writing a recipe?** → Section 9 (Recipe Contracts)
 - **DuckDB schema?** → Section 10 (DuckDB Storage)
 - **Before modifying `/src`?** → Section 11 (DDD Review Checklist)
+- **Logging (format, levels, run_id)?** → Section 13 (Logging)
 
 ---
 
@@ -417,7 +418,85 @@ Optional (nullable): `cpu_temp_c`, `throttle_flags` (Pi only), `cpu_freq_mhz`, `
 
 ---
 
-## 13) What "Done" Looks Like
+## 13) Logging
+
+All logging is centralised in `src/sbfoundation/infra/logger.py`.
+
+### 13.1 Key Types
+
+- **`LoggerFactory`** — creates and configures loggers. Accepts optional `log_path` and `log_level` overrides.
+- **`SBLogger`** — a `@runtime_checkable` Protocol that extends standard `logging.Logger` with `log_section` and an optional `run_id` keyword argument on every log method. Use `SBLogger` as the type annotation for injected loggers.
+
+### 13.2 Creating a Logger
+
+Each class creates its own named logger in `__init__`, accepting an injectable `SBLogger | None` parameter for testability:
+
+```python
+from sbfoundation.infra.logger import LoggerFactory, SBLogger
+
+class MyService:
+    def __init__(self, logger: SBLogger | None = None) -> None:
+        self._logger = logger or LoggerFactory().create_logger(self.__class__.__name__)
+```
+
+Use `self.__class__.__name__` (for class-level loggers) or `__name__` (for module-level loggers). Both styles exist in the codebase.
+
+### 13.3 run_id Correlation
+
+Every log method (`info`, `debug`, `warning`, `error`, `critical`, `exception`, `log`) accepts an optional `run_id: str | None = None` keyword argument. When provided, the message is automatically prefixed with `run_id=<value> | `:
+
+```python
+self._logger.info("Processing 42 items", run_id=run.run_id)
+# → 2026-02-20 07:15:32 | INFO    | MyService      | run_id=abc123 | Processing 42 items
+```
+
+Always pass `run_id` for any log message emitted during a pipeline run so messages are grep-filterable.
+
+### 13.4 log_section
+
+Use `log_section` to emit a prominent banner at each major pipeline phase:
+
+```python
+self._logger.log_section(run.run_id, "Processing economics domain")
+# → run_id=abc123 | ========== Processing economics domain ==========
+```
+
+### 13.5 Log Format and Output
+
+**Format**: `%(asctime)s | %(levelname)-7s | %(name)-15s | %(message)s`
+- `levelname` padded to 7 chars; `name` padded to 15 chars (enforced by `_FixedWidthFormatter`)
+
+**Handlers** (both always active, deduplication is automatic):
+- `StreamHandler` → `sys.stdout`
+- `FileHandler` → `$DATA_ROOT_FOLDER/logs/logs_<YYYY-MM-DD>.txt`, append mode, UTF-8
+
+`logger.propagate = False` prevents double-writes via the root logger.
+
+### 13.6 Log Level
+
+| Condition | Effective level |
+|---|---|
+| `ENV=DEV` | `INFO` |
+| `ENV` unset / other value | `WARN` |
+| `LoggerFactory(log_level="DEBUG")` passed explicitly | `DEBUG` (overrides env) |
+
+Set `ENV=DEV` in your `.env` for development; leave it unset in production to suppress `INFO` noise.
+
+### 13.7 Testing
+
+Inject a standard `logging.Logger` or a mock to capture output without touching the filesystem:
+
+```python
+import logging
+logger = logging.getLogger("test")
+service = MyService(logger=logger)
+```
+
+`SBLogger` is `@runtime_checkable`, so `isinstance(logger, SBLogger)` works in assertions.
+
+---
+
+## 14) What "Done" Looks Like
 - Changes compile/type-check (mypy-friendly)
 - Formatting consistent with repo standards (Black/isort/flake8)
 - No contract violations (DTO purity, Bronze immutability, recipe semantics)

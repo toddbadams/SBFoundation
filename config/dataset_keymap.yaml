@@ -1905,6 +1905,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   recipes:
   - plans:
@@ -2070,6 +2071,182 @@ datasets:
       nullable: true
 - domain: fundamentals
   source: fmp
+  dataset: key-metrics
+  discriminator: quarter
+  ticker_scope: per_ticker
+  silver_schema: silver
+  silver_table: fmp_key_metrics
+  key_cols:
+  - ticker
+  - date
+  - period
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    data_source_path: key-metrics
+    query_vars:
+      symbol: __ticker__
+      period: quarter
+      from: __from_date__
+      to: __to_date__
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 90
+    run_days:
+    - sat
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    help_url: https://site.financialmodelingprep.com/developer/docs#key-metrics
+  dto_schema:
+    dto_type: sbfoundation.dtos.fundamentals.key_metrics_dto.KeyMetricsDTO
+    columns:
+    - name: ticker
+      type: str
+      nullable: false
+    - name: date
+      type: str | None
+      nullable: true
+    - name: fiscal_year
+      type: str
+      nullable: false
+    - name: period
+      type: str
+      nullable: false
+    - name: reported_currency
+      type: str
+      nullable: false
+    - name: market_cap
+      type: float | None
+      nullable: true
+    - name: enterprise_value
+      type: float | None
+      nullable: true
+    - name: ev_to_sales
+      type: float | None
+      nullable: true
+    - name: ev_to_operating_cash_flow
+      type: float | None
+      nullable: true
+    - name: ev_to_free_cash_flow
+      type: float | None
+      nullable: true
+    - name: ev_to_ebitda
+      type: float | None
+      nullable: true
+    - name: net_debt_to_ebitda
+      type: float | None
+      nullable: true
+    - name: current_ratio
+      type: float | None
+      nullable: true
+    - name: income_quality
+      type: float | None
+      nullable: true
+    - name: graham_number
+      type: float | None
+      nullable: true
+    - name: graham_net_net
+      type: float | None
+      nullable: true
+    - name: tax_burden
+      type: float | None
+      nullable: true
+    - name: interest_burden
+      type: float | None
+      nullable: true
+    - name: working_capital
+      type: float | None
+      nullable: true
+    - name: invested_capital
+      type: float | None
+      nullable: true
+    - name: return_on_assets
+      type: float | None
+      nullable: true
+    - name: operating_return_on_assets
+      type: float | None
+      nullable: true
+    - name: return_on_tangible_assets
+      type: float | None
+      nullable: true
+    - name: return_on_equity
+      type: float | None
+      nullable: true
+    - name: return_on_invested_capital
+      type: float | None
+      nullable: true
+    - name: return_on_capital_employed
+      type: float | None
+      nullable: true
+    - name: earnings_yield
+      type: float | None
+      nullable: true
+    - name: free_cash_flow_yield
+      type: float | None
+      nullable: true
+    - name: capex_to_operating_cash_flow
+      type: float | None
+      nullable: true
+    - name: capex_to_depreciation
+      type: float | None
+      nullable: true
+    - name: capex_to_revenue
+      type: float | None
+      nullable: true
+    - name: sales_general_and_administrative_to_revenue
+      type: float | None
+      nullable: true
+    - name: research_and_developement_to_revenue
+      type: float | None
+      nullable: true
+    - name: stock_based_compensation_to_revenue
+      type: float | None
+      nullable: true
+    - name: intangibles_to_total_assets
+      type: float | None
+      nullable: true
+    - name: average_receivables
+      type: float | None
+      nullable: true
+    - name: average_payables
+      type: float | None
+      nullable: true
+    - name: average_inventory
+      type: float | None
+      nullable: true
+    - name: days_of_sales_outstanding
+      type: float | None
+      nullable: true
+    - name: days_of_payables_outstanding
+      type: float | None
+      nullable: true
+    - name: days_of_inventory_outstanding
+      type: float | None
+      nullable: true
+    - name: operating_cycle
+      type: float | None
+      nullable: true
+    - name: cash_conversion_cycle
+      type: float | None
+      nullable: true
+    - name: free_cash_flow_to_equity
+      type: float | None
+      nullable: true
+    - name: free_cash_flow_to_firm
+      type: float | None
+      nullable: true
+    - name: tangible_asset_value
+      type: float | None
+      nullable: true
+    - name: net_current_asset_value
+      type: float | None
+      nullable: true
+- domain: fundamentals
+  source: fmp
   dataset: metric-ratios
   discriminator: FY
   ticker_scope: per_ticker
@@ -2078,6 +2255,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   recipes:
   - plans:
@@ -2091,6 +2269,230 @@ datasets:
     cadence_mode: interval
     min_age_days: 1
     run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    help_url: https://site.financialmodelingprep.com/developer/docs#metrics-ratios
+  dto_schema:
+    dto_type: sbfoundation.dtos.fundamentals.metrics_ratios_dto.MetricsRatiosDTO
+    columns:
+    - name: ticker
+      type: str
+      nullable: false
+    - name: date
+      type: str | None
+      nullable: true
+    - name: fiscal_year
+      type: str
+      nullable: false
+    - name: period
+      type: str
+      nullable: false
+    - name: reported_currency
+      type: str
+      nullable: false
+    - name: gross_profit_margin
+      type: float | None
+      nullable: true
+    - name: ebit_margin
+      type: float | None
+      nullable: true
+    - name: ebitda_margin
+      type: float | None
+      nullable: true
+    - name: operating_profit_margin
+      type: float | None
+      nullable: true
+    - name: pretax_profit_margin
+      type: float | None
+      nullable: true
+    - name: continuous_operations_profit_margin
+      type: float | None
+      nullable: true
+    - name: net_profit_margin
+      type: float | None
+      nullable: true
+    - name: bottom_line_profit_margin
+      type: float | None
+      nullable: true
+    - name: receivables_turnover
+      type: float | None
+      nullable: true
+    - name: payables_turnover
+      type: float | None
+      nullable: true
+    - name: inventory_turnover
+      type: float | None
+      nullable: true
+    - name: fixed_asset_turnover
+      type: float | None
+      nullable: true
+    - name: asset_turnover
+      type: float | None
+      nullable: true
+    - name: current_ratio
+      type: float | None
+      nullable: true
+    - name: quick_ratio
+      type: float | None
+      nullable: true
+    - name: solvency_ratio
+      type: float | None
+      nullable: true
+    - name: cash_ratio
+      type: float | None
+      nullable: true
+    - name: price_to_earnings_ratio
+      type: float | None
+      nullable: true
+    - name: price_to_earnings_growth_ratio
+      type: float | None
+      nullable: true
+    - name: forward_price_to_earnings_growth_ratio
+      type: float | None
+      nullable: true
+    - name: price_to_book_ratio
+      type: float | None
+      nullable: true
+    - name: price_to_sales_ratio
+      type: float | None
+      nullable: true
+    - name: price_to_free_cash_flow_ratio
+      type: float | None
+      nullable: true
+    - name: price_to_operating_cash_flow_ratio
+      type: float | None
+      nullable: true
+    - name: debt_to_assets_ratio
+      type: float | None
+      nullable: true
+    - name: debt_to_equity_ratio
+      type: float | None
+      nullable: true
+    - name: debt_to_capital_ratio
+      type: float | None
+      nullable: true
+    - name: long_term_debt_to_capital_ratio
+      type: float | None
+      nullable: true
+    - name: financial_leverage_ratio
+      type: float | None
+      nullable: true
+    - name: working_capital_turnover_ratio
+      type: float | None
+      nullable: true
+    - name: operating_cash_flow_ratio
+      type: float | None
+      nullable: true
+    - name: operating_cash_flow_sales_ratio
+      type: float | None
+      nullable: true
+    - name: free_cash_flow_operating_cash_flow_ratio
+      type: float | None
+      nullable: true
+    - name: debt_service_coverage_ratio
+      type: float | None
+      nullable: true
+    - name: interest_coverage_ratio
+      type: float | None
+      nullable: true
+    - name: short_term_operating_cash_flow_coverage_ratio
+      type: float | None
+      nullable: true
+    - name: operating_cash_flow_coverage_ratio
+      type: float | None
+      nullable: true
+    - name: capital_expenditure_coverage_ratio
+      type: float | None
+      nullable: true
+    - name: dividend_paid_and_capex_coverage_ratio
+      type: float | None
+      nullable: true
+    - name: dividend_payout_ratio
+      type: float | None
+      nullable: true
+    - name: dividend_yield
+      type: float | None
+      nullable: true
+    - name: dividend_yield_percentage
+      type: float | None
+      nullable: true
+    - name: revenue_per_share
+      type: float | None
+      nullable: true
+    - name: net_income_per_share
+      type: float | None
+      nullable: true
+    - name: interest_debt_per_share
+      type: float | None
+      nullable: true
+    - name: cash_per_share
+      type: float | None
+      nullable: true
+    - name: book_value_per_share
+      type: float | None
+      nullable: true
+    - name: tangible_book_value_per_share
+      type: float | None
+      nullable: true
+    - name: shareholders_equity_per_share
+      type: float | None
+      nullable: true
+    - name: operating_cash_flow_per_share
+      type: float | None
+      nullable: true
+    - name: capex_per_share
+      type: float | None
+      nullable: true
+    - name: free_cash_flow_per_share
+      type: float | None
+      nullable: true
+    - name: net_income_per_ebt
+      type: float | None
+      nullable: true
+    - name: ebt_per_ebit
+      type: float | None
+      nullable: true
+    - name: price_to_fair_value
+      type: float | None
+      nullable: true
+    - name: debt_to_market_cap
+      type: float | None
+      nullable: true
+    - name: effective_tax_rate
+      type: float | None
+      nullable: true
+    - name: enterprise_value_multiple
+      type: float | None
+      nullable: true
+- domain: fundamentals
+  source: fmp
+  dataset: metric-ratios
+  discriminator: quarter
+  ticker_scope: per_ticker
+  silver_schema: silver
+  silver_table: fmp_metric_ratios
+  key_cols:
+  - ticker
+  - date
+  - period
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    data_source_path: ratios
+    query_vars:
+      symbol: __ticker__
+      period: quarter
+      from: __from_date__
+      to: __to_date__
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 90
+    run_days:
+    - sat
     - mon
     - tues
     - wed
@@ -5262,6 +5664,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#historical-price-eod-full
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.historical_price_eod_full_dto.HistoricalPriceEodFullDTO
@@ -5324,6 +5727,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#historical-price-eod-non-split-adjusted
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.historical_price_eod_non_split_adjusted_dto.HistoricalPriceEodNonSplitAdjustedDTO
@@ -5377,6 +5781,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#historical-price-eod-dividend-adjusted
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.historical_price_eod_dividend_adjusted_dto.HistoricalPriceEodDividendAdjustedDTO
@@ -5430,6 +5835,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#simple-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.simple_moving_average_dto.SimpleMovingAverageDTO
@@ -5486,6 +5892,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#simple-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.simple_moving_average_dto.SimpleMovingAverageDTO
@@ -5542,6 +5949,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#simple-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.simple_moving_average_dto.SimpleMovingAverageDTO
@@ -5598,6 +6006,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#exponential-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.exponential_moving_average_dto.ExponentialMovingAverageDTO
@@ -5654,6 +6063,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#exponential-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.exponential_moving_average_dto.ExponentialMovingAverageDTO
@@ -5710,6 +6120,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#exponential-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.exponential_moving_average_dto.ExponentialMovingAverageDTO
@@ -5766,6 +6177,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#exponential-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.exponential_moving_average_dto.ExponentialMovingAverageDTO
@@ -5822,6 +6234,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#weighted-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.weighted_moving_average_dto.WeightedMovingAverageDTO
@@ -5878,6 +6291,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#weighted-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.weighted_moving_average_dto.WeightedMovingAverageDTO
@@ -5934,6 +6348,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#weighted-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.weighted_moving_average_dto.WeightedMovingAverageDTO
@@ -5990,6 +6405,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#double-exponential-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.double_exponential_moving_average_dto.DoubleExponentialMovingAverageDTO
@@ -6046,6 +6462,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#double-exponential-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.double_exponential_moving_average_dto.DoubleExponentialMovingAverageDTO
@@ -6102,6 +6519,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#double-exponential-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.double_exponential_moving_average_dto.DoubleExponentialMovingAverageDTO
@@ -6158,6 +6576,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#double-exponential-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.double_exponential_moving_average_dto.DoubleExponentialMovingAverageDTO
@@ -6214,6 +6633,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#triple-exponential-moving-average
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.triple_exponential_moving_average_dto.TripleExponentialMovingAverageDTO
@@ -6270,6 +6690,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#relative-strength-index
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.relative_strength_index_dto.RelativeStrengthIndexDTO
@@ -6326,6 +6747,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#relative-strength-index
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.relative_strength_index_dto.RelativeStrengthIndexDTO
@@ -6382,6 +6804,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#standard-deviation
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.standard_deviation_dto.StandardDeviationDTO
@@ -6438,6 +6861,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#williams
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.williams_dto.WilliamsDTO
@@ -6494,6 +6918,7 @@ datasets:
     - wed
     - thurs
     - fri
+    - sat
     help_url: https://site.financialmodelingprep.com/developer/docs#average-directional-index
   dto_schema:
     dto_type: sbfoundation.dtos.technicals.average_directional_index_dto.AverageDirectionalIndexDTO
@@ -6532,6 +6957,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   dto_schema:
     dto_type: sbfoundation.dtos.fundamentals.key_metrics_dto.KeyMetricsDTO
@@ -6687,6 +7113,7 @@ datasets:
   key_cols:
   - ticker
   - date
+  - period
   row_date_col: date
   dto_schema:
     dto_type: sbfoundation.dtos.fundamentals.metrics_ratios_dto.MetricsRatiosDTO

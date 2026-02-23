@@ -9,6 +9,7 @@ from sbfoundation.dataset.services.dataset_service import DatasetService
 from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
 from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbfoundation.ops.services.ops_service import OpsService
+from sbfoundation.ops.services.run_stats_reporter import RunStatsReporter
 from sbfoundation.recovery.bronze_recovery_service import BronzeRecoveryService
 from sbfoundation.run.dtos.run_context import RunContext
 from sbfoundation.run.dtos.run_request import RunRequest
@@ -111,6 +112,15 @@ class SBFoundationAPI:
             run = self._handle_crypto(command, run)
 
         self._close_run(run)
+
+        try:
+            reporter = RunStatsReporter()
+            report_path = reporter.write_report(run.run_id)
+            reporter.close()
+            self.logger.info(f"Run report written: {report_path}", run_id=run.run_id)
+        except Exception as exc:
+            self.logger.warning(f"Run stats reporter failed (non-fatal): {exc}", run_id=run.run_id)
+
         return run
 
     def _handle_economics(self, command: RunCommand, run: RunContext) -> RunContext:
@@ -791,9 +801,9 @@ if __name__ == "__main__":
         concurrent_requests=10,  # Default: 10 workers for optimal throughput
         enable_bronze=True,
         enable_silver=True,
-        ticker_limit=1000,
+        ticker_limit=5000,
         ticker_recipe_chunk_size=10,
-        exchanges=["NASDAQ"],
+        exchanges=["NASDAQ", "NYSE"],
         include_indexes=True,
     )
     result = SBFoundationAPI(today=date.today().isoformat()).run(command)

@@ -55,6 +55,7 @@ class RunCommand:
     ticker_recipe_chunk_size: int = 0  # number of recipes to run per chunk
 
     include_indexes: bool = False  # If True, also run technicals for index symbols from silver.fmp_index_list
+    include_delisted: bool = False  # If True, run a second pass for delisted tickers from silver.fmp_company_delisted
     force_from_date: str | None = None  # ISO date (e.g. "1990-01-01"); bypasses watermarks for historical backfill
     backfill_to_1990: bool = False  # When True, fills historical data backward toward Jan 1, 1990
     universe_definition: UniverseDefinition | None = (
@@ -240,7 +241,12 @@ class SBFoundationAPI:
             return run
         run.tickers = tickers
         self.logger.info(f"Fundamentals domain: {len(tickers)} tickers", run_id=run.run_id)
-        return self._process_domain(FUNDAMENTALS_DOMAIN, command, run)
+        run = self._process_domain(FUNDAMENTALS_DOMAIN, command, run)
+
+        if command.include_delisted:
+            run = self._run_for_delisted_tickers(command, run, FUNDAMENTALS_DOMAIN)
+
+        return run
 
     def _handle_technicals(self, command: RunCommand, run: RunContext) -> RunContext:
         """
@@ -264,6 +270,9 @@ class SBFoundationAPI:
         if command.include_indexes:
             run = self._run_technicals_for_indexes(command, run)
 
+        if command.include_delisted:
+            run = self._run_for_delisted_tickers(command, run, TECHNICALS_DOMAIN)
+
         return run
 
     def _run_technicals_for_indexes(self, command: RunCommand, run: RunContext) -> RunContext:
@@ -282,6 +291,33 @@ class SBFoundationAPI:
         ticker_recipes = [r for r in self._dataset_service.recipes if r.domain == TECHNICALS_DOMAIN and r.is_ticker_based]
         if ticker_recipes:
             run = self._process_ticker_recipes(ticker_recipes, command, run, label="technicals-indexes", domain=TECHNICALS_DOMAIN)
+        run.tickers = original_tickers
+        return run
+
+    def _run_for_delisted_tickers(self, command: RunCommand, run: RunContext, domain: str) -> RunContext:
+        """Run domain recipes for delisted tickers sourced from silver.fmp_company_delisted.
+
+        Provides survivorship-bias-free backfill: tickers that were listed during the
+        backtest period but have since delisted are included in price and fundamental
+        history ingestion. Combine with backfill_to_1990=True for full history.
+        """
+        self.logger.log_section(run.run_id, f"Processing {domain} for delisted tickers")
+
+        delisted_tickers = self._universe_service.get_delisted_tickers()
+        if not delisted_tickers:
+            self.logger.info(
+                "No delisted tickers found in silver.fmp_company_delisted — skipping",
+                run_id=run.run_id,
+            )
+            return run
+
+        self.logger.info(f"{domain} delisted: {len(delisted_tickers)} tickers", run_id=run.run_id)
+
+        original_tickers = run.tickers
+        run.tickers = delisted_tickers
+        ticker_recipes = [r for r in self._dataset_service.recipes if r.domain == domain and r.is_ticker_based]
+        if ticker_recipes:
+            run = self._process_ticker_recipes(ticker_recipes, command, run, label=f"{domain}-delisted", domain=domain)
         run.tickers = original_tickers
         return run
 
@@ -828,7 +864,7 @@ class SBFoundationAPI:
 if __name__ == "__main__":
     #     COMMODITIES_DOMAIN, COMPANY_DOMAIN, CRYPTO_DOMAIN, FX_DOMAIN, FUNDAMENTALS_DOMAIN, MARKET_DOMAIN, TECHNICALS_DOMAIN
     command = RunCommand(
-        domain=FUNDAMENTALS_DOMAIN,
+        domain=COMPANY_DOMAIN,
         concurrent_requests=10,  # Default: 10 workers for optimal throughput
         enable_bronze=True,
         enable_silver=True,
@@ -836,7 +872,7 @@ if __name__ == "__main__":
         ticker_recipe_chunk_size=10,
         include_indexes=False,
         universe_definition=US_ALL_CAP,
-        backfill_to_1990=True,
+        # backfill_to_1990=True,
     )
     result = SBFoundationAPI(today=date.today().isoformat()).run(command)
     print(

@@ -68,6 +68,35 @@ class UniverseRepo:
         result = conn.execute(sql).fetchone()
         return result[0] if result else 0
 
+    def get_delisted_tickers(self) -> list[str]:
+        """Return distinct tickers from silver.fmp_company_delisted.
+
+        Used to build a survivorship-bias-free backfill universe: tickers that were
+        listed during the backtest period (2010–present) but have since delisted are
+        included so their price and fundamental history can be ingested.
+
+        Returns:
+            Sorted list of distinct delisted ticker symbols, or [] if the table
+            does not exist or is empty.
+        """
+        conn = self._bootstrap.connect()
+        try:
+            exists = conn.execute(
+                "SELECT COUNT(*) FROM information_schema.tables "
+                "WHERE table_schema = 'silver' AND table_name = 'fmp_company_delisted'"
+            ).fetchone()
+            if not exists or exists[0] == 0:
+                return []
+            result = conn.execute(
+                "SELECT DISTINCT ticker FROM silver.fmp_company_delisted "
+                "WHERE ticker IS NOT NULL AND ticker <> '' "
+                "ORDER BY ticker"
+            ).fetchall()
+            return [row[0] for row in result if row[0]]
+        except Exception as exc:
+            self._logger.warning(f"Could not query silver.fmp_company_delisted: {exc}")
+            return []
+
     def get_filtered_tickers(
         self,
         *,

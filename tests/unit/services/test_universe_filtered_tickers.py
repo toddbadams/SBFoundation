@@ -231,8 +231,9 @@ def test_bootstrap_fallback_limit_respected() -> None:
 # ---------------------------------------------------------------------------
 
 class _StubRepo:
-    def __init__(self, tickers: list[str]) -> None:
+    def __init__(self, tickers: list[str], delisted: list[str] | None = None) -> None:
         self._tickers = tickers
+        self._delisted = delisted or []
         self.last_call: dict = {}
 
     def get_filtered_tickers(
@@ -256,6 +257,9 @@ class _StubRepo:
             "max_market_cap_usd": max_market_cap_usd,
         }
         return self._tickers
+
+    def get_delisted_tickers(self) -> list[str]:
+        return self._delisted
 
     # Stub remaining required methods
     def get_update_tickers(self, *, start: int = 0, limit: int = 50) -> list[str]:
@@ -312,4 +316,79 @@ def test_universe_service_returns_empty_on_repo_exception() -> None:
 
     service = UniverseService(repo=_BrokenRepo([]))
     result = service.get_filtered_tickers(exchanges=[], sectors=[], industries=[], countries=[])
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# get_delisted_tickers — UniverseRepo (in-memory DuckDB)
+# ---------------------------------------------------------------------------
+
+
+def _make_repo_with_delisted(tickers: list[str]) -> UniverseRepo:
+    """Return a UniverseRepo backed by an in-memory DuckDB with fmp_company_delisted populated."""
+    conn = duckdb.connect(":memory:")
+    conn.execute("CREATE SCHEMA silver")
+    conn.execute("""
+        CREATE TABLE silver.fmp_company_delisted (
+            ticker VARCHAR,
+            company_name VARCHAR,
+            exchange VARCHAR,
+            delisted_date DATE
+        )
+    """)
+    if tickers:
+        conn.executemany(
+            "INSERT INTO silver.fmp_company_delisted VALUES (?, NULL, NULL, NULL)",
+            [(t,) for t in tickers],
+        )
+    bootstrap = DuckDbBootstrap(conn=conn)
+    return UniverseRepo(bootstrap=bootstrap)
+
+
+def test_get_delisted_tickers_returns_sorted_list() -> None:
+    repo = _make_repo_with_delisted(["TWTR", "ATVI", "FB"])
+    result = repo.get_delisted_tickers()
+    assert result == ["ATVI", "FB", "TWTR"]
+
+
+def test_get_delisted_tickers_deduplicates() -> None:
+    repo = _make_repo_with_delisted(["TWTR", "TWTR", "FB"])
+    result = repo.get_delisted_tickers()
+    assert result == ["FB", "TWTR"]
+
+
+def test_get_delisted_tickers_empty_when_table_absent() -> None:
+    conn = duckdb.connect(":memory:")
+    conn.execute("CREATE SCHEMA silver")
+    bootstrap = DuckDbBootstrap(conn=conn)
+    repo = UniverseRepo(bootstrap=bootstrap)
+    result = repo.get_delisted_tickers()
+    assert result == []
+
+
+def test_get_delisted_tickers_empty_table_returns_empty() -> None:
+    repo = _make_repo_with_delisted([])
+    result = repo.get_delisted_tickers()
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# get_delisted_tickers — UniverseService (stub repo)
+# ---------------------------------------------------------------------------
+
+
+def test_universe_service_get_delisted_delegates_to_repo() -> None:
+    stub = _StubRepo([], delisted=["TWTR", "ATVI"])
+    service = UniverseService(repo=stub)
+    result = service.get_delisted_tickers()
+    assert result == ["TWTR", "ATVI"]
+
+
+def test_universe_service_get_delisted_returns_empty_on_exception() -> None:
+    class _BrokenRepo(_StubRepo):
+        def get_delisted_tickers(self) -> list[str]:
+            raise RuntimeError("db down")
+
+    service = UniverseService(repo=_BrokenRepo([]))
+    result = service.get_delisted_tickers()
     assert result == []

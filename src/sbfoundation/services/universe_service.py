@@ -64,6 +64,18 @@ class UniverseService:
             self._logger.warning(f"Failed to count update tickers: {exc}")
             return 0
 
+    def get_delisted_tickers(self) -> list[str]:
+        """Return tickers from silver.fmp_company_delisted for survivorship-bias backfill.
+
+        Returns:
+            Sorted list of distinct delisted ticker symbols.
+        """
+        try:
+            return self._repo.get_delisted_tickers()
+        except Exception as exc:
+            self._logger.warning(f"Failed to query delisted tickers: {exc}")
+            return []
+
     def get_filtered_tickers(
         self,
         *,

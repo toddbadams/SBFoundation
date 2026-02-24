@@ -101,3 +101,16 @@ def test_backfill_to_1990_defaults_to_false() -> None:
     cmd = _cmd(COMPANY_DOMAIN)
     assert cmd.backfill_to_1990 is False
     cmd.validate()  # must not raise
+
+
+# ── include_delisted validation ───────────────────────────────────────────────
+
+
+def test_include_delisted_defaults_to_false() -> None:
+    cmd = _cmd(TECHNICALS_DOMAIN)
+    assert cmd.include_delisted is False
+
+
+def test_include_delisted_true_passes_validation_for_technicals_and_fundamentals() -> None:
+    _cmd(TECHNICALS_DOMAIN, include_delisted=True).validate()
+    _cmd(FUNDAMENTALS_DOMAIN, include_delisted=True).validate()

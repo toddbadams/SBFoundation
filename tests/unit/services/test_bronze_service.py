@@ -46,14 +46,20 @@ class _StubResultAdapter:
 
 
 class _StubOpsService:
-    def __init__(self) -> None:
+    def __init__(self, watermark_date=None, last_ingestion_date=None) -> None:
         self.inserted: list[RunRequest] = []
+        self._watermark_date = watermark_date
+        self._last_ingestion_date = last_ingestion_date
+        self.watermark_calls: int = 0
+        self.ingestion_date_calls: int = 0
 
-    def get_watermark_date(self, *args: object, **kwargs: object) -> None:
-        return None
+    def get_watermark_date(self, *args: object, **kwargs: object):
+        self.watermark_calls += 1
+        return self._watermark_date
 
-    def get_last_ingestion_date(self, *args: object, **kwargs: object) -> None:
-        return None
+    def get_last_ingestion_date(self, *args: object, **kwargs: object):
+        self.ingestion_date_calls += 1
+        return self._last_ingestion_date
 
     def insert_bronze_manifest(self, result: RunRequest) -> None:
         self.inserted.append(result)
@@ -121,6 +127,80 @@ def test_concurrent_mode_processes_all_requests() -> None:
     assert len(service.result_file_adapter.results) == len(requests)
     assert len(service.ops_service.inserted) == len(requests)
     assert executor.calls == len(requests)
+
+
+def test_force_from_date_bypasses_watermark_and_duplicate_check() -> None:
+    """When force_from_date is set, watermark and duplicate-ingestion lookups are skipped."""
+    from datetime import date
+
+    ops = _StubOpsService(
+        watermark_date=date(2025, 12, 31),       # would normally advance from_date to 2026
+        last_ingestion_date=date(2026, 2, 23),   # would normally trigger duplicate skip
+    )
+    executor = _StubExecutor(response=_FakeResponse())
+    service = BronzeService(
+        result_file_adapter=_StubResultAdapter(),
+        request_executor=executor,
+        ops_service=ops,
+        force_from_date="1990-01-01",
+    )
+    summary = make_run_context()
+    service.summary = summary
+    request = make_run_request()
+
+    service._process_run_request(request)
+
+    # Request should have been sent (not skipped)
+    assert executor.calls == 1
+    assert summary.bronze_files_passed == 1
+    # Watermark and duplicate-ingestion lookups must be bypassed
+    assert ops.watermark_calls == 0
+    assert ops.ingestion_date_calls == 0
+    # from_date must be the forced value
+    assert request.from_date == "1990-01-01"
+
+
+def test_force_from_date_overrides_request_from_date() -> None:
+    """force_from_date replaces whatever from_date was set on the RunRequest."""
+    ops = _StubOpsService()
+    executor = _StubExecutor(response=_FakeResponse())
+    service = BronzeService(
+        result_file_adapter=_StubResultAdapter(),
+        request_executor=executor,
+        ops_service=ops,
+        force_from_date="1990-01-01",
+    )
+    summary = make_run_context()
+    service.summary = summary
+    # Request is initialised with today as from_date (would be "too soon" without force)
+    request = make_run_request(overrides={"from_date": summary.today})
+
+    service._process_run_request(request)
+
+    assert executor.calls == 1
+    assert request.from_date == "1990-01-01"
+
+
+def test_normal_mode_still_uses_watermark() -> None:
+    """Without force_from_date, watermark is still applied normally."""
+    from datetime import date
+
+    watermark = date(2025, 6, 30)
+    ops = _StubOpsService(watermark_date=watermark)
+    executor = _StubExecutor(response=_FakeResponse())
+    service = BronzeService(
+        result_file_adapter=_StubResultAdapter(),
+        request_executor=executor,
+        ops_service=ops,
+    )
+    summary = make_run_context()
+    service.summary = summary
+    request = make_run_request()
+
+    service._process_run_request(request)
+
+    assert ops.watermark_calls == 1
+    assert request.from_date == watermark.isoformat()
 
 
 def test_sync_mode_when_concurrent_requests_is_one() -> None:

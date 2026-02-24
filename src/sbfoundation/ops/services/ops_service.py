@@ -176,5 +176,30 @@ class OpsService:
             self._logger.warning("Failed to get tickers with bronze error: %s", exc)
             return set()
 
+    def get_earliest_bronze_from_date(
+        self, domain: str, source: str, dataset: str, discriminator: str, ticker: str
+    ) -> date | None:
+        return self._ops_repo.get_earliest_bronze_from_date(
+            domain=domain, source=source, dataset=dataset,
+            discriminator=discriminator, ticker=ticker,
+        )
+
+    def get_backfill_floor_date(
+        self, domain: str, source: str, dataset: str, discriminator: str, ticker: str
+    ) -> date | None:
+        return self._ops_repo.get_backfill_floor_date(
+            domain=domain, source=source, dataset=dataset,
+            discriminator=discriminator, ticker=ticker,
+        )
+
+    def set_backfill_floor_date(
+        self, domain: str, source: str, dataset: str, discriminator: str, ticker: str,
+        floor_date: date,
+    ) -> None:
+        self._ops_repo.upsert_backfill_floor_date(
+            domain=domain, source=source, dataset=dataset,
+            discriminator=discriminator, ticker=ticker, floor_date=floor_date,
+        )
+
 
 __all__ = ["OpsService"]

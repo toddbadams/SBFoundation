@@ -1,5 +1,6 @@
 import os
 import typing
+from datetime import date, timedelta
 import requests
 
 from sbfoundation.dataset.models.dataset_recipe import DatasetRecipe
@@ -27,6 +28,8 @@ class BronzeService:
         request_executor: typing.Optional[RunRequestExecutor] = None,
         ops_service: typing.Optional[OpsService] = None,
         concurrent_requests: int = 1,
+        force_from_date: str | None = None,
+        backfill_to_1990: bool = False,
     ):
         """Initialize dependencies, run metadata, and storage repositories."""
         self.fmp_api_key = fmp_api_key or os.getenv("FMP_API_KEY")
@@ -39,6 +42,8 @@ class BronzeService:
         self.request_executor = request_executor or RunRequestExecutor(self.logger)
         self.run: RunContext = None
         self.concurrent_requests = max(1, concurrent_requests)  # Ensure >= 1
+        self._force_from_date: str | None = force_from_date
+        self._backfill_to_1990: bool = backfill_to_1990
 
     @property
     def summary(self) -> RunContext:
@@ -66,24 +71,32 @@ class BronzeService:
         # definitions before attempting any network IO.
         domain, source, dataset, discriminator, ticker = request.ingest_identity()
 
-        # Check if we already successfully ingested today to prevent duplicate downloads
-        last_ingestion_date = self.ops_service.get_last_ingestion_date(
-            domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=ticker
-        )
         today = self.universe.today()
-        if last_ingestion_date and last_ingestion_date >= today:
-            self.logger.debug(
-                "Skipping duplicate ingestion | dataset=%s | ticker=%s | last_ingestion=%s",
-                dataset,
-                ticker,
-                last_ingestion_date,
-                run_id=self.run.run_id,
-            )
-            return
 
-        last_to_date = self.ops_service.get_watermark_date(domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=ticker)
-        if last_to_date:
-            request.from_date = last_to_date.isoformat()
+        if self._force_from_date:
+            # Backfill mode: bypass duplicate-ingestion check and watermarks.
+            # The caller has explicitly requested historical data from a fixed start date.
+            request.from_date = self._force_from_date
+        else:
+            # Normal mode: skip if already ingested today, then advance from watermark.
+            last_ingestion_date = self.ops_service.get_last_ingestion_date(
+                domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=ticker
+            )
+            if last_ingestion_date and last_ingestion_date >= today:
+                self.logger.debug(
+                    "Skipping duplicate ingestion | dataset=%s | ticker=%s | last_ingestion=%s",
+                    dataset,
+                    ticker,
+                    last_ingestion_date,
+                    run_id=self.run.run_id,
+                )
+                return
+
+            last_to_date = self.ops_service.get_watermark_date(
+                domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=ticker
+            )
+            if last_to_date:
+                request.from_date = last_to_date.isoformat()
 
         if not request.canRun():
             result.error = result.request.error
@@ -204,11 +217,110 @@ class BronzeService:
 
         return self.run
 
+    _BACKFILL_START = date(1990, 1, 1)
+
+    def _run_backward_fill_loop(self, request: RunRequest) -> None:
+        """Work backward from the earliest loaded date toward Jan 1, 1990.
+
+        Chunked API requests (one per loop iteration) page backward until either:
+        - the API returns an empty response (no data before that point), or
+        - we reach 1990-01-01.
+
+        Progress is checkpointed in ops.dataset_watermarks.backfill_floor_date so
+        interrupted runs resume from the last committed floor.
+        """
+        domain, source, dataset, discriminator, ticker = request.ingest_identity()
+
+        # Skip if already fully backfilled
+        floor = self.ops_service.get_backfill_floor_date(domain, source, dataset, discriminator, ticker)
+        if floor is not None and floor <= self._BACKFILL_START:
+            self.logger.debug(
+                f"Backward fill complete for ticker={ticker} dataset={dataset}",
+                run_id=self.run.run_id,
+            )
+            return
+
+        # Need existing data to know where to start going backward
+        earliest = self.ops_service.get_earliest_bronze_from_date(domain, source, dataset, discriminator, ticker)
+        if earliest is None:
+            self.logger.debug(
+                f"No loaded data for ticker={ticker} dataset={dataset} — skipping backward fill",
+                run_id=self.run.run_id,
+            )
+            return
+
+        to_date = (floor - timedelta(days=1)) if floor is not None else (earliest - timedelta(days=1))
+
+        while to_date > self._BACKFILL_START:
+            bf_request = RunRequest.from_recipe(
+                recipe=request.recipe,
+                run_id=request.run_id,
+                from_date=self._BACKFILL_START.isoformat(),
+                today=request.injestion_date,
+                api_key=self.fmp_api_key,
+                ticker=request.ticker,
+                to_date=to_date.isoformat(),
+            )
+
+            try:
+                response = self.request_executor.execute(
+                    lambda: requests.get(bf_request.url, params=bf_request.query_vars, timeout=(CONNECT_TIMEOUT, READ_TIMEOUT)),
+                    f"GET {bf_request.url}",
+                )
+                result = BronzeResult(now=self.universe.now(), request=bf_request)
+                result.add_response(response)
+            except requests.Timeout:
+                self.logger.warning(f"Backward fill timed out for ticker={ticker} dataset={dataset}", run_id=self.run.run_id)
+                break
+            except requests.ConnectionError:
+                self.logger.warning(f"Backward fill connection error for ticker={ticker} dataset={dataset}", run_id=self.run.run_id)
+                break
+            except requests.RequestException as exc:
+                self.logger.warning(f"Backward fill request failed for ticker={ticker} dataset={dataset}: {exc}", run_id=self.run.run_id)
+                break
+            except Exception as exc:
+                self.logger.warning(f"Backward fill unexpected error for ticker={ticker} dataset={dataset}: {exc}", run_id=self.run.run_id)
+                break
+
+            if not result.content:
+                # No data before to_date — mark sentinel and stop
+                self.ops_service.set_backfill_floor_date(domain, source, dataset, discriminator, ticker, floor_date=self._BACKFILL_START)
+                self.logger.info(
+                    f"No data before {to_date} for ticker={ticker} dataset={dataset} — backfill complete",
+                    run_id=self.run.run_id,
+                )
+                break
+
+            # Persist bronze
+            filename = self._persist_bronze(result)
+            self.run.result_bronze_pass(result, filename=filename)
+
+            # Advance floor backward using the earliest date in the response
+            new_floor_str = result.first_date
+            if new_floor_str is None:
+                break
+            try:
+                new_floor = date.fromisoformat(new_floor_str)
+            except ValueError:
+                self.logger.warning(f"Backward fill: unparseable first_date '{new_floor_str}' for ticker={ticker}", run_id=self.run.run_id)
+                break
+
+            self.ops_service.set_backfill_floor_date(domain, source, dataset, discriminator, ticker, floor_date=new_floor)
+            to_date = new_floor - timedelta(days=1)
+
+            if to_date <= self._BACKFILL_START:
+                self.ops_service.set_backfill_floor_date(domain, source, dataset, discriminator, ticker, floor_date=self._BACKFILL_START)
+                self.logger.info(
+                    f"Reached 1990 for ticker={ticker} dataset={dataset} — backfill complete",
+                    run_id=self.run.run_id,
+                )
+                break
+
     def _process_dataset_recipe(self, recipe: DatasetRecipe):
         """Process a recipe for each ticker, or once if not ticker-based."""
         if recipe.is_ticker_based:
             # Build all requests upfront
-            requests = [
+            reqs = [
                 RunRequest.from_recipe(
                     recipe=recipe,
                     run_id=self.run.run_id,
@@ -220,28 +332,34 @@ class BronzeService:
                 for ticker in self.run.tickers
             ]
 
-            # Dispatch based on concurrency mode
-            if self.concurrent_requests > 1:
+            if self._backfill_to_1990:
+                # Backward fill runs sequentially per ticker (order matters)
+                for request in reqs:
+                    self._run_backward_fill_loop(request)
+            elif self.concurrent_requests > 1:
+                # Dispatch based on concurrency mode
                 self.logger.info(
-                    f"Processing {len(requests)} requests concurrently (workers={self.concurrent_requests})",
+                    f"Processing {len(reqs)} requests concurrently (workers={self.concurrent_requests})",
                     run_id=self.run.run_id,
                 )
-                self._process_requests_concurrent(requests)
+                self._process_requests_concurrent(reqs)
             else:
                 # Sequential mode (current behavior)
-                for request in requests:
+                for request in reqs:
                     self._process_run_request(request)
         else:
             # Non-ticker recipes always sequential (single request)
-            self._process_run_request(
-                RunRequest.from_recipe(
-                    recipe=recipe,
-                    run_id=self.run.run_id,
-                    from_date=self.universe.from_date,
-                    today=self.run.today,
-                    api_key=self.fmp_api_key,
-                )
+            req = RunRequest.from_recipe(
+                recipe=recipe,
+                run_id=self.run.run_id,
+                from_date=self.universe.from_date,
+                today=self.run.today,
+                api_key=self.fmp_api_key,
             )
+            if self._backfill_to_1990:
+                self._run_backward_fill_loop(req)
+            else:
+                self._process_run_request(req)
 
     def process(self, run: RunContext) -> RunContext:
         """Run registered recipes, updating and returning the summary."""

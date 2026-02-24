@@ -2088,8 +2088,8 @@ datasets:
     query_vars:
       symbol: __ticker__
       period: quarter
-      from: __from_date__
-      to: __to_date__
+      from: __from__
+      to: __to__
     date_key: date
     cadence_mode: interval
     min_age_days: 90
@@ -2486,8 +2486,8 @@ datasets:
     query_vars:
       symbol: __ticker__
       period: quarter
-      from: __from_date__
-      to: __to_date__
+      from: __from__
+      to: __to__
     date_key: date
     cadence_mode: interval
     min_age_days: 90
@@ -8100,8 +8100,8 @@ datasets:
     data_source_path: historical-price-eod/full
     query_vars:
       symbol: __ticker__
-      from: __from_date__
-      to: __to_date__
+      from: __from__
+      to: __to__
     date_key: date
     cadence_mode: interval
     min_age_days: 1
@@ -8213,8 +8213,8 @@ datasets:
     data_source_path: historical-price-eod/full
     query_vars:
       symbol: __ticker__
-      from: __from_date__
-      to: __to_date__
+      from: __from__
+      to: __to__
     date_key: date
     cadence_mode: interval
     min_age_days: 1
@@ -8323,8 +8323,8 @@ datasets:
     data_source_path: historical-price-eod/full
     query_vars:
       symbol: __ticker__
-      from: __from_date__
-      to: __to_date__
+      from: __from__
+      to: __to__
     date_key: date
     cadence_mode: interval
     min_age_days: 1

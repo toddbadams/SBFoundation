@@ -117,7 +117,8 @@ class RunRequest(BronzeToSilverDTO):
         return self.recipe.domain, self.recipe.source, self.recipe.dataset, discriminator, ticker
 
     @classmethod
-    def from_recipe(cls, *, recipe: DatasetRecipe, run_id: str, from_date: str, today: str, api_key: str, ticker: str = None, instrument_sk: int = None, snapshot_date: str | None = None) -> "RunRequest":
+    def from_recipe(cls, *, recipe: DatasetRecipe, run_id: str, from_date: str, today: str, api_key: str, ticker: str = None, instrument_sk: int = None, snapshot_date: str | None = None, to_date: str | None = None) -> "RunRequest":
+        actual_to_date = to_date if to_date is not None else today
         data_source_config = DATA_SOURCES_CONFIG[recipe.source]
         r = RunRequest(
             recipe=recipe,
@@ -130,13 +131,13 @@ class RunRequest(BronzeToSilverDTO):
             query_vars=recipe.get_query_vars(
                 from_date=from_date,
                 ticker=ticker,
-                to_date=today,
+                to_date=actual_to_date,
                 api_key=api_key,
                 snapshot_date=snapshot_date,
             ),
             date_key=recipe.date_key,
             from_date=from_date,
-            to_date=today,
+            to_date=actual_to_date,
             limit=DEFAULT_LIMIT,
             cadence_mode=recipe.cadence_mode,
             min_age_days=recipe.min_age_days,

@@ -260,6 +260,66 @@ class DuckDbOpsRepo:
         rows = self._fetch_dicts(sql, params)
         return [DatasetInjestion.from_row(row) for row in rows]
 
+    def get_earliest_bronze_from_date(
+        self,
+        *,
+        domain: str,
+        source: str,
+        dataset: str,
+        discriminator: str,
+        ticker: str,
+    ) -> datetime.date | None:
+        """Return MIN(bronze_from_date) for successful ingestions of this identity."""
+        sql = (
+            "SELECT MIN(bronze_from_date) FROM ops.file_ingestions "
+            "WHERE domain = ? AND source = ? AND dataset = ? "
+            "AND COALESCE(discriminator, '') = ? AND COALESCE(ticker, '') = ? "
+            "AND bronze_error IS NULL"
+        )
+        with self._bootstrap.read_connection() as conn:
+            row = conn.execute(sql, [domain, source, dataset, discriminator, ticker]).fetchone()
+        return row[0] if row and row[0] else None
+
+    def get_backfill_floor_date(
+        self,
+        *,
+        domain: str,
+        source: str,
+        dataset: str,
+        discriminator: str,
+        ticker: str,
+    ) -> datetime.date | None:
+        """Return backfill_floor_date from ops.dataset_watermarks (None if row absent)."""
+        sql = (
+            "SELECT backfill_floor_date FROM ops.dataset_watermarks "
+            "WHERE domain = ? AND source = ? AND dataset = ? "
+            "AND discriminator = ? AND ticker = ?"
+        )
+        with self._bootstrap.read_connection() as conn:
+            row = conn.execute(sql, [domain, source, dataset, discriminator, ticker]).fetchone()
+        return row[0] if row and row[0] else None
+
+    def upsert_backfill_floor_date(
+        self,
+        *,
+        domain: str,
+        source: str,
+        dataset: str,
+        discriminator: str,
+        ticker: str,
+        floor_date: datetime.date,
+    ) -> None:
+        """UPSERT a backfill_floor_date row into ops.dataset_watermarks."""
+        sql = """
+            INSERT INTO ops.dataset_watermarks
+                (domain, source, dataset, discriminator, ticker, backfill_floor_date)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT (domain, source, dataset, discriminator, ticker)
+            DO UPDATE SET backfill_floor_date = EXCLUDED.backfill_floor_date
+        """
+        with self._bootstrap.ops_transaction() as conn:
+            conn.execute(sql, [domain, source, dataset, discriminator, ticker, floor_date])
+
     # ---- PRIVATE METHODS ---#
 
 

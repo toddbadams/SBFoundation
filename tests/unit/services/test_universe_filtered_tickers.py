@@ -55,6 +55,38 @@ def _make_repo_with_profile(stock_rows: list[tuple], profile_rows: list[tuple]) 
     return UniverseRepo(bootstrap=bootstrap)
 
 
+def _make_repo_with_screener_and_mktcap(
+    rows: list[tuple], mktcap_rows: list[tuple]
+) -> UniverseRepo:
+    """Return a UniverseRepo with fmp_market_screener + fmp_company_market_cap."""
+    conn = duckdb.connect(":memory:")
+    conn.execute("CREATE SCHEMA silver")
+    conn.execute("""
+        CREATE TABLE silver.fmp_market_screener (
+            symbol VARCHAR,
+            exchange_short_name VARCHAR,
+            sector VARCHAR,
+            industry VARCHAR,
+            country VARCHAR
+        )
+    """)
+    conn.executemany(
+        "INSERT INTO silver.fmp_market_screener VALUES (?, ?, ?, ?, ?)", rows
+    )
+    conn.execute("""
+        CREATE TABLE silver.fmp_company_market_cap (
+            ticker VARCHAR,
+            date DATE,
+            market_cap DOUBLE
+        )
+    """)
+    conn.executemany(
+        "INSERT INTO silver.fmp_company_market_cap VALUES (?, ?, ?)", mktcap_rows
+    )
+    bootstrap = DuckDbBootstrap(conn=conn)
+    return UniverseRepo(bootstrap=bootstrap)
+
+
 def _make_repo_stock_list_only(symbols: list[str]) -> UniverseRepo:
     """Return a UniverseRepo with only fmp_stock_list (bootstrap fallback tier)."""
     conn = duckdb.connect(":memory:")
@@ -133,6 +165,26 @@ def test_screener_limit_respected() -> None:
     assert len(result) <= 2
 
 
+def test_screener_market_cap_with_exchange_filter() -> None:
+    """Regression: market-cap param must not corrupt dimension-filter param binding."""
+    mktcap_rows = [
+        ("AAPL", "2025-01-01", 3_000_000_000_000),
+        ("MSFT", "2025-01-01", 3_000_000_000_000),
+        ("XOM",  "2025-01-01",   400_000_000_000),
+        ("RY",   "2025-01-01",   150_000_000_000),
+    ]
+    repo = _make_repo_with_screener_and_mktcap(SCREENER_DATA, mktcap_rows)
+    # Only US exchanges, min_market_cap filters out nobody here
+    result = repo.get_filtered_tickers(
+        exchanges=["NASDAQ", "NYSE"],
+        sectors=[],
+        industries=[],
+        countries=["US"],
+        min_market_cap_usd=300_000_000_000,
+    )
+    assert set(result) == {"AAPL", "MSFT", "XOM"}
+
+
 # ---------------------------------------------------------------------------
 # Tier 2: company_profile fallback (screener absent)
 # ---------------------------------------------------------------------------
@@ -191,6 +243,8 @@ class _StubRepo:
         industries: list[str],
         countries: list[str],
         limit: int = 0,
+        min_market_cap_usd: float | None = None,
+        max_market_cap_usd: float | None = None,
     ) -> list[str]:
         self.last_call = {
             "exchanges": exchanges,
@@ -198,6 +252,8 @@ class _StubRepo:
             "industries": industries,
             "countries": countries,
             "limit": limit,
+            "min_market_cap_usd": min_market_cap_usd,
+            "max_market_cap_usd": max_market_cap_usd,
         }
         return self._tickers
 
@@ -229,7 +285,24 @@ def test_universe_service_delegates_to_repo() -> None:
         "industries": [],
         "countries": ["US"],
         "limit": 10,
+        "min_market_cap_usd": None,
+        "max_market_cap_usd": None,
     }
+
+
+def test_universe_service_passes_market_cap_bounds_to_repo() -> None:
+    stub = _StubRepo(["AAPL"])
+    service = UniverseService(repo=stub)
+    service.get_filtered_tickers(
+        exchanges=["NYSE"],
+        sectors=[],
+        industries=[],
+        countries=["US"],
+        min_market_cap_usd=10_000_000_000,
+        max_market_cap_usd=None,
+    )
+    assert stub.last_call["min_market_cap_usd"] == 10_000_000_000
+    assert stub.last_call["max_market_cap_usd"] is None
 
 
 def test_universe_service_returns_empty_on_repo_exception() -> None:

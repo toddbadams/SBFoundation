@@ -72,12 +72,18 @@ class UniverseService:
         industries: list[str],
         countries: list[str],
         limit: int = 0,
+        min_market_cap_usd: float | None = None,
+        max_market_cap_usd: float | None = None,
     ) -> list[str]:
         """Return ticker symbols filtered by the given dimension lists.
 
         Filter semantics: OR within a dimension, AND across dimensions.
         An empty list for a dimension means no filter on that dimension.
         All four lists empty returns the full universe.
+
+        When min_market_cap_usd or max_market_cap_usd are provided, tickers are
+        additionally filtered by their most recent market cap from
+        silver.fmp_company_market_cap.
 
         Uses a three-tier fallback: fmp_market_screener → company_profile join → all stock_list.
         """
@@ -88,6 +94,8 @@ class UniverseService:
                 industries=industries,
                 countries=countries,
                 limit=limit,
+                min_market_cap_usd=min_market_cap_usd,
+                max_market_cap_usd=max_market_cap_usd,
             )
         except Exception as exc:
             self._logger.warning(f"Failed to query filtered tickers: {exc}")

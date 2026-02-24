@@ -17,6 +17,7 @@ from sbfoundation.run.services.orchestration_ticker_chunk_service import Orchest
 from sbfoundation.services.bronze.bronze_service import BronzeService
 from sbfoundation.services.silver.silver_service import SilverService
 from sbfoundation.services.universe_service import UniverseService
+from sbfoundation.universe_definitions import US_ALL_CAP, UniverseDefinition
 from sbfoundation.settings import *
 from sbfoundation.settings import (
     COMMODITIES_DOMAIN,
@@ -37,6 +38,10 @@ from sbfoundation.settings import (
     TECHNICALS_DOMAIN,
 )
 
+# Domains that support backward fill toward Jan 1, 1990.
+# company is snapshot-based; market/commodities/fx/crypto use different cadences.
+_BACKFILL_DOMAINS: frozenset[str] = frozenset({FUNDAMENTALS_DOMAIN, TECHNICALS_DOMAIN, ECONOMICS_DOMAIN})
+
 
 @dataclass(slots=True)
 class RunCommand:
@@ -49,16 +54,19 @@ class RunCommand:
     ticker_limit: int = 0  # Max tickers to process
     ticker_recipe_chunk_size: int = 0  # number of recipes to run per chunk
 
-    exchanges: list[str] = field(default_factory=list)  # Filter by exchange (e.g., ["NASDAQ"]) data from dataset=available-exchanges
-    sectors: list[str] = field(default_factory=list)  # Filter by sector (e.g., ["Energy"]) data from dataset=available-sector
-    industries: list[str] = field(default_factory=list)  # Filter by industry (e.g., ["Oil & Gas Drilling"]) data from dataset=available-industries
-    countries: list[str] = field(default_factory=list)  # Filter by country (e.g., ["NASDAQ"]) data from dataset=available-countries
     include_indexes: bool = False  # If True, also run technicals for index symbols from silver.fmp_index_list
+    force_from_date: str | None = None  # ISO date (e.g. "1990-01-01"); bypasses watermarks for historical backfill
+    backfill_to_1990: bool = False  # When True, fills historical data backward toward Jan 1, 1990
+    universe_definition: UniverseDefinition | None = (
+        None  # When set, overrides exchanges/countries with definition values and applies market-cap filter
+    )
 
     def validate(self) -> None:
         """Validate this RunCommand. Raises ValueError on invalid input."""
         if self.domain not in DOMAINS:
             raise ValueError(f"Invalid domain '{self.domain}'. Must be one of: {DOMAINS}")
+        if self.backfill_to_1990 and self.domain not in _BACKFILL_DOMAINS:
+            raise ValueError(f"backfill_to_1990 is only supported for domains: {sorted(_BACKFILL_DOMAINS)}")
 
 
 class SBFoundationAPI:
@@ -92,6 +100,8 @@ class SBFoundationAPI:
 
         self._enable_silver = command.enable_silver
         self._concurrent_requests = command.concurrent_requests
+        self._force_from_date: str | None = command.force_from_date
+        self._backfill_to_1990: bool = command.backfill_to_1990
         run = self._start_run(command)
         domain = command.domain
         if domain == MARKET_DOMAIN:
@@ -428,23 +438,42 @@ class SBFoundationAPI:
     def _get_filtered_universe(self, command: RunCommand, run_id: str) -> list[str]:
         """Return ticker symbols filtered by all active dimension filters in command.
 
+        When command.universe_definition is set, its exchanges and country replace
+        the command-level exchanges/countries fields; sectors/industries still apply.
+        Market-cap bounds from the definition are pushed down to the repo query.
+
         Delegates to UniverseService.get_filtered_tickers() which uses a three-tier
         fallback: fmp_market_screener → company_profile join → all stock_list.
         """
+        ud = command.universe_definition
+        if ud is not None:
+            exchanges = ud.exchanges
+            countries = [ud.country]
+            min_market_cap = ud.min_market_cap_usd
+            max_market_cap = ud.max_market_cap_usd
+        else:
+            exchanges = []
+            countries = []
+            min_market_cap = None
+            max_market_cap = None
+
         tickers = self._universe_service.get_filtered_tickers(
-            exchanges=command.exchanges,
-            sectors=command.sectors,
-            industries=command.industries,
-            countries=command.countries,
+            exchanges=exchanges,
+            sectors=[],
+            industries=[],
+            countries=countries,
             limit=command.ticker_limit,
+            min_market_cap_usd=min_market_cap,
+            max_market_cap_usd=max_market_cap,
         )
-        active_filters = {
+        active_filters: dict = {
             k: v
             for k, v in {
-                "exchanges": command.exchanges,
-                "sectors": command.sectors,
-                "industries": command.industries,
-                "countries": command.countries,
+                "universe": ud.name if ud else None,
+                "exchanges": exchanges,
+                "countries": countries,
+                "min_market_cap_usd": min_market_cap,
+                "max_market_cap_usd": max_market_cap,
             }.items()
             if v
         }
@@ -765,6 +794,8 @@ class SBFoundationAPI:
         bronze_service = BronzeService(
             ops_service=self.ops_service,
             concurrent_requests=self._concurrent_requests,
+            force_from_date=self._force_from_date,
+            backfill_to_1990=self._backfill_to_1990,
         )
         try:
             return bronze_service.register_recipes(run, recipes).process(run)
@@ -803,10 +834,60 @@ if __name__ == "__main__":
         enable_silver=True,
         ticker_limit=5000,
         ticker_recipe_chunk_size=10,
-        exchanges=["NASDAQ", "NYSE"],
-        include_indexes=True,
+        include_indexes=False,
+        universe_definition=US_ALL_CAP,
+        backfill_to_1990=True,
     )
     result = SBFoundationAPI(today=date.today().isoformat()).run(command)
     print(
         f"run_id={result.run_id}  bronze_passed={result.bronze_files_passed}  bronze_failed={result.bronze_files_failed}  silver_rows={result.silver_dto_count}"
     )
+
+"""
+# Fundamentals — fill income statements, balance sheets, etc. back to 1990
+  result = api.run(RunCommand(
+      domain=FUNDAMENTALS_DOMAIN,
+      concurrent_requests=5,
+      enable_bronze=True,
+      enable_silver=True,
+      ticker_limit=10,                  # start small to verify
+      universe_definition=US_LARGE_CAP,
+      backfill_to_1990=True,
+  ))
+
+  # Technicals — fill price history, indicators, etc. back to 1990
+  result = api.run(RunCommand(
+      domain=TECHNICALS_DOMAIN,
+      concurrent_requests=5,
+      enable_bronze=True,
+      enable_silver=True,
+      ticker_limit=10,
+      universe_definition=US_LARGE_CAP,
+      backfill_to_1990=True,
+  ))
+
+  # Economics — fill macro indicators (GDP, CPI, etc.) back to 1990
+  result = api.run(RunCommand(
+      domain=ECONOMICS_DOMAIN,
+      concurrent_requests=5,
+      enable_bronze=True,
+      enable_silver=True,
+      backfill_to_1990=True,
+  ))
+
+  Key points:
+
+  - Run a normal (non-backfill) pass first if you haven't yet — backfill skips any ticker with no existing bronze data
+  - Each run checkpoints progress in ops.dataset_watermarks; you can re-run safely and it picks up where it left off
+  - Tickers already fully backfilled (floor = 1990-01-01) are skipped immediately on subsequent runs
+  - Check progress with:
+
+  SELECT domain, dataset, ticker, backfill_floor_date
+  FROM ops.dataset_watermarks
+  ORDER BY backfill_floor_date DESC NULLS LAST
+  LIMIT 50;
+
+  - backfill_floor_date = NULL → not started
+  - backfill_floor_date = '1990-01-01' → complete (either reached 1990 or API returned empty before then)
+  - Any other date → in progress, next run resumes from that date
+"""

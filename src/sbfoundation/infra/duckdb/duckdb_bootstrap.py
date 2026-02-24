@@ -17,6 +17,18 @@ CREATE SCHEMA IF NOT EXISTS ops;
 CREATE SCHEMA IF NOT EXISTS silver;
 """
 
+DATASET_WATERMARKS_DDL = """
+CREATE TABLE IF NOT EXISTS ops.dataset_watermarks (
+    domain        VARCHAR NOT NULL,
+    source        VARCHAR NOT NULL,
+    dataset       VARCHAR NOT NULL,
+    discriminator VARCHAR NOT NULL DEFAULT '',
+    ticker        VARCHAR NOT NULL DEFAULT '',
+    backfill_floor_date DATE,
+    PRIMARY KEY (domain, source, dataset, discriminator, ticker)
+);
+"""
+
 OPS_FILE_INGESTIONS_DDL = """
 CREATE TABLE IF NOT EXISTS ops.file_ingestions (
     run_id VARCHAR NOT NULL,
@@ -97,6 +109,7 @@ class DuckDbBootstrap:
             self._conn.execute("BEGIN")
             self._conn.execute(SCHEMA_DDL)
             self._conn.execute(OPS_FILE_INGESTIONS_DDL)
+            self._conn.execute(DATASET_WATERMARKS_DDL)
             self._conn.execute("COMMIT")
             self._logger.debug("Schema initialization complete")
         except Exception as e:

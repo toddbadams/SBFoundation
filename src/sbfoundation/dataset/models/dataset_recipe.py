@@ -89,6 +89,16 @@ class DatasetRecipe(BronzeToSilverDTO):
             return True
         return day.lower() in (self.run_days or DAYS_OF_WEEK)
 
+    @property
+    def uses_date_range(self) -> bool:
+        """True if this recipe uses __from__/__to__ date-range placeholders.
+
+        Recipes that rely on a ``limit`` parameter instead do not support
+        backward-fill date-windowing and must be excluded from that loop.
+        """
+        values = set((self.query_vars or {}).values())
+        return FROM_DATE_PLACEHOLDER in values or TO_DATE_PLACEHOLDER in values
+
     def get_query_vars(
         self,
         *,

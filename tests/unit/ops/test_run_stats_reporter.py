@@ -401,3 +401,145 @@ class TestWriteReport:
             assert p2.stat().st_size == size_first
         finally:
             folders_mod.Folders.logs_absolute_path = original
+
+
+# ---------------------------------------------------------------------------
+# Universe coverage fixtures and constants
+# ---------------------------------------------------------------------------
+
+# 7-ticker universe used across TestUniverseCoverage:
+#   AAPL  — in bronze (company-profile) + in silver
+#   MSFT  — in bronze (income-statement) + in silver
+#   GOOG  — in bronze (income-statement) + in silver
+#   AMZN  — in bronze (income-statement) + in silver
+#   TSLA  — in bronze (company-profile, RUN_B) + in silver
+#   NVDA  — in bronze (income-statement) but silver_rows_created=0 (bronze only)
+#   META  — not in file_ingestions at all (not yet ingested)
+UNIVERSE_TICKERS = ["AAPL", "MSFT", "GOOG", "AMZN", "TSLA", "NVDA", "META"]
+
+
+@pytest.fixture()
+def conn_with_universe(conn_two_runs: duckdb.DuckDBPyConnection) -> duckdb.DuckDBPyConnection:
+    """Extends conn_two_runs with a bronze-only NVDA row (silver_rows_created=0).
+
+    All other universe tickers are already present from conn_two_runs.
+    META is intentionally absent to represent a "not yet ingested" ticker.
+    """
+    _insert(
+        conn_two_runs,
+        run_id=RUN_A,
+        file_id="nvda-1",
+        domain="fundamentals",
+        dataset="income-statement",
+        ticker="NVDA",
+        bronze_rows=10,
+        bronze_error=None,
+        bronze_can_promote=True,
+        bronze_injest_start_time=datetime(2026, 2, 21, 9, 0, 0),
+        silver_tablename=None,
+        silver_errors=None,
+        silver_rows_created=0,
+        silver_rows_updated=0,
+        silver_rows_failed=0,
+        silver_from_date=None,
+        silver_to_date=None,
+    )
+    return conn_two_runs
+
+
+@pytest.fixture()
+def reporter_with_universe(conn_with_universe: duckdb.DuckDBPyConnection) -> RunStatsReporter:
+    return RunStatsReporter(bootstrap=_StubBootstrap(conn_with_universe))  # type: ignore[arg-type]
+
+
+# ---------------------------------------------------------------------------
+# TestUniverseCoverage
+# ---------------------------------------------------------------------------
+
+
+class TestUniverseCoverage:
+    def test_empty_tickers_graceful(self, reporter_two_runs: RunStatsReporter) -> None:
+        text = reporter_two_runs.universe_coverage_report([])
+        assert "No universe tickers provided" in text
+
+    def test_universe_count_in_summary(self, reporter_with_universe: RunStatsReporter) -> None:
+        text = reporter_with_universe.universe_coverage_report(UNIVERSE_TICKERS)
+        assert "7" in text  # 7 universe tickers
+
+    def test_not_ingested_count_and_ticker(self, reporter_with_universe: RunStatsReporter) -> None:
+        text = reporter_with_universe.universe_coverage_report(UNIVERSE_TICKERS)
+        # META has no entry in file_ingestions → appears in "Not Yet Ingested"
+        assert "Not Yet Ingested" in text
+        assert "META" in text
+
+    def test_bronze_only_count_and_ticker(self, reporter_with_universe: RunStatsReporter) -> None:
+        text = reporter_with_universe.universe_coverage_report(UNIVERSE_TICKERS)
+        # NVDA has bronze_rows=10 but silver_rows_created=0 → "In Bronze Only"
+        assert "In Bronze Only" in text
+        assert "NVDA" in text
+
+    def test_dataset_coverage_section_present(self, reporter_with_universe: RunStatsReporter) -> None:
+        text = reporter_with_universe.universe_coverage_report(UNIVERSE_TICKERS)
+        assert "Coverage by Dataset" in text
+
+    def test_dataset_coverage_includes_known_datasets(
+        self, reporter_with_universe: RunStatsReporter
+    ) -> None:
+        text = reporter_with_universe.universe_coverage_report(UNIVERSE_TICKERS)
+        # company-profile and income-statement both have silver rows in the fixture
+        assert "company-profile" in text
+        assert "income-statement" in text
+
+    def test_date_ranges_shown(self, reporter_with_universe: RunStatsReporter) -> None:
+        # income-statement rows use silver_from_date=2010-01-01, silver_to_date=2025-12-31
+        text = reporter_with_universe.universe_coverage_report(UNIVERSE_TICKERS)
+        assert "2010-01-01" in text
+        assert "2025-12-31" in text
+
+    def test_missing_percentage_present(self, reporter_with_universe: RunStatsReporter) -> None:
+        # The table has a "Miss %" column — some value like "57%" or "43%" must appear
+        text = reporter_with_universe.universe_coverage_report(UNIVERSE_TICKERS)
+        assert "%" in text
+
+    def test_section_heading(self, reporter_with_universe: RunStatsReporter) -> None:
+        text = reporter_with_universe.universe_coverage_report(UNIVERSE_TICKERS)
+        assert "## Universe Coverage" in text
+
+    def test_write_report_includes_universe_section(
+        self, reporter_with_universe: RunStatsReporter, tmp_path: pathlib.Path
+    ) -> None:
+        import sbfoundation.folders as folders_mod
+
+        original = folders_mod.Folders.logs_absolute_path
+        folders_mod.Folders.logs_absolute_path = staticmethod(lambda: tmp_path)  # type: ignore
+        try:
+            result = reporter_with_universe.write_report(RUN_A, universe_tickers=UNIVERSE_TICKERS)
+            content = result.read_text(encoding="utf-8")
+            assert "## Universe Coverage" in content
+            assert "META" in content
+        finally:
+            folders_mod.Folders.logs_absolute_path = original
+
+    def test_write_report_without_universe_omits_section(
+        self, reporter_two_runs: RunStatsReporter, tmp_path: pathlib.Path
+    ) -> None:
+        import sbfoundation.folders as folders_mod
+
+        original = folders_mod.Folders.logs_absolute_path
+        folders_mod.Folders.logs_absolute_path = staticmethod(lambda: tmp_path)  # type: ignore
+        try:
+            result = reporter_two_runs.write_report(RUN_A)
+            content = result.read_text(encoding="utf-8")
+            assert "## Universe Coverage" not in content
+        finally:
+            folders_mod.Folders.logs_absolute_path = original
+
+    def test_fully_covered_universe_shows_zero_missing(
+        self, reporter_two_runs: RunStatsReporter
+    ) -> None:
+        # AAPL, MSFT, GOOG, AMZN are all in both bronze and silver in conn_two_runs
+        small_universe = ["AAPL", "MSFT", "GOOG", "AMZN"]
+        text = reporter_two_runs.universe_coverage_report(small_universe)
+        # "Not Yet Ingested" section should be absent when all tickers are ingested
+        assert "Not Yet Ingested" not in text
+        assert "In Bronze Only" not in text

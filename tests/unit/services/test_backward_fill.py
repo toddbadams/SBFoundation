@@ -8,7 +8,13 @@ from types import SimpleNamespace
 from requests.structures import CaseInsensitiveDict
 
 from sbfoundation.services.bronze.bronze_service import BronzeService
+from sbfoundation.settings import FROM_DATE_PLACEHOLDER, TO_DATE_PLACEHOLDER
 from tests.unit.helpers import make_dataset_recipe, make_run_context, make_run_request
+
+
+def _make_date_range_recipe() -> object:
+    """Recipe with __from__/__to__ placeholders, required for backward-fill tests."""
+    return make_dataset_recipe(query_vars={"symbol": "__ticker__", "from": FROM_DATE_PLACEHOLDER, "to": TO_DATE_PLACEHOLDER})
 
 
 # ── Stubs ────────────────────────────────────────────────────────────────────
@@ -140,7 +146,7 @@ def test_skip_if_fully_backfilled() -> None:
     service = _make_service(ops_service=ops, executor=executor)
     service.run = make_run_context()
 
-    request = make_run_request()
+    request = make_run_request(recipe=_make_date_range_recipe())
     service._run_backward_fill_loop(request)
 
     assert executor.calls == 0
@@ -154,7 +160,7 @@ def test_skip_if_no_data_loaded() -> None:
     service = _make_service(ops_service=ops, executor=executor)
     service.run = make_run_context()
 
-    request = make_run_request()
+    request = make_run_request(recipe=_make_date_range_recipe())
     service._run_backward_fill_loop(request)
 
     assert executor.calls == 0
@@ -167,7 +173,7 @@ def test_empty_response_sets_sentinel() -> None:
     service = _make_service(ops_service=ops, executor=_MultiResponseExecutor(_EmptyResponse()))
     service.run = make_run_context()
 
-    request = make_run_request()
+    request = make_run_request(recipe=_make_date_range_recipe())
     service._run_backward_fill_loop(request)
 
     assert len(ops.set_floor_calls) == 1
@@ -186,7 +192,7 @@ def test_chunk_advances_floor() -> None:
     service = _make_service(ops_service=ops, executor=executor)
     service.run = make_run_context()
 
-    request = make_run_request()
+    request = make_run_request(recipe=_make_date_range_recipe())
     service._run_backward_fill_loop(request)
 
     assert executor.calls == 2
@@ -198,6 +204,33 @@ def test_chunk_advances_floor() -> None:
     assert final_floor == date(1990, 1, 1)
 
 
+def test_no_progress_backward_sets_sentinel_and_breaks() -> None:
+    """When the API ignores to_date and always returns the same oldest date,
+    the no-progress guard detects new_floor >= to_date and terminates the loop
+    after exactly one API call, writing the sentinel 1990-01-01."""
+    ops = _StubOpsServiceForBackfill(
+        floor_date=date(1991, 10, 31),
+        earliest_date=date(1991, 10, 31),
+    )
+    # API always returns the same record regardless of to_date
+    executor = _MultiResponseExecutor(
+        _FakeResponse(content=[{"date": "1991-10-31"}]),
+        _FakeResponse(content=[{"date": "1991-10-31"}]),  # would repeat forever
+    )
+    service = _make_service(ops_service=ops, executor=executor)
+    service.run = make_run_context()
+
+    request = make_run_request(recipe=_make_date_range_recipe())
+    service._run_backward_fill_loop(request)
+
+    # Loop must exit after exactly 1 API call (not loop infinitely)
+    assert executor.calls == 1
+    # Sentinel must be written exactly once
+    assert len(ops.set_floor_calls) == 1
+    _, _, _, _, _, set_date = ops.set_floor_calls[0]
+    assert set_date == date(1990, 1, 1)
+
+
 def test_stops_when_floor_reaches_1990() -> None:
     """When a chunk's earliest date is near 1990-01-01, the sentinel is set and loop terminates."""
     ops = _StubOpsServiceForBackfill(floor_date=None, earliest_date=date(1990, 1, 5))
@@ -206,7 +239,7 @@ def test_stops_when_floor_reaches_1990() -> None:
     service = _make_service(ops_service=ops, executor=executor)
     service.run = make_run_context()
 
-    request = make_run_request()
+    request = make_run_request(recipe=_make_date_range_recipe())
     service._run_backward_fill_loop(request)
 
     assert executor.calls == 1
@@ -215,3 +248,19 @@ def test_stops_when_floor_reaches_1990() -> None:
     assert date(1990, 1, 2) in floor_dates
     assert date(1990, 1, 1) in floor_dates
     assert ops._floor_date == date(1990, 1, 1)
+
+
+def test_skip_limit_based_recipe() -> None:
+    """Recipes that use 'limit' instead of date-range placeholders are skipped entirely."""
+    ops = _StubOpsServiceForBackfill(floor_date=None, earliest_date=date(2024, 1, 1))
+    executor = _MultiResponseExecutor(_FakeResponse())
+    service = _make_service(ops_service=ops, executor=executor)
+    service.run = make_run_context()
+
+    # Recipe with no __from__/__to__ placeholders (limit-based, e.g. metric-ratios)
+    limit_recipe = make_dataset_recipe(query_vars={"symbol": "__ticker__", "limit": "__limit__"})
+    request = make_run_request(recipe=limit_recipe)
+    service._run_backward_fill_loop(request)
+
+    assert executor.calls == 0
+    assert len(ops.set_floor_calls) == 0

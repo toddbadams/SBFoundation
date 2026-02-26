@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -8,6 +9,23 @@ from requests.structures import CaseInsensitiveDict
 from sbfoundation.services.bronze.bronze_service import BronzeService
 from sbfoundation.run.dtos.run_request import RunRequest
 from tests.unit.helpers import make_run_context, make_run_request
+
+
+class _StubUniverse:
+    """Universe stub with a fixed 'today' for deterministic tests."""
+
+    def __init__(self, today: date) -> None:
+        self._today = today
+
+    def now(self) -> datetime:
+        return datetime(self._today.year, self._today.month, self._today.day, 10, 0)
+
+    def today(self) -> date:
+        return self._today
+
+    @property
+    def from_date(self) -> str:
+        return "2025-10-01"
 
 
 class _FakeResponse:
@@ -52,6 +70,10 @@ class _StubOpsService:
         self._last_ingestion_date = last_ingestion_date
         self.watermark_calls: int = 0
         self.ingestion_date_calls: int = 0
+
+    def get_bulk_ingestion_watermarks(self, *, domain: str, source: str, dataset: str, discriminator: str) -> dict:
+        # Return an empty dict so every ticker is treated as first-time ingestion.
+        return {}
 
     def get_watermark_date(self, *args: object, **kwargs: object):
         self.watermark_calls += 1
@@ -201,6 +223,54 @@ def test_normal_mode_still_uses_watermark() -> None:
 
     assert ops.watermark_calls == 1
     assert request.from_date == watermark.isoformat()
+
+
+def test_ingestion_date_gate_blocks_recent_re_download() -> None:
+    """Snapshot dataset ingested 5 days ago with min_age_days=90 and a stuck content
+    watermark should be skipped — no HTTP request, nothing written to bronze."""
+    today = date(2026, 2, 24)
+    ops = _StubOpsService(
+        watermark_date=date(2025, 10, 2),       # stuck before universe.from_date
+        last_ingestion_date=date(2026, 2, 19),  # 5 days ago → 5 <= 90 → gated
+    )
+    executor = _StubExecutor(response=_FakeResponse())
+    service = BronzeService(
+        universe=_StubUniverse(today),
+        result_file_adapter=_StubResultAdapter(),
+        request_executor=executor,
+        ops_service=ops,
+    )
+    service.summary = make_run_context()
+    request = make_run_request(overrides={"min_age_days": 90})
+
+    service._process_run_request(request)
+
+    assert executor.calls == 0
+    assert len(service.result_file_adapter.results) == 0
+
+
+def test_ingestion_date_gate_allows_after_min_age_days() -> None:
+    """Same snapshot dataset, but last ingested 95 days ago — gate should allow the
+    download (95 > 90 = min_age_days)."""
+    today = date(2026, 2, 24)
+    ops = _StubOpsService(
+        watermark_date=date(2025, 10, 2),       # stuck watermark
+        last_ingestion_date=date(2025, 11, 21), # 95 days ago → 95 > 90 → allowed
+    )
+    executor = _StubExecutor(response=_FakeResponse())
+    service = BronzeService(
+        universe=_StubUniverse(today),
+        result_file_adapter=_StubResultAdapter(),
+        request_executor=executor,
+        ops_service=ops,
+    )
+    service.summary = make_run_context()
+    request = make_run_request(overrides={"min_age_days": 90})
+
+    service._process_run_request(request)
+
+    assert executor.calls == 1
+    assert len(service.result_file_adapter.results) == 1
 
 
 def test_sync_mode_when_concurrent_requests_is_one() -> None:

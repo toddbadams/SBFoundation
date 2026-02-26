@@ -126,7 +126,10 @@ class SBFoundationAPI:
 
         try:
             reporter = RunStatsReporter()
-            report_path = reporter.write_report(run.run_id)
+            report_path = reporter.write_report(
+                run.run_id,
+                universe_tickers=run.tickers or None,
+            )
             reporter.close()
             self.logger.info(f"Run report written: {report_path}", run_id=run.run_id)
         except Exception as exc:
@@ -471,6 +474,23 @@ class SBFoundationAPI:
             self.logger.warning(f"Could not query silver.fmp_market_exchanges: {exc}")
             return []
 
+    def _get_silver_sector_names(self) -> list[str]:
+        """Query silver.fmp_market_sectors for sector names."""
+        try:
+            bootstrap = DuckDbBootstrap(logger=self.logger)
+            with bootstrap.read_connection() as conn:
+                exists = conn.execute(
+                    "SELECT COUNT(*) FROM information_schema.tables " "WHERE table_schema = 'silver' AND table_name = 'fmp_market_sectors'"
+                ).fetchone()
+                if not exists or exists[0] == 0:
+                    return []
+                rows = conn.execute("SELECT sector FROM silver.fmp_market_sectors").fetchall()
+            bootstrap.close()
+            return [row[0] for row in rows if row[0]]
+        except Exception as exc:
+            self.logger.warning(f"Could not query silver.fmp_market_sectors: {exc}")
+            return []
+
     def _get_filtered_universe(self, command: RunCommand, run_id: str) -> list[str]:
         """Return ticker symbols filtered by all active dimension filters in command.
 
@@ -502,60 +522,80 @@ class SBFoundationAPI:
             min_market_cap_usd=min_market_cap,
             max_market_cap_usd=max_market_cap,
         )
-        active_filters: dict = {
-            k: v
-            for k, v in {
-                "universe": ud.name if ud else None,
-                "exchanges": exchanges,
-                "countries": countries,
-                "min_market_cap_usd": min_market_cap,
-                "max_market_cap_usd": max_market_cap,
-            }.items()
-            if v
-        }
+
+        min_cap_str = f"${min_market_cap:,.0f}" if min_market_cap is not None else "none"
+        max_cap_str = f"${max_market_cap:,.0f}" if max_market_cap is not None else "unlimited"
         self.logger.info(
-            f"Universe filter {active_filters}: {len(tickers)} tickers",
+            f"Universe: {ud.name if ud else '(none)'} | "
+            f"country={', '.join(countries) if countries else 'all'} | "
+            f"exchanges={', '.join(exchanges) if exchanges else 'all'} | "
+            f"market_cap={min_cap_str}-{max_cap_str} | "
+            f"tickers={len(tickers)}",
             run_id=run_id,
         )
         return tickers
 
     def _run_market_screener(self, command: RunCommand, run: RunContext) -> RunContext:
-        """Fetch company-screener data for each country in silver.fmp_market_countries.
+        """Fetch company-screener data for each (exchange × sector) pair.
 
-        Each country produces one request with country=<code> as query param and
-        the country code as the discriminator. Uses TICKER_PLACEHOLDER substitution
-        (country codes are temporarily loaded into run.tickers).
+        The FMP company-screener endpoint silently caps responses at 1000 rows per
+        request. Querying by exchange + sector keeps each response well under that
+        limit, ensuring a complete universe.  Each combination is stored as a
+        distinct Bronze file and tracked with discriminator "{exchange}-{sector}".
         """
         recipes = [r for r in self._dataset_service.recipes if r.domain == MARKET_DOMAIN and r.dataset == MARKET_SCREENER_DATASET]
         if not recipes:
             self.logger.warning("No recipe found for market-screener", run_id=run.run_id)
             return run
 
-        country_codes = self._get_silver_country_codes()
-        if not country_codes:
+        exchange_codes = self._get_silver_exchange_codes()
+        if not exchange_codes:
             self.logger.info(
-                "No country codes found in silver.fmp_market_countries — skipping market-screener",
+                "No exchange codes found in silver.fmp_market_exchanges — skipping market-screener",
                 run_id=run.run_id,
             )
             return run
 
+        sector_names = self._get_silver_sector_names()
+        if not sector_names:
+            self.logger.info(
+                "No sector names found in silver.fmp_market_sectors — skipping market-screener",
+                run_id=run.run_id,
+            )
+            return run
+
+        all_requests: list[RunRequest] = []
+        for exchange in exchange_codes:
+            for sector in sector_names:
+                discriminator = f"{exchange}-{sector}"
+                for recipe in recipes:
+                    patched = copy.copy(recipe)
+                    patched.query_vars = {"exchange": exchange, "sector": sector}
+                    patched.discriminator = discriminator
+                    all_requests.append(
+                        RunRequest.from_recipe(
+                            recipe=patched,
+                            run_id=run.run_id,
+                            from_date=self._universe_service.from_date,
+                            today=run.today,
+                            api_key=self._fmp_api_key,
+                        )
+                    )
+
         self.logger.info(
-            f"{self._processing_msg(command.enable_bronze, 'BRONZE')} " f"market-screener for {len(country_codes)} countries",
+            f"{self._processing_msg(command.enable_bronze, 'BRONZE')} market-screener: "
+            f"{len(exchange_codes)} exchanges × {len(sector_names)} sectors = {len(all_requests)} requests",
             run_id=run.run_id,
         )
 
-        original_tickers = run.tickers
-        run.tickers = country_codes
+        if command.enable_bronze:
+            bronze_service = BronzeService(
+                ops_service=self.ops_service,
+                concurrent_requests=self._concurrent_requests,
+            )
+            run = bronze_service.execute_requests(all_requests, run)
 
-        chunk_service = OrchestrationTickerChunkService(
-            chunk_size=10,
-            logger=self.logger,
-            process_chunk=self._process_recipe_list,
-            promote_silver=lambda r: self._promote_silver(r, MARKET_DOMAIN),
-            silver_enabled=command.enable_silver,
-        )
-        run = chunk_service.process(recipes, run)
-        run.tickers = original_tickers
+        run = self._promote_silver(run, MARKET_DOMAIN)
         return run
 
     def _get_silver_country_codes(self) -> list[str]:
@@ -864,15 +904,15 @@ class SBFoundationAPI:
 if __name__ == "__main__":
     #     COMMODITIES_DOMAIN, COMPANY_DOMAIN, CRYPTO_DOMAIN, FX_DOMAIN, FUNDAMENTALS_DOMAIN, MARKET_DOMAIN, TECHNICALS_DOMAIN
     command = RunCommand(
-        domain=COMPANY_DOMAIN,
+        domain=FUNDAMENTALS_DOMAIN,
         concurrent_requests=10,  # Default: 10 workers for optimal throughput
         enable_bronze=True,
         enable_silver=True,
         ticker_limit=5000,
-        ticker_recipe_chunk_size=10,
+        ticker_recipe_chunk_size=1000,
         include_indexes=False,
         universe_definition=US_ALL_CAP,
-        # backfill_to_1990=True,
+        # backfill_to_1990=False,
     )
     result = SBFoundationAPI(today=date.today().isoformat()).run(command)
     print(

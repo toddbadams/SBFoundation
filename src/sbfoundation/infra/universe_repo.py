@@ -194,15 +194,23 @@ class UniverseRepo:
         if screener_exists and screener_exists[0] > 0:
             screener_count = conn.execute("SELECT COUNT(*) FROM silver.fmp_market_screener").fetchone()
             if screener_count and screener_count[0] > 0:
+                # Tier 1 uses the screener's own market_cap column directly.
+                # fmp_company_market_cap is only populated for already-ingested
+                # tickers, so an INNER JOIN would silently exclude the majority
+                # of the universe before any company/fundamentals data is loaded.
                 conds, vals = _build_conditions("", exchange_col="exchange_short_name")
+                if min_market_cap_usd is not None:
+                    conds.append("market_cap >= ?")
+                    vals.append(min_market_cap_usd)
+                if max_market_cap_usd is not None:
+                    conds.append("market_cap <= ?")
+                    vals.append(max_market_cap_usd)
                 where_clause = ("WHERE " + " AND ".join(conds)) if conds else ""
-                cte, mc_join, mc_vals = _market_cap_cte_and_join("symbol")
                 sql = (
-                    f"{cte}"
                     f"SELECT DISTINCT symbol FROM silver.fmp_market_screener "
-                    f"{mc_join} {where_clause} {limit_clause}"
+                    f"{where_clause} {limit_clause}"
                 )
-                result = conn.execute(sql, mc_vals + vals).fetchall()
+                result = conn.execute(sql, vals).fetchall()
                 return [row[0] for row in result if row[0]]
 
         # Tier 2: fmp_company_profile join

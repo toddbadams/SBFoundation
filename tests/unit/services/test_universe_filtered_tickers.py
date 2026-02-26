@@ -23,11 +23,12 @@ def _make_repo_with_screener(rows: list[tuple]) -> UniverseRepo:
             exchange_short_name VARCHAR,
             sector VARCHAR,
             industry VARCHAR,
-            country VARCHAR
+            country VARCHAR,
+            market_cap DOUBLE
         )
     """)
     conn.executemany(
-        "INSERT INTO silver.fmp_market_screener VALUES (?, ?, ?, ?, ?)", rows
+        "INSERT INTO silver.fmp_market_screener VALUES (?, ?, ?, ?, ?, ?)", rows
     )
     bootstrap = DuckDbBootstrap(conn=conn)
     return UniverseRepo(bootstrap=bootstrap)
@@ -58,7 +59,11 @@ def _make_repo_with_profile(stock_rows: list[tuple], profile_rows: list[tuple]) 
 def _make_repo_with_screener_and_mktcap(
     rows: list[tuple], mktcap_rows: list[tuple]
 ) -> UniverseRepo:
-    """Return a UniverseRepo with fmp_market_screener + fmp_company_market_cap."""
+    """Return a UniverseRepo with fmp_market_screener + fmp_company_market_cap.
+
+    Note: Tier 1 now uses screener.market_cap directly. fmp_company_market_cap
+    is still created here for potential Tier 2/3 fallback tests.
+    """
     conn = duckdb.connect(":memory:")
     conn.execute("CREATE SCHEMA silver")
     conn.execute("""
@@ -67,11 +72,12 @@ def _make_repo_with_screener_and_mktcap(
             exchange_short_name VARCHAR,
             sector VARCHAR,
             industry VARCHAR,
-            country VARCHAR
+            country VARCHAR,
+            market_cap DOUBLE
         )
     """)
     conn.executemany(
-        "INSERT INTO silver.fmp_market_screener VALUES (?, ?, ?, ?, ?)", rows
+        "INSERT INTO silver.fmp_market_screener VALUES (?, ?, ?, ?, ?, ?)", rows
     )
     conn.execute("""
         CREATE TABLE silver.fmp_company_market_cap (
@@ -102,10 +108,10 @@ def _make_repo_stock_list_only(symbols: list[str]) -> UniverseRepo:
 # ---------------------------------------------------------------------------
 
 SCREENER_DATA = [
-    ("AAPL", "NASDAQ", "Technology", "Consumer Electronics", "US"),
-    ("MSFT", "NASDAQ", "Technology", "Software-Application", "US"),
-    ("XOM",  "NYSE",   "Energy",     "Oil & Gas E&P",        "US"),
-    ("RY",   "TSX",    "Financials",  "Banks",               "CA"),
+    ("AAPL", "NASDAQ", "Technology", "Consumer Electronics", "US", 3_000_000_000_000),
+    ("MSFT", "NASDAQ", "Technology", "Software-Application", "US", 3_000_000_000_000),
+    ("XOM",  "NYSE",   "Energy",     "Oil & Gas E&P",        "US",   400_000_000_000),
+    ("RY",   "TSX",    "Financials",  "Banks",               "CA",   150_000_000_000),
 ]
 
 
@@ -166,15 +172,11 @@ def test_screener_limit_respected() -> None:
 
 
 def test_screener_market_cap_with_exchange_filter() -> None:
-    """Regression: market-cap param must not corrupt dimension-filter param binding."""
-    mktcap_rows = [
-        ("AAPL", "2025-01-01", 3_000_000_000_000),
-        ("MSFT", "2025-01-01", 3_000_000_000_000),
-        ("XOM",  "2025-01-01",   400_000_000_000),
-        ("RY",   "2025-01-01",   150_000_000_000),
-    ]
-    repo = _make_repo_with_screener_and_mktcap(SCREENER_DATA, mktcap_rows)
-    # Only US exchanges, min_market_cap filters out nobody here
+    """Tier 1 uses screener.market_cap directly; exchange+country+market_cap filters combine correctly."""
+    # SCREENER_DATA has market_cap in column 6: AAPL/MSFT=$3T, XOM=$400B, RY=$150B
+    repo = _make_repo_with_screener(SCREENER_DATA)
+    # Filter: US exchanges only, min $300B — all three US stocks clear the threshold;
+    # RY is excluded by both exchange (TSX) and country (CA) filters.
     result = repo.get_filtered_tickers(
         exchanges=["NASDAQ", "NYSE"],
         sectors=[],

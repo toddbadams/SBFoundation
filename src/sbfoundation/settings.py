@@ -1,6 +1,6 @@
 import os
 
-DEFAULT_LIMIT: int = 5
+DEFAULT_LIMIT: int = 1000
 
 
 # ---- DOMAINS ---- #
@@ -41,11 +41,11 @@ COMMODITIES_LIST_DATASET = "commodities-list"
 COMMODITIES_PRICE_EOD_DATASET = "commodities-price-eod"
 
 # Crypto
-CRYPTO_LIST_DATASET = "crypto-list"
+CRYPTO_LIST_DATASET = "cryptocurrency-list"
 CRYPTO_PRICE_EOD_DATASET = "crypto-price-eod"
 
 # FX
-FX_LIST_DATASET = "fx-list"
+FX_LIST_DATASET = "forex-list"
 FX_PRICE_EOD_DATASET = "fx-price-eod"
 
 # ---- DATASETS (an internal label for a given dataset, which is represented as a table at the silver layer ----#

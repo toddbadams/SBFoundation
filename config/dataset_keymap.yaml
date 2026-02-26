@@ -130,11 +130,14 @@ datasets:
   recipes:
   - plans:
     - basic
-    data_source_path: available-cryptocurrencies
+    - starter
+    - premium
+    - ultimate
+    data_source_path: cryptocurrency-list
     query_vars: {}
     date_key: null
     cadence_mode: interval
-    min_age_days: 7
+    min_age_days: 365
     run_days:
     - mon
     - tues
@@ -150,16 +153,16 @@ datasets:
     - name: name
       type: str
       nullable: true
-    - name: currency
+    - name: exchange
       type: str
       nullable: true
-    - name: stock_exchange
-      type: str
+    - name: circulating_supply
+      type: float
       nullable: true
-    - name: exchange_short_name
-      type: str
+    - name: total_supply
+      type: float
       nullable: true
-    - name: ticker
+    - name: ico_date
       type: str
       nullable: true
 
@@ -178,11 +181,14 @@ datasets:
   recipes:
   - plans:
     - basic
-    data_source_path: available-forex-currency-pairs
+    - starter
+    - premium
+    - ultimate
+    data_source_path: forex-list
     query_vars: {}
     date_key: null
     cadence_mode: interval
-    min_age_days: 7
+    min_age_days: 365
     run_days:
     - mon
     - tues
@@ -193,27 +199,18 @@ datasets:
     execution_phase: instrument_discovery
     help_url: https://site.financialmodelingprep.com/developer/docs#forex-list
   dto_schema:
-    dto_type: sbfoundation.dtos.instrument.forex_list_dto.ForexListDTO
+    dto_type: sbfoundation.dtos.fx.fx_list_dto.FxListDTO
     columns:
-    - name: name
+    - name: from_currency
       type: str
       nullable: true
-    - name: currency
+    - name: from_name
       type: str
       nullable: true
-    - name: stock_exchange
+    - name: to_currency
       type: str
       nullable: true
-    - name: exchange_short_name
-      type: str
-      nullable: true
-    - name: base_currency
-      type: str
-      nullable: true
-    - name: quote_currency
-      type: str
-      nullable: true
-    - name: ticker
+    - name: to_name
       type: str
       nullable: true
 
@@ -2088,8 +2085,7 @@ datasets:
     query_vars:
       symbol: __ticker__
       period: quarter
-      from: __from__
-      to: __to__
+      limit: __limit__
     date_key: date
     cadence_mode: interval
     min_age_days: 90
@@ -2486,8 +2482,7 @@ datasets:
     query_vars:
       symbol: __ticker__
       period: quarter
-      from: __from__
-      to: __to__
+      limit: __limit__
     date_key: date
     cadence_mode: interval
     min_age_days: 90
@@ -7673,8 +7668,7 @@ datasets:
     - premium
     - ultimate
     data_source_path: company-screener
-    query_vars:
-      country: __ticker__
+    query_vars: {}
     date_key: null
     cadence_mode: interval
     min_age_days: 365
@@ -7689,6 +7683,9 @@ datasets:
   dto_schema:
     dto_type: sbfoundation.dtos.market.market_screener_dto.MarketScreenerDTO
     columns:
+    - name: symbol
+      type: str
+      nullable: false
     - name: company_name
       type: str
       nullable: true
@@ -8147,54 +8144,6 @@ datasets:
 
 - domain: crypto
   source: fmp
-  dataset: crypto-list
-  discriminator: ''
-  ticker_scope: global
-  silver_schema: silver
-  silver_table: fmp_crypto_list
-  key_cols:
-  - symbol
-  row_date_col: null
-  recipes:
-  - plans:
-    - basic
-    - starter
-    - premium
-    - ultimate
-    data_source_path: cryptocurrency-list
-    query_vars: {}
-    date_key: null
-    cadence_mode: interval
-    min_age_days: 365
-    run_days:
-    - mon
-    - tues
-    - wed
-    - thurs
-    - fri
-    - sat
-    help_url: https://site.financialmodelingprep.com/developer/docs#cryptocurrency-list
-  dto_schema:
-    dto_type: sbfoundation.dtos.instrument.cryptocurrency_list_dto.CryptocurrencyListDTO
-    columns:
-    - name: name
-      type: str
-      nullable: true
-    - name: exchange
-      type: str
-      nullable: true
-    - name: circulating_supply
-      type: float
-      nullable: true
-    - name: total_supply
-      type: float
-      nullable: true
-    - name: ico_date
-      type: str
-      nullable: true
-
-- domain: crypto
-  source: fmp
   dataset: crypto-price-eod
   discriminator: ''
   ticker_scope: per_ticker
@@ -8257,51 +8206,6 @@ datasets:
       nullable: true
 
 # ==================== FX DOMAIN ====================
-
-- domain: fx
-  source: fmp
-  dataset: fx-list
-  discriminator: ''
-  ticker_scope: global
-  silver_schema: silver
-  silver_table: fmp_fx_list
-  key_cols:
-  - symbol
-  row_date_col: null
-  recipes:
-  - plans:
-    - basic
-    - starter
-    - premium
-    - ultimate
-    data_source_path: forex-list
-    query_vars: {}
-    date_key: null
-    cadence_mode: interval
-    min_age_days: 365
-    run_days:
-    - mon
-    - tues
-    - wed
-    - thurs
-    - fri
-    - sat
-    help_url: https://site.financialmodelingprep.com/developer/docs#forex-list
-  dto_schema:
-    dto_type: sbfoundation.dtos.fx.fx_list_dto.FxListDTO
-    columns:
-    - name: from_currency
-      type: str
-      nullable: true
-    - name: from_name
-      type: str
-      nullable: true
-    - name: to_currency
-      type: str
-      nullable: true
-    - name: to_name
-      type: str
-      nullable: true
 
 - domain: fx
   source: fmp

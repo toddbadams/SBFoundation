@@ -71,6 +71,29 @@ class OpsService:
             self._logger.error("File ingestion persistence failed: %s", exc, run_id=run_id)
             raise
 
+    def get_bulk_ingestion_watermarks(
+        self,
+        *,
+        domain: str,
+        source: str,
+        dataset: str,
+        discriminator: str,
+    ) -> dict[str, tuple[date | None, date | None]]:
+        """Return {ticker: (last_ingestion_date, watermark_date)} for all tickers in one query.
+
+        Replaces N per-ticker calls to get_last_ingestion_date + get_watermark_date with a
+        single GROUP BY scan.  watermark_date already has the +1 day offset applied.
+        """
+        raw = self._ops_repo.get_bulk_ingestion_watermarks(
+            domain=domain, source=source, dataset=dataset, discriminator=discriminator
+        )
+        result: dict[str, tuple[date | None, date | None]] = {}
+        for ticker, (last_time, last_to_date) in raw.items():
+            last_ingestion_date = last_time.date() if last_time is not None else None
+            watermark_date = (last_to_date + timedelta(days=1)) if last_to_date is not None else None
+            result[ticker] = (last_ingestion_date, watermark_date)
+        return result
+
     def get_watermark_date(self, domain: str, source: str, dataset: str, discriminator: str, ticker: str) -> date | None:
         last_to_date = self._ops_repo.get_latest_bronze_to_date(
             domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=ticker

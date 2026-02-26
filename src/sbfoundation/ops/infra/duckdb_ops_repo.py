@@ -114,6 +114,35 @@ class DuckDbOpsRepo:
             row = conn.execute(sql, [domain, source, dataset, discriminator_token, ticker_token]).fetchone()
         return row[0] if row else None
 
+    def get_bulk_ingestion_watermarks(
+        self,
+        *,
+        domain: str,
+        source: str,
+        dataset: str,
+        discriminator: str,
+    ) -> dict[str, tuple[datetime.datetime | None, datetime.date | None]]:
+        """Return ingestion watermarks for all tickers of a dataset in one query.
+
+        Returns a dict keyed by ticker (empty string for global datasets).  Each
+        value is (last_successful_ingestion_time, last_bronze_to_date), matching
+        the semantics of get_latest_bronze_ingestion_time / get_latest_bronze_to_date
+        respectively.  Replaces N per-ticker scans with a single GROUP BY query.
+        """
+        discriminator_token = discriminator or ""
+        sql = (
+            "SELECT "
+            "    COALESCE(ticker, '') AS ticker, "
+            "    MAX(CASE WHEN bronze_error IS NULL THEN bronze_injest_start_time END) AS last_ingestion_time, "
+            "    MAX(bronze_to_date) AS last_to_date "
+            "FROM ops.file_ingestions "
+            "WHERE domain = ? AND source = ? AND dataset = ? AND COALESCE(discriminator, '') = ? "
+            "GROUP BY COALESCE(ticker, '')"
+        )
+        with self._bootstrap.read_connection() as conn:
+            rows = conn.execute(sql, [domain, source, dataset, discriminator_token]).fetchall()
+        return {row[0]: (row[1], row[2]) for row in rows}
+
     def get_latest_bronze_ingestion_time(
         self,
         *,

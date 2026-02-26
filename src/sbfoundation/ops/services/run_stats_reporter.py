@@ -25,6 +25,11 @@ def _fmt_date(d: Any) -> str:
     return str(d) if d else "—"
 
 
+def _pct(n: int, total: int) -> str:
+    """Format n/total as a percentage string."""
+    return f"{n / total * 100:.0f}%" if total > 0 else "—"
+
+
 def _md_table(headers: list[str], rows: list[list[str]], alignments: list[str] | None = None) -> str:
     """Build a Markdown table string.
 
@@ -39,6 +44,9 @@ def _md_table(headers: list[str], rows: list[list[str]], alignments: list[str] |
     sep_row = "| " + " | ".join(sep_map.get(a, ":---") for a in alignments) + " |"
     data_rows = ["| " + " | ".join(str(c) for c in row) + " |" for row in rows]
     return "\n".join([header_row, sep_row] + data_rows)
+
+
+_MAX_TICKER_LIST = 50  # max tickers to display inline before truncating
 
 
 class RunStatsReporter:
@@ -80,8 +88,39 @@ class RunStatsReporter:
 
         return self._format_history(run_rows, silver_sizes)
 
-    def write_report(self, run_id: str) -> pathlib.Path:
-        """Assemble both sections into a Markdown file and write it to the logs folder."""
+    def universe_coverage_report(self, universe_tickers: list[str]) -> str:
+        """Return a Markdown string comparing universe tickers to bronze/silver coverage.
+
+        For each ticker in universe_tickers, shows whether it has been ingested into
+        bronze and promoted to silver.  Also breaks down coverage by dataset so missing
+        data can be identified at a glance.
+
+        Args:
+            universe_tickers: The canonical ticker list for the strategy universe
+                              (e.g. the output of UniverseService.get_filtered_tickers()).
+        """
+        if not universe_tickers:
+            return "## Universe Coverage\n\n*No universe tickers provided.*"
+
+        with self._bootstrap.read_connection() as conn:
+            presence_rows = self._query_universe_presence(conn, universe_tickers)
+            dataset_rows = self._query_universe_dataset_coverage(conn, universe_tickers)
+
+        return self._format_universe_coverage(universe_tickers, presence_rows, dataset_rows)
+
+    def write_report(
+        self,
+        run_id: str,
+        universe_tickers: list[str] | None = None,
+    ) -> pathlib.Path:
+        """Assemble report sections into a Markdown file and write it to the logs folder.
+
+        Args:
+            run_id: The run whose bronze/silver stats are reported.
+            universe_tickers: When provided, a Universe Coverage section is appended
+                              that compares this ticker list against the accumulated
+                              bronze/silver data warehouse.
+        """
         current = self.report(run_id)
         history = self.history_report()
 
@@ -95,6 +134,10 @@ class RunStatsReporter:
             "---\n\n"
             f"{history}\n"
         )
+
+        if universe_tickers:
+            coverage = self.universe_coverage_report(universe_tickers)
+            doc += f"\n---\n\n{coverage}\n"
 
         logs_dir = Folders.logs_absolute_path()
         logs_dir.mkdir(parents=True, exist_ok=True)
@@ -243,6 +286,87 @@ class RunStatsReporter:
             except Exception:
                 results.append((name, 0))
         return results
+
+    # ------------------------------------------------------------------
+    # Query helpers — universe coverage
+    # ------------------------------------------------------------------
+
+    def _query_universe_presence(
+        self, conn: duckdb.DuckDBPyConnection, universe_tickers: list[str]
+    ) -> list[dict[str, Any]]:
+        """For each universe ticker return whether it appears in bronze and/or silver.
+
+        in_bronze = at least one successful (no error, >0 rows) bronze ingestion.
+        in_silver = at least one file_ingestion with silver_rows_created > 0.
+        """
+        sql = """
+            WITH universe AS (SELECT unnest(?) AS ticker),
+            bronze_tickers AS (
+                SELECT DISTINCT ticker
+                FROM ops.file_ingestions
+                WHERE bronze_error IS NULL
+                  AND bronze_rows > 0
+                  AND ticker IS NOT NULL AND ticker <> ''
+            ),
+            silver_tickers AS (
+                SELECT DISTINCT ticker
+                FROM ops.file_ingestions
+                WHERE silver_rows_created > 0
+                  AND ticker IS NOT NULL AND ticker <> ''
+            )
+            SELECT
+                u.ticker,
+                (bt.ticker IS NOT NULL) AS in_bronze,
+                (st.ticker IS NOT NULL) AS in_silver
+            FROM universe u
+            LEFT JOIN bronze_tickers bt ON bt.ticker = u.ticker
+            LEFT JOIN silver_tickers st ON st.ticker = u.ticker
+            ORDER BY u.ticker
+        """
+        cursor = conn.execute(sql, [universe_tickers])
+        cols = [d[0] for d in cursor.description]
+        return [dict(zip(cols, row)) for row in cursor.fetchall()]
+
+    def _query_universe_dataset_coverage(
+        self, conn: duckdb.DuckDBPyConnection, universe_tickers: list[str]
+    ) -> list[dict[str, Any]]:
+        """Per per-ticker dataset: how many universe tickers have silver data, and date range.
+
+        Only datasets that have at least one silver row for any ticker are included
+        (global/non-ticker datasets are excluded because their ticker column is NULL/empty).
+        """
+        sql = """
+            WITH universe AS (SELECT unnest(?) AS ticker),
+            per_ticker_datasets AS (
+                SELECT DISTINCT domain, dataset, COALESCE(discriminator, '') AS discriminator
+                FROM ops.file_ingestions
+                WHERE silver_rows_created > 0
+                  AND ticker IS NOT NULL AND ticker <> ''
+            )
+            SELECT
+                ptd.domain,
+                ptd.dataset,
+                ptd.discriminator,
+                COUNT(DISTINCT u.ticker) AS universe_count,
+                COUNT(DISTINCT CASE WHEN fi.silver_rows_created > 0 THEN u.ticker END)
+                    AS tickers_with_silver,
+                MIN(CASE WHEN fi.silver_rows_created > 0 THEN fi.silver_from_date END)
+                    AS earliest_date,
+                MAX(CASE WHEN fi.silver_rows_created > 0 THEN fi.silver_to_date END)
+                    AS latest_date
+            FROM per_ticker_datasets ptd
+            CROSS JOIN universe u
+            LEFT JOIN ops.file_ingestions fi
+                ON fi.ticker = u.ticker
+                AND fi.dataset = ptd.dataset
+                AND COALESCE(fi.discriminator, '') = ptd.discriminator
+                AND fi.silver_rows_created > 0
+            GROUP BY ptd.domain, ptd.dataset, ptd.discriminator
+            ORDER BY ptd.domain, ptd.dataset, ptd.discriminator
+        """
+        cursor = conn.execute(sql, [universe_tickers])
+        cols = [d[0] for d in cursor.description]
+        return [dict(zip(cols, row)) for row in cursor.fetchall()]
 
     # ------------------------------------------------------------------
     # Formatters
@@ -427,5 +551,111 @@ class RunStatsReporter:
             )
         else:
             parts.append("*No Silver tables found.*")
+
+        return "\n".join(parts)
+
+    def _format_universe_coverage(
+        self,
+        universe_tickers: list[str],
+        presence_rows: list[dict[str, Any]],
+        dataset_rows: list[dict[str, Any]],
+    ) -> str:
+        parts: list[str] = ["## Universe Coverage\n"]
+
+        n_universe = len(universe_tickers)
+        n_bronze = sum(1 for r in presence_rows if r["in_bronze"])
+        n_silver = sum(1 for r in presence_rows if r["in_silver"])
+        n_bronze_only = sum(1 for r in presence_rows if r["in_bronze"] and not r["in_silver"])
+        n_not_ingested = sum(1 for r in presence_rows if not r["in_bronze"])
+
+        # --- Presence summary table ---
+        parts.append(
+            _md_table(
+                ["", "Tickers", "% of Universe"],
+                [
+                    ["Universe", _fmt(n_universe), "100%"],
+                    [
+                        "In bronze (≥1 successful ingest)",
+                        _fmt(n_bronze),
+                        _pct(n_bronze, n_universe),
+                    ],
+                    [
+                        "In silver (≥1 promoted row)",
+                        _fmt(n_silver),
+                        _pct(n_silver, n_universe),
+                    ],
+                    [
+                        "In bronze only (not yet in silver)",
+                        _fmt(n_bronze_only),
+                        _pct(n_bronze_only, n_universe),
+                    ],
+                    [
+                        "Not yet ingested",
+                        _fmt(n_not_ingested),
+                        _pct(n_not_ingested, n_universe),
+                    ],
+                ],
+                ["l", "r", "r"],
+            )
+        )
+
+        # --- Not-yet-ingested ticker list ---
+        not_ingested = sorted(r["ticker"] for r in presence_rows if not r["in_bronze"])
+        if not_ingested:
+            parts.append(f"\n### Not Yet Ingested — {_fmt(len(not_ingested))} tickers\n")
+            shown = not_ingested[:_MAX_TICKER_LIST]
+            parts.append(", ".join(f"`{t}`" for t in shown))
+            if len(not_ingested) > _MAX_TICKER_LIST:
+                parts.append(
+                    f"\n\n*… and {_fmt(len(not_ingested) - _MAX_TICKER_LIST)} more not shown.*"
+                )
+
+        # --- Bronze-only ticker list (pending silver or empty content) ---
+        bronze_only = sorted(
+            r["ticker"] for r in presence_rows if r["in_bronze"] and not r["in_silver"]
+        )
+        if bronze_only:
+            parts.append(
+                f"\n\n### In Bronze Only — {_fmt(len(bronze_only))} tickers\n"
+            )
+            shown = bronze_only[:_MAX_TICKER_LIST]
+            parts.append(", ".join(f"`{t}`" for t in shown))
+            if len(bronze_only) > _MAX_TICKER_LIST:
+                parts.append(
+                    f"\n\n*… and {_fmt(len(bronze_only) - _MAX_TICKER_LIST)} more not shown.*"
+                )
+
+        # --- Per-dataset coverage table ---
+        if dataset_rows:
+            parts.append("\n\n### Coverage by Dataset\n")
+            table_rows = []
+            for r in dataset_rows:
+                disc = r["discriminator"] or ""
+                label = r["dataset"] + (f"/{disc}" if disc else "")
+                n_have = _n(r["tickers_with_silver"])
+                n_univ = _n(r["universe_count"])
+                n_miss = n_univ - n_have
+                table_rows.append(
+                    [
+                        r["domain"],
+                        label,
+                        _fmt(n_have),
+                        _fmt(n_miss),
+                        _pct(n_miss, n_univ),
+                        _fmt_date(r["earliest_date"]),
+                        _fmt_date(r["latest_date"]),
+                    ]
+                )
+            parts.append(
+                _md_table(
+                    ["Domain", "Dataset", "Have Data", "Missing", "Miss %", "Earliest", "Latest"],
+                    table_rows,
+                    ["l", "l", "r", "r", "r", "l", "l"],
+                )
+            )
+        elif n_universe > 0:
+            parts.append(
+                "\n\n*No per-ticker silver data found for any universe ticker.*"
+            )
 
         return "\n".join(parts)

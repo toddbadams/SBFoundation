@@ -26,6 +26,7 @@ from sbfoundation.dtos.fundamentals.income_statement_dto import IncomeStatementD
 from sbfoundation.dtos.fundamentals.income_statement_growth_dto import IncomeStatementGrowthDTO
 from sbfoundation.dtos.fundamentals.key_metrics_dto import KeyMetricsDTO
 from sbfoundation.dtos.fundamentals.key_metrics_ttm_dto import KeyMetricsTtmDTO
+from sbfoundation.dtos.fundamentals.latest_financial_statements_dto import LatestFinancialStatementsDTO
 from sbfoundation.dtos.fundamentals.metrics_ratios_dto import MetricsRatiosDTO
 from sbfoundation.dtos.fundamentals.owner_earnings_dto import OwnerEarningsDTO
 from sbfoundation.dtos.fundamentals.revenue_segmentation_dto import RevenueSegmentationDTO
@@ -127,6 +128,7 @@ DTO_REGISTRY = DTORegistry(
         "key-metrics": KeyMetricsDTO,
         "metric-ratios": MetricsRatiosDTO,
         "key-metrics-ttm": KeyMetricsTtmDTO,
+        "latest-financial-statements": LatestFinancialStatementsDTO,
         "financial-scores": FinancialScoresDTO,
         "owner-earnings": OwnerEarningsDTO,
         "enterprise-values": EnterpriseValuesDTO,
@@ -181,10 +183,10 @@ DTO_REGISTRY = DTORegistry(
         "commodities-list": CommoditiesListDTO,
         "commodities-price-eod": CommoditiesPriceEodDTO,
         # Crypto domain
-        "crypto-list": CryptocurrencyListDTO,
+        "cryptocurrency-list": CryptocurrencyListDTO,
         "crypto-price-eod": CryptoPriceEodDTO,
         # FX domain
-        "fx-list": FxListDTO,
+        "forex-list": FxListDTO,
         "fx-price-eod": FxPriceEodDTO,
     }
 )

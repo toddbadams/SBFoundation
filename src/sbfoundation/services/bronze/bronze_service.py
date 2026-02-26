@@ -44,6 +44,9 @@ class BronzeService:
         self.concurrent_requests = max(1, concurrent_requests)  # Ensure >= 1
         self._force_from_date: str | None = force_from_date
         self._backfill_to_1990: bool = backfill_to_1990
+        # Pre-loaded {ticker: (last_ingestion_date, watermark_date)} for the current recipe.
+        # Set before the concurrent loop, cleared after.  None means "use per-ticker DB queries".
+        self._watermarks_cache: dict[str, tuple[date | None, date | None]] | None = None
 
     @property
     def summary(self) -> RunContext:
@@ -78,10 +81,17 @@ class BronzeService:
             # The caller has explicitly requested historical data from a fixed start date.
             request.from_date = self._force_from_date
         else:
-            # Normal mode: skip if already ingested today, then advance from watermark.
-            last_ingestion_date = self.ops_service.get_last_ingestion_date(
-                domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=ticker
-            )
+            # Normal mode: resolve watermarks via bulk cache (when pre-loaded) or per-ticker DB query.
+            if self._watermarks_cache is not None:
+                last_ingestion_date, last_to_date = self._watermarks_cache.get(ticker or "", (None, None))
+            else:
+                last_ingestion_date = self.ops_service.get_last_ingestion_date(
+                    domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=ticker
+                )
+                last_to_date = self.ops_service.get_watermark_date(
+                    domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=ticker
+                )
+
             if last_ingestion_date and last_ingestion_date >= today:
                 self.logger.debug(
                     "Skipping duplicate ingestion | dataset=%s | ticker=%s | last_ingestion=%s",
@@ -92,11 +102,18 @@ class BronzeService:
                 )
                 return
 
-            last_to_date = self.ops_service.get_watermark_date(
-                domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=ticker
-            )
             if last_to_date:
                 request.from_date = last_to_date.isoformat()
+
+            # Second cadence gate: if we ingested recently enough (based on wall-clock
+            # ingestion date), skip regardless of content-date watermark.
+            # This handles datasets where the API always returns the same historical
+            # snapshot so bronze_to_date never advances toward today.
+            if last_ingestion_date and (today - last_ingestion_date).days <= request.min_age_days:
+                self.logger.warning(
+                    f"{result.msg} | REQUEST IS TOO SOON", run_id=self.run.run_id
+                )
+                return
 
         if not request.canRun():
             result.error = result.request.error
@@ -231,6 +248,16 @@ class BronzeService:
         """
         domain, source, dataset, discriminator, ticker = request.ingest_identity()
 
+        # Only date-range recipes support backward-fill windowing; limit-based
+        # recipes (e.g. metric-ratios) have no __from__/__to__ placeholders so
+        # passing a to_date does nothing useful — skip them entirely.
+        if not request.recipe.uses_date_range:
+            self.logger.debug(
+                f"Skipping backward fill for ticker={ticker} dataset={dataset} — recipe uses limit, not date range",
+                run_id=self.run.run_id,
+            )
+            return
+
         # Skip if already fully backfilled
         floor = self.ops_service.get_backfill_floor_date(domain, source, dataset, discriminator, ticker)
         if floor is not None and floor <= self._BACKFILL_START:
@@ -305,6 +332,19 @@ class BronzeService:
                 self.logger.warning(f"Backward fill: unparseable first_date '{new_floor_str}' for ticker={ticker}", run_id=self.run.run_id)
                 break
 
+            # If first_date didn't go before what we requested, the API doesn't honour
+            # to_date — mark sentinel and stop to avoid an infinite loop.
+            if new_floor >= to_date:
+                self.ops_service.set_backfill_floor_date(
+                    domain, source, dataset, discriminator, ticker, floor_date=self._BACKFILL_START
+                )
+                self.logger.info(
+                    f"API does not support to_date filtering for ticker={ticker} dataset={dataset}"
+                    f" — marking backfill complete",
+                    run_id=self.run.run_id,
+                )
+                break
+
             self.ops_service.set_backfill_floor_date(domain, source, dataset, discriminator, ticker, floor_date=new_floor)
             to_date = new_floor - timedelta(days=1)
 
@@ -319,6 +359,18 @@ class BronzeService:
     def _process_dataset_recipe(self, recipe: DatasetRecipe):
         """Process a recipe for each ticker, or once if not ticker-based."""
         if recipe.is_ticker_based:
+            # Pre-load ingestion watermarks for all tickers in one query before entering the
+            # concurrent loop.  This replaces N×2 serialized per-ticker full-table scans (all
+            # serialized through _conn_lock) with a single GROUP BY query, eliminating the
+            # primary cause of the apparent hang on large universes.
+            if not self._backfill_to_1990 and not self._force_from_date:
+                self._watermarks_cache = self.ops_service.get_bulk_ingestion_watermarks(
+                    domain=recipe.domain,
+                    source=recipe.source,
+                    dataset=recipe.dataset,
+                    discriminator=recipe.discriminator or "",
+                )
+
             # Build all requests upfront
             reqs = [
                 RunRequest.from_recipe(
@@ -332,21 +384,24 @@ class BronzeService:
                 for ticker in self.run.tickers
             ]
 
-            if self._backfill_to_1990:
-                # Backward fill runs sequentially per ticker (order matters)
-                for request in reqs:
-                    self._run_backward_fill_loop(request)
-            elif self.concurrent_requests > 1:
-                # Dispatch based on concurrency mode
-                self.logger.info(
-                    f"Processing {len(reqs)} requests concurrently (workers={self.concurrent_requests})",
-                    run_id=self.run.run_id,
-                )
-                self._process_requests_concurrent(reqs)
-            else:
-                # Sequential mode (current behavior)
-                for request in reqs:
-                    self._process_run_request(request)
+            try:
+                if self._backfill_to_1990:
+                    # Backward fill runs sequentially per ticker (order matters)
+                    for request in reqs:
+                        self._run_backward_fill_loop(request)
+                elif self.concurrent_requests > 1:
+                    # Dispatch based on concurrency mode
+                    self.logger.info(
+                        f"Processing {len(reqs)} requests concurrently (workers={self.concurrent_requests})",
+                        run_id=self.run.run_id,
+                    )
+                    self._process_requests_concurrent(reqs)
+                else:
+                    # Sequential mode (current behavior)
+                    for request in reqs:
+                        self._process_run_request(request)
+            finally:
+                self._watermarks_cache = None
         else:
             # Non-ticker recipes always sequential (single request)
             req = RunRequest.from_recipe(

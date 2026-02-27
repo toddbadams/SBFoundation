@@ -48,7 +48,8 @@
       "Bash(poetry run mypy:*)",
       "Bash(uv run mypy:*)",
       "Bash(cd \"C:/sb/SBFoundation\" && poetry run python3 -c \"import duckdb; print\\('ok'\\)\" 2>&1)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "WebFetch(domain:duckdb.org)"
     ]
   }
 }

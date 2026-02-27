@@ -1,4 +1,5 @@
 import os
+import threading
 import typing
 from datetime import date, timedelta
 import requests
@@ -47,6 +48,10 @@ class BronzeService:
         # Pre-loaded {ticker: (last_ingestion_date, watermark_date)} for the current recipe.
         # Set before the concurrent loop, cleared after.  None means "use per-ticker DB queries".
         self._watermarks_cache: dict[str, tuple[date | None, date | None]] | None = None
+        # Manifests queued by worker threads; flushed serially by the main thread after
+        # each concurrent batch to avoid _conn_lock contention / WAL checkpoint stalls.
+        self._pending_manifests: list[BronzeResult] = []
+        self._pending_lock = threading.Lock()
 
     @property
     def summary(self) -> RunContext:
@@ -59,7 +64,7 @@ class BronzeService:
     def _result_bronze_error(self, result: BronzeResult, e: str) -> None:
         """Persist a Bronze failure and update summary counters/items."""
         result.error = e
-        filename = self._persist_bronze(result)
+        filename = self._persist_bronze_file_only(result)
         self.run.result_bronze_error(result, e, filename=filename)
         self.logger.warning(f"{result.msg} | {result.error}", run_id=self.run.run_id)
 
@@ -154,8 +159,10 @@ class BronzeService:
             self._result_bronze_error(result, f"Failed bronze acceptance: {result.error}")
             return
 
-        # Write the bronze result
-        filename = self._persist_bronze(result)
+        # Write the bronze file and queue the manifest for serial flush on the main thread.
+        # Do NOT call insert_bronze_manifest here — all workers share _conn_lock and a
+        # stalled COMMIT in one thread would block all others indefinitely.
+        filename = self._persist_bronze_file_only(result)
 
         # Update the summary report
         self.run.result_bronze_pass(result, filename=filename)
@@ -182,6 +189,39 @@ class BronzeService:
             raise
 
         return str(Folders.duckdb_absolute_path)
+
+    def _persist_bronze_file_only(self, result: BronzeResult) -> str:
+        """Write the Bronze file and queue the manifest for a deferred serial flush.
+
+        Called from worker threads during concurrent ingestion to avoid _conn_lock
+        contention.  The manifest insert is deferred to _flush_manifest_inserts(),
+        which runs on the main thread after ThreadPoolExecutor completes.
+        """
+        try:
+            self.result_file_adapter.write(result)
+        except Exception as exc:
+            self.logger.error(f"Bronze persistence failed: {result.msg} | error={exc}", run_id=self.run.run_id)
+            raise
+        with self._pending_lock:
+            self._pending_manifests.append(result)
+        return str(Folders.duckdb_absolute_path)
+
+    def _flush_manifest_inserts(self) -> None:
+        """Insert all queued bronze manifest rows serially on the main thread.
+
+        Must be called after _process_requests_concurrent or any sequential ticker
+        loop that used _persist_bronze_file_only.  Running the inserts serially
+        eliminates _conn_lock contention and WAL checkpoint stalls that caused the
+        observed hang (all 10 workers blocked waiting for the lock after file writes).
+        """
+        with self._pending_lock:
+            pending = self._pending_manifests[:]
+            self._pending_manifests.clear()
+        for result in pending:
+            try:
+                self.ops_service.insert_bronze_manifest(result, self.run)
+            except Exception as exc:
+                self.logger.error("Bronze manifest insert failed: %s", exc, run_id=self.run.run_id)
 
     def _process_requests_concurrent(self, requests: list[RunRequest]) -> None:
         """Process requests concurrently using ThreadPoolExecutor.
@@ -228,6 +268,8 @@ class BronzeService:
         else:
             for req in requests:
                 self._process_run_request(req)
+
+        self._flush_manifest_inserts()
 
         if self._owns_ops_service:
             self.ops_service.close()
@@ -386,7 +428,9 @@ class BronzeService:
 
             try:
                 if self._backfill_to_1990:
-                    # Backward fill runs sequentially per ticker (order matters)
+                    # Backward fill runs sequentially per ticker (order matters).
+                    # _run_backward_fill_loop calls _persist_bronze directly (needs
+                    # immediate manifest for floor-date tracking), so no flush needed.
                     for request in reqs:
                         self._run_backward_fill_loop(request)
                 elif self.concurrent_requests > 1:
@@ -400,6 +444,9 @@ class BronzeService:
                     # Sequential mode (current behavior)
                     for request in reqs:
                         self._process_run_request(request)
+                # Drain the manifest queue accumulated by workers / sequential loop.
+                # _run_backward_fill_loop is excluded above (no-op flush is harmless).
+                self._flush_manifest_inserts()
             finally:
                 self._watermarks_cache = None
         else:
@@ -415,6 +462,7 @@ class BronzeService:
                 self._run_backward_fill_loop(req)
             else:
                 self._process_run_request(req)
+            self._flush_manifest_inserts()
 
     def process(self, run: RunContext) -> RunContext:
         """Run registered recipes, updating and returning the summary."""

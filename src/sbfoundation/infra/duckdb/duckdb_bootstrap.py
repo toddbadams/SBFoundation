@@ -75,7 +75,14 @@ class DuckDbBootstrap:
         self._logger = logger or LoggerFactory().create_logger(self.__class__.__name__)
         duckdb_path = Folders.duckdb_absolute_path()
         duckdb_path.mkdir(parents=True, exist_ok=True)
-        self._conn = conn or duckdb.connect(duckdb_path / DUCKDB_FILENAME)
+        self._conn = conn or duckdb.connect(
+            str(duckdb_path / DUCKDB_FILENAME),
+            config={
+                "threads": 2,
+                "memory_limit": "512MB",
+                "checkpoint_threshold": "16MB",
+            },
+        )
         self._owns_connection = conn is None
         self._schema_initialized = False
         self._conn_lock = threading.Lock()  # Protect connection for concurrent writes
@@ -122,6 +129,10 @@ class DuckDbBootstrap:
         if self._conn is None:
             return
         if self._owns_connection:
+            try:
+                self._conn.execute("CHECKPOINT")
+            except Exception:
+                pass
             self._conn.close()
         self._conn = None
         self._schema_initialized = False
@@ -133,6 +144,8 @@ class DuckDbBootstrap:
     def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
 
+    _LOCK_TIMEOUT_SECONDS = 60
+
     @contextmanager
     def transaction(self) -> Iterator[duckdb.DuckDBPyConnection]:
         """Execute a transaction with thread-safe connection locking.
@@ -140,8 +153,17 @@ class DuckDbBootstrap:
         DuckDB connections are not thread-safe, so we serialize access
         to the connection using a lock. This ensures concurrent Bronze
         workers can safely write to ops.file_ingestions.
+
+        Raises TimeoutError if the lock cannot be acquired within
+        _LOCK_TIMEOUT_SECONDS (default 60s) to surface hangs quickly
+        rather than blocking indefinitely.
         """
-        with self._conn_lock:
+        acquired = self._conn_lock.acquire(timeout=self._LOCK_TIMEOUT_SECONDS)
+        if not acquired:
+            raise TimeoutError(
+                f"Timed out waiting for DuckDB connection lock after {self._LOCK_TIMEOUT_SECONDS}s"
+            )
+        try:
             conn = self.connect()
             conn.execute("BEGIN")
             try:
@@ -150,6 +172,8 @@ class DuckDbBootstrap:
             except Exception:
                 conn.execute("ROLLBACK")
                 raise
+        finally:
+            self._conn_lock.release()
 
     @contextmanager
     def read_connection(self) -> Iterator[duckdb.DuckDBPyConnection]:
@@ -159,9 +183,19 @@ class DuckDbBootstrap:
         and writes—must be serialized through the same lock to prevent
         'Invalid Input Error: Attempting to execute an unsuccessful or closed
         pending query result' errors under concurrent workers.
+
+        Raises TimeoutError if the lock cannot be acquired within
+        _LOCK_TIMEOUT_SECONDS to surface hangs quickly.
         """
-        with self._conn_lock:
+        acquired = self._conn_lock.acquire(timeout=self._LOCK_TIMEOUT_SECONDS)
+        if not acquired:
+            raise TimeoutError(
+                f"Timed out waiting for DuckDB connection lock after {self._LOCK_TIMEOUT_SECONDS}s"
+            )
+        try:
             yield self.connect()
+        finally:
+            self._conn_lock.release()
 
     @contextmanager
     def ops_transaction(self) -> Iterator[duckdb.DuckDBPyConnection]:

@@ -904,11 +904,11 @@ class SBFoundationAPI:
 if __name__ == "__main__":
     #     COMMODITIES_DOMAIN, COMPANY_DOMAIN, CRYPTO_DOMAIN, FX_DOMAIN, FUNDAMENTALS_DOMAIN, MARKET_DOMAIN, TECHNICALS_DOMAIN
     command = RunCommand(
-        domain=FUNDAMENTALS_DOMAIN,
+        domain=TECHNICALS_DOMAIN,
         concurrent_requests=10,  # Default: 10 workers for optimal throughput
         enable_bronze=True,
         enable_silver=True,
-        ticker_limit=5000,
+        ticker_limit=5280,
         ticker_recipe_chunk_size=1000,
         include_indexes=False,
         universe_definition=US_ALL_CAP,

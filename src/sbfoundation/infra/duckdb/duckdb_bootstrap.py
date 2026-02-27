@@ -71,18 +71,23 @@ class DuckDbBootstrap:
 
     Schema initialization is idempotent and uses CREATE IF NOT EXISTS, making it safe
     to call multiple times and compatible with existing databases."""
+
     def __init__(self, logger: SBLogger | None = None, conn: duckdb.DuckDBPyConnection | None = None) -> None:
         self._logger = logger or LoggerFactory().create_logger(self.__class__.__name__)
         duckdb_path = Folders.duckdb_absolute_path()
         duckdb_path.mkdir(parents=True, exist_ok=True)
+        duckdb_name: str = str(duckdb_path / DUCKDB_FILENAME)
+        self._logger.info(f"connecting | DuckDb={duckdb_name}")
         self._conn = conn or duckdb.connect(
             str(duckdb_path / DUCKDB_FILENAME),
             config={
-                "threads": 2,
-                "memory_limit": "512MB",
-                "checkpoint_threshold": "16MB",
+                "threads": 4,
+                "memory_limit": "8GB",
+                "checkpoint_threshold": "64MB",
             },
         )
+
+        self._logger.info(f"Connected | DuckDb={duckdb_name}")
         self._owns_connection = conn is None
         self._schema_initialized = False
         self._conn_lock = threading.Lock()  # Protect connection for concurrent writes
@@ -160,9 +165,7 @@ class DuckDbBootstrap:
         """
         acquired = self._conn_lock.acquire(timeout=self._LOCK_TIMEOUT_SECONDS)
         if not acquired:
-            raise TimeoutError(
-                f"Timed out waiting for DuckDB connection lock after {self._LOCK_TIMEOUT_SECONDS}s"
-            )
+            raise TimeoutError(f"Timed out waiting for DuckDB connection lock after {self._LOCK_TIMEOUT_SECONDS}s")
         try:
             conn = self.connect()
             conn.execute("BEGIN")
@@ -189,9 +192,7 @@ class DuckDbBootstrap:
         """
         acquired = self._conn_lock.acquire(timeout=self._LOCK_TIMEOUT_SECONDS)
         if not acquired:
-            raise TimeoutError(
-                f"Timed out waiting for DuckDB connection lock after {self._LOCK_TIMEOUT_SECONDS}s"
-            )
+            raise TimeoutError(f"Timed out waiting for DuckDB connection lock after {self._LOCK_TIMEOUT_SECONDS}s")
         try:
             yield self.connect()
         finally:

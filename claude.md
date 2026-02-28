@@ -5,6 +5,7 @@
 **Maintenance**: Update when changing architecture patterns, modifying dataset_keymap.yaml structure, or adding new domains/contracts.
 
 ## Purpose
+
 Strawberry Foundation is a **Bronze + Silver ONLY data acquisition and validation package**. It ingests raw vendor data (Bronze) and promotes it to validated, typed, conformed datasets (Silver). The pipeline is executed via `src/sbfoundation/api.py` (`SBFoundationAPI`) and configured declaratively in `config/dataset_keymap.yaml`.
 
 **CRITICAL**: This project contains **ONLY Bronze and Silver layers**. The Gold layer (dimension modeling, surrogate keys, star schemas, aggregations) exists in a separate downstream project that imports SBFoundation as a dependency.
@@ -12,6 +13,7 @@ Strawberry Foundation is a **Bronze + Silver ONLY data acquisition and validatio
 ---
 
 ## Quick Reference
+
 - **Adding new dataset?** → Edit `config/dataset_keymap.yaml` (see Section 5.3)
 - **Modifying data pipeline?** → `src/sbfoundation/api.py` + `config/dataset_keymap.yaml`
 - **Complex refactor?** → Section 7 (ExecPlans)
@@ -34,6 +36,7 @@ Strawberry implements **ONLY the first two layers** of a medallion/lakehouse arc
 | **Gold (Business/Analytics)** | Model & Aggregate | Star schemas, surrogate keys, dimensions, facts, rollups | ❌ NO - Separate project |
 
 **What Silver Tables Contain:**
+
 - Clean, typed business data from Bronze
 - Natural business keys only (e.g., `ticker`, `symbol`, `date`)
 - Lineage metadata: `bronze_file_id`, `run_id`, `ingested_at`
@@ -42,6 +45,7 @@ Strawberry implements **ONLY the first two layers** of a medallion/lakehouse arc
 - **NO cross-table joins or aggregations**
 
 **What Belongs in Gold (NOT this project):**
+
 - Surrogate key resolution (`instrument_sk`, `company_sk`, etc.)
 - Dimension tables (`dim_instrument`, `dim_company`, etc.)
 - Fact tables with foreign keys
@@ -80,6 +84,7 @@ Strawberry implements **ONLY the first two layers** of a medallion/lakehouse arc
 ## 3) Conflict Resolution
 
 When documents conflict, priority order:
+
 1. `config/dataset_keymap.yaml` — authoritative for all dataset definitions and mappings
 2. Recipe contracts (Section 9) — for recipe semantics and behavior
 3. Bronze contracts (Section 6) — for Bronze storage format
@@ -110,6 +115,7 @@ When documents conflict, priority order:
 ## 5) Working Rules for Generated Changes
 
 ### 5.1 Style and Typing
+
 - **Python**: `>=3.11,<3.14`
 - **Packaging**: Poetry (primary), uv (local dev)
 - **Type system**: Built-in generics (`list[...]`, `dict[...]`), strict typing with mypy
@@ -118,14 +124,17 @@ When documents conflict, priority order:
 - Keep functions deterministic and testable; avoid hidden side effects
 
 ### 5.2 Repo Patterns
+
 - Bronze: raw results + metadata only
 - Silver: validated, typed, conformed datasets
 - All layer mappings defined in `config/dataset_keymap.yaml`
 
 ### 5.3 Adding a New Dataset
+
 All dataset definitions live in `config/dataset_keymap.yaml`:
 
 **Required fields**:
+
 - `domain`: company | economics | fundamentals | technicals
 - `source`: Data source identifier (e.g., fmp, fred)
 - `dataset`: Internal dataset name (stable identifier)
@@ -137,6 +146,7 @@ All dataset definitions live in `config/dataset_keymap.yaml`:
 - `row_date_col`: Column name for row-level dates (or null)
 
 **Recipe definition** (nested under `recipes`):
+
 - `plans`: List of FMP plans (e.g., ["basic"])
 - `data_source_path`: Relative API path (no base URL)
 - `query_vars`: Query params using `__ticker__`, `__from_date__`, `__to_date__` placeholders
@@ -147,10 +157,12 @@ All dataset definitions live in `config/dataset_keymap.yaml`:
 - `help_url`: Vendor documentation link
 
 **DTO Schema** (nested under `dto_schema`):
+
 - `dto_type`: Python import path to DTO class
 - `columns`: List of `{name, type, nullable}` definitions
 
 **Example**:
+
 ```yaml
 - domain: company
   source: fmp
@@ -184,6 +196,7 @@ Also add the dataset to `DATASETS` and `DTO_TYPES` constants. If a new domain or
 ## 6) Bronze Layer Contracts
 
 ### 6.1 BronzeResult JSON Contract
+
 Every stored Bronze file MUST contain:
 
 | Field | Type | Notes |
@@ -200,19 +213,24 @@ Every stored Bronze file MUST contain:
 `BronzeResult` computes `hash`, `first_date`, `last_date` in memory but does **not** serialize them.
 
 ### 6.2 File Naming & Partitioning
+
 ```
 /bronze/<domain>/<source>/<dataset>/<ticker_or_none>/<injestion_date>-<uuid>.json
 ```
+
 - One JSON file per API response, UTF-8, deterministic serialization (`sort_keys=True`)
 - Append-only: no overwrites; re-ingestion always creates a new file
 
 ### 6.3 Promotion Gate
+
 Bronze → Silver promotion requires (checked in `BronzeResult.canPromoteToSilverWith`):
+
 - `status_code == 200`
 - `error is None`
 - `content` is non-empty OR dataset `allows_empty_content`
 
 ### 6.4 Run Summary Manifest
+
 One manifest per run at: `/bronze/manifests/summary-<RUN_ID>-<YYYY-MM-DD>.json`
 
 Required fields: `run_id`, `started_at`, `finished_at`, `records_written`, `records_failed`, `filenames`, `failed_filenames`
@@ -224,6 +242,7 @@ Required fields: `run_id`, `started_at`, `finished_at`, `records_written`, `reco
 Use an ExecPlan for complex features or significant refactors. An ExecPlan is a **self-contained, living document** that enables a complete novice to implement a feature end-to-end.
 
 **Use when**:
+
 - Adding a new domain or layer
 - Changing core contracts (DTO, Recipe, Bronze storage format)
 - Multi-file refactors affecting 5+ modules
@@ -233,20 +252,35 @@ Use an ExecPlan for complex features or significant refactors. An ExecPlan is a 
 **Do NOT use for**: single-file bug fixes, adding fields to DTOs, simple test additions, documentation updates.
 
 ### ExecPlan Required Sections
+
+- Purpose / Big Picture       — user-visible behavior enabled by this change
+- Progress                    — checkbox list, timestamped, always current state
+- Surprises & Discoveries     — unexpected behaviors, bugs, insights + evidence
+- Decision Log                — every decision with rationale and date/author
+- Outcomes & Retrospective    — what was achieved, gaps, lessons learned
+- Context and Orientation     — current state, key files, term definitions
+- Plan of Work                — prose sequence of edits (file + location + change)
+- Concrete Steps              — exact commands with expected output transcripts
+- Validation and Acceptance   — observable behavior to verify (not just "compiles")
+- Idempotence and Recovery    — safe retry/rollback instructions
+- Artifacts and Notes         — concise transcripts/diffs proving success
+- Interfaces and Dependencies — libraries, types, function signatures required
+
+### ExecPlan Execution Rules
+
+**First step — always**: Before any code changes, create a feature branch:
+
 ```
-## Purpose / Big Picture       — user-visible behavior enabled by this change
-## Progress                    — checkbox list, timestamped, always current state
-## Surprises & Discoveries     — unexpected behaviors, bugs, insights + evidence
-## Decision Log                — every decision with rationale and date/author
-## Outcomes & Retrospective    — what was achieved, gaps, lessons learned
-## Context and Orientation     — current state, key files, term definitions
-## Plan of Work                — prose sequence of edits (file + location + change)
-## Concrete Steps              — exact commands with expected output transcripts
-## Validation and Acceptance   — observable behavior to verify (not just "compiles")
-## Idempotence and Recovery    — safe retry/rollback instructions
-## Artifacts and Notes         — concise transcripts/diffs proving success
-## Interfaces and Dependencies — libraries, types, function signatures required
+git checkout -b feature/<short-kebab-description>
 ```
+
+All work for the ExecPlan must be committed to this branch. Do not commit to `main`.
+
+**Last step — always**: When all Concrete Steps are complete and Validation and Acceptance criteria are met, stop and prompt the user in Claude with:
+
+> "ExecPlan `<name>` is complete and fully tested. All code is committed to branch `feature/<name>`. Please confirm you are satisfied and I will create a PR for your approval."
+
+Only after the user confirms: commit any remaining changes to the feature branch, then create a PR targeting `main` with a descriptive title and summary of what was changed and why. Do not merge the PR.
 
 ExecPlans are stored as `.md` files under `docs/prompts/`. They are living documents — update all sections as work proceeds.
 
@@ -267,6 +301,7 @@ DTOs are the **only allowed contract surface** between Bronze and Silver. All DT
 Optional: `from_series_row(cls, row: pd.Series) -> Self` for Silver → DTO round-trip.
 
 ### 8.2 DTO Rules
+
 - **One endpoint → one DTO**; class name: `<DatasetNamePascalCase>DTO`
 - All attributes and `to_dict()` keys are **snake_case**
 - Declare `KEY_COLS: list[str]` (typically `["ticker"]`; composite for multi-key datasets)
@@ -277,6 +312,7 @@ Optional: `from_series_row(cls, row: pd.Series) -> Self` for Silver → DTO roun
 - `key_date`: return parsed vendor date if available; otherwise `date.min`
 
 ### 8.3 Naming Convention
+
 `from_row` must match the call site exactly. Use `BronzeToSilverDTO` helper methods for safe type parsing — do not hand-cast inline.
 
 ---
@@ -286,20 +322,26 @@ Optional: `from_series_row(cls, row: pd.Series) -> Self` for Silver → DTO roun
 A `DatasetRecipe` is a declarative spec for ingesting exactly one source endpoint.
 
 ### 9.1 URL Construction (authoritative)
+
 ```
 url = f"{DATA_SOURCES_CONFIG[source][BASE_URL]}{recipe.data_source_path}"
 ```
+
 Never embed the base URL in `data_source_path`.
 
 ### 9.2 Placeholder Substitution
+
 `RunProvider._get_query_vars()` substitutes in `recipe.query_vars`:
+
 - `TICKER_PLACEHOLDER` → current ticker
 - `FROM_DATE_PLACEHOLDER` → computed `from_date` (see §9.3)
 - `TO_DATE_PLACEHOLDER` → today
 - `apikey` → injected from config; `None`-valued params removed
 
 ### 9.3 from_date / Base-Date Semantics
+
 `from_date` is computed from prior ingested data, not the recipe:
+
 - Stored as `RunDataDatesDTO.to_date` keyed by `"{domain}-{source}-{dataset}-{ticker}"`
 - If found: `from_date = stored to_date` (continue from last end date)
 - If not found: `from_date = universe.from_date`
@@ -307,17 +349,21 @@ Never embed the base URL in `data_source_path`.
 **Due-ness** (interval mode): `injestion_date >= base_date + min_age_days`
 
 ### 9.4 Ticker-Based vs Global
+
 - `is_ticker_based=True`: `RunProvider` loops over `universe.tickers()`; include `"symbol": TICKER_PLACEHOLDER`
 - `is_ticker_based=False`: single request with `ticker=None` (e.g., economics indicators)
 
 ### 9.5 Discriminators (Shared Datasets)
+
 When many logical series share one dataset (e.g., economics indicators), every recipe must define `discrimnator` (typo preserved in code for compatibility) to ensure deterministic filenames/partitions. Example: `{"name": "gdp"}`, `{"name": "cpi"}`.
 
 ### 9.6 snapshot vs Timeseries `date_key`
+
 - Timeseries: set `date_key` to the row field containing the observation date (e.g., `"date"`, `"periodOfReport"`)
 - Snapshot/metadata endpoints (e.g., profile, peers): `date_key=None` → runtime falls back to today's date for cadence progression
 
 ### 9.7 Failure Semantics
+
 A failed run request does NOT crash the run. A `BronzeResult` is still created with `error` set, written via `ResultFileAdapter`, and `RunContext` counters are updated. The system is "audit-first".
 
 ---
@@ -329,6 +375,7 @@ DuckDB is the canonical store for Silver data plus manifests, watermarks, and op
 **Note**: While DuckDB supports a `gold` schema, **this project does not create or manage Gold tables**. The Gold layer is implemented in a separate downstream project.
 
 ### 10.1 Configuration
+
 - `DUCKDB_FOLDER`: location of the DuckDB file (dev/prod differs)
 - `repo_root_path`: absolute path to repo root
 - `BRONZE_FOLDER`: repo-relative base folder for bronze files (e.g., `data/bronze`)
@@ -338,6 +385,7 @@ DuckDB is the canonical store for Silver data plus manifests, watermarks, and op
 All file paths stored in DuckDB are **repo-root-relative**. Single DuckDB file for dev and prod (copyable from Raspberry Pi to Windows).
 
 ### 10.2 Schema Layout
+
 ```
 ops     — manifests, watermarks, migrations, run summaries (managed by this project)
 silver  — conformed datasets, one table per dataset (managed by this project)
@@ -360,23 +408,27 @@ gold    — NOT MANAGED BY THIS PROJECT (downstream Gold project only)
 **ops.file_ingestions**: per-step metrics for bronze/silver/gold (run_id, file_id, coverage, hashes, row counts, errors, timestamps)
 
 ### 10.4 Silver Tables
+
 - One table per dataset in `silver` schema
 - Required columns on every silver row: `bronze_file_id`, `run_id`, `ingested_at`
 - Required row date: use DTO `date_key` field if defined; otherwise `as_of_date`
 - UPSERT/MERGE keyed by `KEY_COLS` from `config/dataset_keymap.yaml` — idempotent on replay
 
 ### 10.5 Gold Tables
+
 - Star-schema modeling (dims/facts)
 - Every Gold table includes: `gold_build_id`, `model_version` (git SHA)
 - Gold outputs reproducible given: referenced input watermarks + git SHA
 
 ### 10.6 Dataset Identity (for manifests and watermarks)
+
 Identity = `domain` + `source` + `dataset` + `discriminator` (empty string if unused) + `ticker` (empty string if unused)
 
 `input_watermarks` serialization format:
 `domain|source|dataset|discriminator|ticker@coverage_from=YYYY-MM-DD;coverage_to=YYYY-MM-DD`
 
 ### 10.7 Transactions
+
 - Bronze: write file → insert manifest row (actionable error if manifest insert fails; leave file for replay)
 - Silver promotion: MERGE/UPSERT + watermark updates in one transaction
 - Gold build: **NOT in this project** (handled by downstream Gold project)
@@ -443,7 +495,7 @@ Use `self.__class__.__name__` (for class-level loggers) or `__name__` (for modul
 
 ### 13.3 run_id Correlation
 
-Every log method (`info`, `debug`, `warning`, `error`, `critical`, `exception`, `log`) accepts an optional `run_id: str | None = None` keyword argument. When provided, the message is automatically prefixed with `run_id=<value> | `:
+Every log method (`info`, `debug`, `warning`, `error`, `critical`, `exception`, `log`) accepts an optional `run_id: str | None = None` keyword argument. When provided, the message is automatically prefixed with `run_id=<value> |`:
 
 ```python
 self._logger.info("Processing 42 items", run_id=run.run_id)
@@ -464,9 +516,11 @@ self._logger.log_section(run.run_id, "Processing economics domain")
 ### 13.5 Log Format and Output
 
 **Format**: `%(asctime)s | %(levelname)-7s | %(name)-15s | %(message)s`
+
 - `levelname` padded to 7 chars; `name` padded to 15 chars (enforced by `_FixedWidthFormatter`)
 
 **Handlers** (both always active, deduplication is automatic):
+
 - `StreamHandler` → `sys.stdout`
 - `FileHandler` → `$DATA_ROOT_FOLDER/logs/logs_<YYYY-MM-DD>.txt`, append mode, UTF-8
 
@@ -497,6 +551,7 @@ service = MyService(logger=logger)
 ---
 
 ## 14) What "Done" Looks Like
+
 - Changes compile/type-check (mypy-friendly)
 - Formatting consistent with repo standards (Black/isort/flake8)
 - No contract violations (DTO purity, Bronze immutability, recipe semantics)

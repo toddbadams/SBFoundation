@@ -189,6 +189,16 @@ class OpsService:
     def load_input_watermarks(self, conn: duckdb.DuckDBPyConnection, *, datasets: set[str]) -> list[str]:
         return self._ops_repo.load_input_watermarks(conn, datasets=datasets)
 
+    def refresh_coverage_index(self, *, run_id: str, universe_from_date: date, today: date) -> None:
+        """Recompute ops.coverage_index from ops.file_ingestions. Non-fatal on failure."""
+        from sbfoundation.coverage.coverage_index_service import CoverageIndexService
+
+        try:
+            svc = CoverageIndexService(ops_repo=self._ops_repo, logger=self._logger)
+            svc.refresh(run_id=run_id, universe_from_date=universe_from_date, today=today)
+        except Exception as exc:
+            self._logger.warning("Coverage index refresh failed (non-fatal): %s", exc, run_id=run_id)
+
     def get_tickers_with_bronze_error(self, *, dataset: str, error_contains: str) -> set[str]:
         """Get distinct tickers that have a bronze_error containing the specified string."""
         try:

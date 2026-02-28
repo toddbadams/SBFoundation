@@ -349,6 +349,229 @@ class DuckDbOpsRepo:
         with self._bootstrap.ops_transaction() as conn:
             conn.execute(sql, [domain, source, dataset, discriminator, ticker, floor_date])
 
+    # --- COVERAGE INDEX ---#
+
+    _COVERAGE_COLS = (
+        "domain", "source", "dataset", "discriminator", "ticker",
+        "min_date", "max_date", "coverage_ratio",
+        "expected_start_date", "expected_end_date",
+        "total_files", "promotable_files", "ingestion_runs",
+        "silver_rows_created", "silver_rows_failed",
+        "error_count", "error_rate",
+        "last_ingested_at", "last_run_id",
+        "snapshot_count", "last_snapshot_date", "age_days",
+        "is_timeseries", "updated_at",
+    )
+
+    def aggregate_file_ingestions_for_coverage(self) -> list[dict[str, Any]]:
+        """Return one aggregated row per (domain, source, dataset, discriminator, ticker)."""
+        sql = (
+            "SELECT "
+            "    domain, "
+            "    source, "
+            "    dataset, "
+            "    COALESCE(discriminator, '') AS discriminator, "
+            "    COALESCE(ticker, '')        AS ticker, "
+            "    MIN(bronze_from_date)       AS min_date, "
+            "    MAX(bronze_to_date)         AS max_date, "
+            "    COUNT(*)                    AS total_files, "
+            "    COUNT(*) FILTER (WHERE bronze_can_promote = TRUE)      AS promotable_files, "
+            "    COUNT(DISTINCT run_id)                                  AS ingestion_runs, "
+            "    COALESCE(SUM(silver_rows_created), 0)                  AS silver_rows_created, "
+            "    COALESCE(SUM(silver_rows_failed), 0)                   AS silver_rows_failed, "
+            "    COUNT(*) FILTER (WHERE bronze_error IS NOT NULL)       AS error_count, "
+            "    MAX(bronze_injest_start_time)                          AS last_ingested_at, "
+            "    MAX(run_id)                                            AS last_run_id "
+            "FROM ops.file_ingestions "
+            "GROUP BY domain, source, dataset, "
+            "         COALESCE(discriminator, ''), COALESCE(ticker, '')"
+        )
+        return self._fetch_dicts(sql, [])
+
+    def upsert_coverage_index(self, rows: list[dict[str, Any]]) -> int:
+        """Replace all coverage index rows in a single transaction. Returns row count.
+
+        Uses a pandas DataFrame so DuckDB can do a single vectorized INSERT
+        instead of N individual parametrized statements (executemany is O(N)
+        round-trips; DataFrame INSERT is a single scan).
+        """
+        if not rows:
+            return 0
+        import pandas as pd
+
+        cols = list(self._COVERAGE_COLS)
+        df = pd.DataFrame(rows, columns=cols)
+        col_list = ", ".join(cols)
+        with self._bootstrap.ops_transaction() as conn:
+            conn.execute("DELETE FROM ops.coverage_index")
+            conn.execute(f"INSERT INTO ops.coverage_index ({col_list}) SELECT {col_list} FROM df")
+        return len(rows)
+
+    # --- COVERAGE QUERIES ---#
+
+    def get_coverage_summary(self) -> list[dict[str, Any]]:
+        """One aggregated row per (domain, dataset), sorted weakest coverage first."""
+        sql = (
+            "SELECT "
+            "    domain, "
+            "    source, "
+            "    dataset, "
+            "    COUNT(DISTINCT ticker)                        AS tickers_covered, "
+            "    ROUND(AVG(coverage_ratio), 4)                AS avg_coverage_ratio, "
+            "    ROUND(AVG(error_rate), 4)                    AS avg_error_rate, "
+            "    MAX(last_ingested_at)                        AS last_ingested_at "
+            "FROM ops.coverage_index "
+            "GROUP BY domain, source, dataset "
+            "ORDER BY avg_coverage_ratio ASC NULLS LAST"
+        )
+        return self._fetch_dicts(sql, [])
+
+    def get_distinct_datasets(self) -> list[str]:
+        """Return all distinct dataset names in coverage_index, sorted."""
+        sql = "SELECT DISTINCT dataset FROM ops.coverage_index ORDER BY dataset ASC"
+        return [r["dataset"] for r in self._fetch_dicts(sql, [])]
+
+    def get_distinct_tickers(self) -> list[str]:
+        """Return all distinct non-empty ticker symbols in coverage_index, sorted."""
+        sql = (
+            "SELECT DISTINCT ticker FROM ops.coverage_index "
+            "WHERE ticker <> '' "
+            "ORDER BY ticker ASC"
+        )
+        return [r["ticker"] for r in self._fetch_dicts(sql, [])]
+
+    def get_coverage_by_dataset(self, dataset: str) -> list[dict[str, Any]]:
+        """Per-ticker coverage for a single dataset, weakest first."""
+        sql = (
+            "SELECT ticker, min_date, max_date, coverage_ratio, "
+            "       total_files, error_count, error_rate, "
+            "       last_ingested_at, is_timeseries "
+            "FROM ops.coverage_index "
+            "WHERE dataset = ? "
+            "ORDER BY coverage_ratio ASC NULLS LAST"
+        )
+        return self._fetch_dicts(sql, [dataset])
+
+    def get_coverage_by_ticker(self, ticker: str) -> list[dict[str, Any]]:
+        """Per-dataset coverage for a single ticker, sorted by coverage_ratio ascending."""
+        sql = (
+            "SELECT dataset, is_timeseries, min_date, max_date, "
+            "       coverage_ratio, total_files, error_count, error_rate, "
+            "       last_ingested_at, age_days, last_snapshot_date "
+            "FROM ops.coverage_index "
+            "WHERE ticker = ? "
+            "ORDER BY coverage_ratio ASC NULLS LAST"
+        )
+        return self._fetch_dicts(sql, [ticker])
+
+    def get_stale_snapshots(self, min_age_days: int) -> list[dict[str, Any]]:
+        """Snapshot datasets (is_timeseries=FALSE) with age_days >= min_age_days."""
+        sql = (
+            "SELECT dataset, ticker, last_snapshot_date, age_days "
+            "FROM ops.coverage_index "
+            "WHERE is_timeseries = FALSE AND age_days >= ? "
+            "ORDER BY age_days DESC NULLS LAST"
+        )
+        return self._fetch_dicts(sql, [min_age_days])
+
+    def get_coverage_matrix(self) -> list[dict[str, Any]]:
+        """Per-dataset aggregated metrics for the Global Overview heatmap.
+
+        Returns one row per dataset with:
+          tickers_covered, avg_coverage_ratio, pct_updated_7d,
+          median_history_years, oldest_max_date_age
+        Sorted weakest coverage first.
+        """
+        sql = (
+            "SELECT "
+            "    dataset, "
+            "    COUNT(DISTINCT ticker) AS tickers_covered, "
+            "    AVG(coverage_ratio) AS avg_coverage_ratio, "
+            "    CAST(COUNT(*) FILTER (WHERE last_ingested_at > NOW() - INTERVAL '7 days') AS DOUBLE)"
+            "        / NULLIF(COUNT(*), 0) AS pct_updated_7d, "
+            "    MEDIAN(datediff('year', min_date, max_date)) AS median_history_years, "
+            "    MAX(datediff('day', max_date, current_date)) AS oldest_max_date_age "
+            "FROM ops.coverage_index "
+            "GROUP BY dataset "
+            "ORDER BY avg_coverage_ratio ASC NULLS LAST"
+        )
+        return self._fetch_dicts(sql, [])
+
+    # ---- Ingestion Diagnostics queries (ops.file_ingestions) ----
+
+    def get_ingestion_error_rates(self) -> list[dict[str, Any]]:
+        """Per-dataset error rates from ops.file_ingestions, worst first."""
+        sql = (
+            "SELECT "
+            "    dataset, "
+            "    COUNT(*) AS total_files, "
+            "    COUNT(*) FILTER (WHERE bronze_error IS NOT NULL) AS error_count, "
+            "    ROUND(100.0 * COUNT(*) FILTER (WHERE bronze_error IS NOT NULL) "
+            "          / NULLIF(COUNT(*), 0), 2) AS error_rate_pct, "
+            "    MAX(bronze_injest_start_time) AS last_seen "
+            "FROM ops.file_ingestions "
+            "GROUP BY dataset "
+            "ORDER BY error_rate_pct DESC NULLS LAST"
+        )
+        return self._fetch_dicts(sql, [])
+
+    def get_ingestion_latency(self) -> list[dict[str, Any]]:
+        """Per-dataset bronze ingestion latency (ms) statistics, slowest first."""
+        sql = (
+            "SELECT "
+            "    dataset, "
+            "    COUNT(*) AS samples, "
+            "    ROUND(AVG(datediff('millisecond', bronze_injest_start_time, "
+            "              bronze_injest_end_time)), 0) AS avg_ms, "
+            "    ROUND(QUANTILE_CONT(datediff('millisecond', bronze_injest_start_time, "
+            "              bronze_injest_end_time), 0.95), 0) AS p95_ms, "
+            "    MAX(datediff('millisecond', bronze_injest_start_time, "
+            "        bronze_injest_end_time)) AS max_ms "
+            "FROM ops.file_ingestions "
+            "WHERE bronze_injest_start_time IS NOT NULL "
+            "  AND bronze_injest_end_time IS NOT NULL "
+            "  AND bronze_injest_end_time > bronze_injest_start_time "
+            "GROUP BY dataset "
+            "ORDER BY avg_ms DESC NULLS LAST"
+        )
+        return self._fetch_dicts(sql, [])
+
+    def get_hash_stability(self) -> list[dict[str, Any]]:
+        """Per-dataset payload hash stability.
+
+        hash_change_pct = distinct_hashes / total_files * 100.
+        Low % = data rarely changes (stable). High % = data changes often.
+        """
+        sql = (
+            "SELECT "
+            "    dataset, "
+            "    COUNT(*) AS total_files, "
+            "    COUNT(DISTINCT bronze_payload_hash) AS distinct_hashes, "
+            "    ROUND(100.0 * COUNT(DISTINCT bronze_payload_hash) "
+            "          / NULLIF(COUNT(*), 0), 1) AS hash_change_pct "
+            "FROM ops.file_ingestions "
+            "WHERE bronze_payload_hash IS NOT NULL "
+            "GROUP BY dataset "
+            "ORDER BY hash_change_pct DESC NULLS LAST"
+        )
+        return self._fetch_dicts(sql, [])
+
+    def get_recent_errors(self, limit: int = 100) -> list[dict[str, Any]]:
+        """Most recent bronze ingestion errors, newest first."""
+        sql = (
+            "SELECT "
+            "    bronze_injest_start_time AS occurred_at, "
+            "    dataset, "
+            "    COALESCE(ticker, '') AS ticker, "
+            "    run_id, "
+            "    bronze_error AS error_message "
+            "FROM ops.file_ingestions "
+            "WHERE bronze_error IS NOT NULL "
+            "ORDER BY bronze_injest_start_time DESC NULLS LAST "
+            f"LIMIT {int(limit)}"
+        )
+        return self._fetch_dicts(sql, [])
+
     # ---- PRIVATE METHODS ---#
 
 

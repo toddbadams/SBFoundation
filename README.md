@@ -6,6 +6,7 @@ SBFoundation is the data acquisition and validation package for the **Strawberry
 - **Silver** — validated, typed, and conformed datasets (clean, standalone tables with NO relationships)
 
 **What this project does NOT include:**
+
 - ❌ Gold layer (dimension modeling, star schemas, surrogate keys)
 - ❌ Surrogate key resolution (e.g., `instrument_sk`, `company_sk`)
 - ❌ Foreign key relationships or cross-table joins
@@ -20,6 +21,7 @@ Downstream Gold layer construction and strategy execution live in separate packa
 The pipeline ingests financial data from external providers (primarily Financial Modeling Prep), persists raw responses as immutable JSON files (Bronze), and promotes them to structured DuckDB tables (Silver) via typed Data Transfer Objects (DTOs). Every step is traceable: each Silver row carries a `bronze_file_id` linking it back to its source file.
 
 **Silver tables are clean, standalone datasets:**
+
 - Natural business keys only (e.g., `ticker`, `symbol`, `date`)
 - No surrogate keys (no `instrument_sk` or other `*_sk` columns)
 - No foreign key relationships between tables
@@ -45,31 +47,40 @@ The pipeline ingests financial data from external providers (primarily Financial
 ## Key Design Decisions
 
 ### 1. Bronze is append-only and immutable
+
 Raw API responses are never modified. One JSON file is written per request, preserving exact vendor payloads plus request metadata. This makes deterministic replay possible when Silver logic changes — re-process Bronze without re-calling the API.
 
 ### 2. All dataset definitions are declarative
+
 `config/dataset_keymap.yaml` is the single source of truth for every dataset: its domain, source, Silver table mapping, key columns, DTO schema, and ingestion recipe. No dataset definition lives in code.
 
 ### 3. DTOs are the only Bronze → Silver boundary
+
 Every Silver table is written and read exclusively through `BronzeToSilverDTO` subclasses. Raw Bronze dicts are parsed via `from_row()`; Silver rows are emitted via `to_dict()`. This prevents Bronze quirks from leaking into Silver.
 
 ### 4. DuckDB for structured storage
+
 Silver and operational tables (manifests, watermarks, run history) are stored in a single DuckDB file. Bronze remains filesystem JSON — DuckDB stores references and metadata, not raw payloads.
 
 **Schema layout:**
+
 - `ops` — manifests, watermarks, migrations (managed by this project)
 - `silver` — conformed datasets, one table per dataset (managed by this project)
 
 ### 5. Silver writes are idempotent (MERGE/UPSERT)
+
 Silver promotion uses the dataset's `key_cols` from the keymap to MERGE rows. Replaying the same Bronze file produces no duplicates.
 
 ### 6. Ingestion cadence is data-driven, not clock-driven
+
 The `RunProvider` computes `from_date` from the last successfully ingested `to_date` stored as a dataset watermark, not from a fixed schedule. A recipe's `min_age_days` gates whether a dataset is due for re-ingestion.
 
 ### 7. Domain execution order is enforced
+
 The `market` domain should run first — it populates `silver.fmp_stock_list` which seeds the ticker universe for company/fundamentals/technicals. Company/fundamentals/technicals each require `exchanges` in their `RunCommand` and are run as separate, standalone commands.
 
 ### 8. Failures are audit-first, not crash-first
+
 A failed ingestion request does not abort the run. A `BronzeResult` error record is written to Bronze, counters are updated, and the run continues. Every run produces a manifest (`ops.bronze_manifest`) regardless of outcome.
 
 ---
@@ -156,6 +167,10 @@ SBFoundation/
 │       │   ├── logger.py             # LoggerFactory
 │       │   ├── result_file_adaptor.py # Bronze JSON file read/write
 │       │   └── universe_repo.py      # Ticker universe persistence
+│       ├── coverage/
+│       │   ├── coverage_index_service.py  # Aggregates file_ingestions → ops.coverage_index
+│       │   ├── cli.py                     # CLI: python -m sbfoundation.coverage [subcommand]
+│       │   └── __main__.py
 │       ├── ops/
 │       │   ├── dtos/                 # BronzeIngestItem, SilverIngestItem, FileIngestion
 │       │   ├── infra/                # DuckDB ops table repository
@@ -169,8 +184,18 @@ SBFoundation/
 │           ├── bronze/               # BronzeService, BronzeBatchReader
 │           ├── silver/               # SilverService, InstrumentPromotionService
 │           └── universe_service.py   # Resolves active ticker universe
+├── apps/
+│   └── coverage_dashboard/       # Standalone Streamlit app (separate Poetry project)
+│       ├── pyproject.toml
+│       ├── .streamlit/config.toml
+│       ├── Home.py               # Landing page: global KPIs + dataset summary
+│       └── pages/
+│           ├── 1_Global_Overview.py
+│           ├── 2_Dataset_Drilldown.py
+│           ├── 3_Ticker_Drilldown.py
+│           └── 4_Ingestion_Diagnostics.py
 ├── tests/
-│   ├── unit/                     # Unit tests (dataset, DTOs, infra)
+│   ├── unit/                     # Unit tests (dataset, DTOs, infra, coverage)
 │   └── e2e/                      # End-to-end tests with fake HTTP server
 └── pyproject.toml
 ```
@@ -350,6 +375,7 @@ con.execute("SELECT * FROM silver.fmp_company_profile LIMIT 5").fetchdf()
 Plain-text logs are written to `$DATA_ROOT_FOLDER/logs/`. Each log file is named `logs_<YYYY-MM-DD>.txt` (one per calendar day, append mode).
 
 **Log line format:**
+
 ```
 2026-02-20 07:15:32,412 | INFO    | SBFoundationAPI | run_id=abc123 | Run Start
 │                          │          │                  │               │
@@ -368,13 +394,14 @@ timestamp
 | `ENV` unset / other | `WARN` |
 | `LoggerFactory(log_level="DEBUG")` | `DEBUG` (overrides env) |
 
-**`run_id` correlation** — every log method (`info`, `debug`, `warning`, `error`, `critical`, `exception`, `log`) accepts an optional `run_id` keyword argument. When provided, the message is prefixed with `run_id=<value> | `, enabling grep-based filtering across the full run:
+**`run_id` correlation** — every log method (`info`, `debug`, `warning`, `error`, `critical`, `exception`, `log`) accepts an optional `run_id` keyword argument. When provided, the message is prefixed with `run_id=<value> |`, enabling grep-based filtering across the full run:
 
 ```bash
 grep "run_id=abc123" "$DATA_ROOT_FOLDER/logs/logs_2026-02-20.txt"
 ```
 
 **`log_section`** — marks major pipeline phases with a prominent banner:
+
 ```
 run_id=abc123 | ========== Processing economics domain ==========
 ```
@@ -406,6 +433,87 @@ service = MyService(logger=mock_logger)
 
 ---
 
+## Coverage Dashboard
+
+The **Data Coverage Index (DCI)** answers four questions without touching raw Bronze files:
+
+1. What datasets exist?
+2. Which tickers are covered per dataset?
+3. What date range exists per ticker?
+4. Where are gaps relative to expectation?
+
+Coverage data is materialised into `ops.coverage_index` automatically after every pipeline run. It is also exposed via a CLI and a Streamlit dashboard.
+
+### How it works
+
+`CoverageIndexService.refresh()` aggregates `ops.file_ingestions` into one row per `(domain, source, dataset, discriminator, ticker)` and upserts the result. The refresh is non-fatal — a failure is logged as a warning and does not abort the pipeline run.
+
+### CLI
+
+```bash
+# Summary: all datasets sorted by coverage ratio (weakest first)
+poetry run python -m sbfoundation.coverage summary
+
+# Per-ticker coverage for a single dataset
+poetry run python -m sbfoundation.coverage dataset fmp-price-eod
+
+# Per-dataset coverage for a single ticker
+poetry run python -m sbfoundation.coverage ticker AAPL
+
+# Snapshot datasets not refreshed in ≥90 days (default)
+poetry run python -m sbfoundation.coverage stale
+poetry run python -m sbfoundation.coverage stale --days 30
+```
+
+### Streamlit Dashboard
+
+The dashboard is a separate Poetry project under `apps/coverage_dashboard/`. It requires its own install.
+
+**One-time setup:**
+
+```bash
+cd apps/coverage_dashboard
+poetry install
+```
+
+**Run:**
+
+```bash
+cd apps/coverage_dashboard
+poetry run streamlit run Home.py
+# Opens at http://localhost:8501
+```
+
+**Pages:**
+
+| Page | Description |
+|---|---|
+| **Home** | Global KPIs — total datasets, tickers, avg coverage, datasets with errors |
+| **1 — Global Overview** | Heatmap of 4 coverage metrics across all datasets; bottom-20 bar chart |
+| **2 — Dataset Drilldown** | Histogram + sortable table + temporal presence heatmap for a selected dataset |
+| **3 — Ticker Drilldown** | Completeness gauge + per-dataset bar chart + detail table for a selected ticker |
+| **4 — Ingestion Diagnostics** | Error rates, latency (avg/p95/max), hash stability, and error log from `ops.file_ingestions` |
+
+**Prerequisites:**
+
+- The main package must be installed in the same environment (`sb-foundation` is declared as a path dependency in `apps/coverage_dashboard/pyproject.toml`).
+- The DuckDB file must exist and have data (`ops.coverage_index` populated by at least one pipeline run).
+- Close any other DuckDB connections (e.g., DuckDB CLI or GUI) before launching — DuckDB allows only one writer at a time.
+
+**Manually refresh the index** (without running the full pipeline):
+
+```bash
+poetry run python -c "
+from datetime import date
+from sbfoundation.coverage.coverage_index_service import CoverageIndexService
+svc = CoverageIndexService()
+n = svc.refresh(run_id='manual', universe_from_date=date(1990, 1, 1), today=date.today())
+print(f'Upserted {n} rows')
+"
+```
+
+---
+
 ## Economics Data
 
 The Economics domain provides macroeconomic indicators, treasury rates, and market risk premium data for top-down economic analysis and risk assessment.
@@ -415,6 +523,7 @@ The Economics domain provides macroeconomic indicators, treasury rates, and mark
 ### Datasets
 
 #### 1. treasury-rates
+
 - **Purpose:** Daily U.S. Treasury rates across the yield curve (1-month to 30-year maturities)
 - **Scope:** Global (non-ticker-based)
 - **Refresh:** Daily (min_age_days: 1)
@@ -425,6 +534,7 @@ The Economics domain provides macroeconomic indicators, treasury rates, and mark
 - **Use Case:** Risk-free rate analysis, yield curve modeling, interest rate tracking
 
 #### 2. market-risk-premium
+
 - **Purpose:** Historical market risk premium for CAPM calculations
 - **Scope:** Global (non-ticker-based)
 - **Refresh:** Yearly (min_age_days: 365)
@@ -435,6 +545,7 @@ The Economics domain provides macroeconomic indicators, treasury rates, and mark
 - **Use Case:** Equity risk modeling, expected return calculations
 
 #### 3. economic-indicators (27 indicators)
+
 - **Purpose:** U.S. macroeconomic time series data
 - **Scope:** Global (non-ticker-based)
 - **Refresh:** Varies by indicator (daily to monthly)
@@ -444,6 +555,7 @@ The Economics domain provides macroeconomic indicators, treasury rates, and mark
 - **Documentation:** [FMP Economic Indicators](https://site.financialmodelingprep.com/developer/docs#economic-indicators)
 
 **Available Indicators:**
+
 - **GDP & Growth:** GDP, Real GDP, Nominal Potential GDP, Real GDP Per Capita
 - **Inflation:** CPI, Inflation Rate, Inflation
 - **Labor Market:** Unemployment Rate, Total Nonfarm Payroll, Initial Jobless Claims
@@ -467,11 +579,13 @@ The Fundamentals domain provides comprehensive financial statement data, key met
 #### 1. Financial Statements (Base, Annual, Quarterly)
 
 **Three core financial statements** with multiple period variants:
+
 - **income-statement** - Revenue, expenses, EBITDA, net income, EPS
 - **balance-sheet-statement** - Assets, liabilities, equity, working capital
 - **cashflow-statement** - Operating, investing, and financing cash flows
 
 **Period Variants** (each statement has two discriminators):
+
 - Annual (discriminator: FY) - Full-year data; requests `period=annual`, response `period` field contains `FY`
 - Quarterly (discriminator: quarter) - Quarterly data; requests `period=quarter`, response `period` field contains `Q1`–`Q4`
 
@@ -480,16 +594,19 @@ The Fundamentals domain provides comprehensive financial statement data, key met
 **Silver Tables:** `silver.fmp_income_statement`, `silver.fmp_balance_sheet_statement`, `silver.fmp_cashflow_statement`
 **Key Columns:** `ticker`, `date`, `period`
 **API Endpoints:**
+
 - `https://financialmodelingprep.com/stable/income-statement?symbol={ticker}&period={annual|quarter}&limit=__limit__`
 - `https://financialmodelingprep.com/stable/balance-sheet-statement?symbol={ticker}&period={annual|quarter}&limit=__limit__`
 - `https://financialmodelingprep.com/stable/cashflow-statement?symbol={ticker}&period={annual|quarter}&limit=__limit__`
 
 **Documentation:**
+
 - [Income Statement](https://site.financialmodelingprep.com/developer/docs#income-statement)
 - [Balance Sheet](https://site.financialmodelingprep.com/developer/docs#balance-sheet-statement)
 - [Cash Flow](https://site.financialmodelingprep.com/developer/docs#cashflow-statement)
 
 #### 2. latest-financial-statements
+
 - **Purpose:** Most recently reported financial statements (all three statements in one call)
 - **Scope:** Per-ticker
 - **Refresh:** Daily (min_age_days: 1)
@@ -501,15 +618,18 @@ The Fundamentals domain provides comprehensive financial statement data, key met
 #### 3. Key Metrics (Base, Annual, Quarterly, TTM)
 
 **key-metrics** - Comprehensive valuation and performance metrics including P/E ratio, price-to-book, ROE, ROA
+
 - Period variants: Base (''), Annual (FY), Quarterly (quarter)
 - Refresh: Quarterly (min_age_days: 90)
 - Silver Table: `silver.fmp_key_metrics`
 
 **key-metrics-ttm** - Trailing twelve month key metrics for most current analysis
+
 - Refresh: Daily (min_age_days: 1)
 - Silver Table: `silver.fmp_key_metrics_ttm`
 
 **API Endpoints:**
+
 - `https://financialmodelingprep.com/stable/key-metrics?symbol={ticker}&period={FY|quarter}&limit=__limit__`
 - `https://financialmodelingprep.com/stable/key-metrics-ttm?symbol={ticker}`
 
@@ -518,21 +638,25 @@ The Fundamentals domain provides comprehensive financial statement data, key met
 #### 4. Financial Ratios (Base, Annual, Quarterly, TTM)
 
 **metric-ratios** - Liquidity, solvency, profitability, and efficiency ratios
+
 - Period variants: Base (''), Annual (FY), Quarterly (quarter)
 - Refresh: Quarterly (min_age_days: 90)
 - Silver Table: `silver.fmp_metric_ratios`
 
 **ratios-ttm** - Trailing twelve month financial ratios
+
 - Refresh: Daily (min_age_days: 1)
 - Silver Table: `silver.fmp_ratios_ttm`
 
 **API Endpoints:**
+
 - `https://financialmodelingprep.com/stable/financial-ratios?symbol={ticker}&period={FY|quarter}&limit=__limit__`
 - `https://financialmodelingprep.com/stable/financial-ratios-ttm?symbol={ticker}`
 
 **Documentation:** [Financial Ratios](https://site.financialmodelingprep.com/developer/docs#financial-ratios)
 
 #### 5. financial-scores
+
 - **Purpose:** Composite financial health metrics (Altman Z-Score, Piotroski F-Score)
 - **Scope:** Per-ticker
 - **Refresh:** Quarterly (min_age_days: 90)
@@ -543,6 +667,7 @@ The Fundamentals domain provides comprehensive financial statement data, key met
 - **Use Case:** Bankruptcy prediction (Z-Score), quality investing (F-Score)
 
 #### 6. owner-earnings
+
 - **Purpose:** Owner earnings metrics (Buffett's preferred profitability measure)
 - **Scope:** Per-ticker
 - **Refresh:** Quarterly (min_age_days: 90)
@@ -553,6 +678,7 @@ The Fundamentals domain provides comprehensive financial statement data, key met
 - **Use Case:** Value investing, owner-oriented profitability analysis
 
 #### 7. enterprise-values
+
 - **Purpose:** Enterprise value and related valuation metrics
 - **Scope:** Per-ticker
 - **Refresh:** Quarterly (min_age_days: 90)
@@ -565,11 +691,13 @@ The Fundamentals domain provides comprehensive financial statement data, key met
 #### 8. Growth Metrics (Base, Annual, Quarterly)
 
 **Year-over-year and quarter-over-quarter growth rates** for all financial statements:
+
 - **income-statement-growth** - Revenue growth, earnings growth, margin expansion
 - **balance-sheet-statement-growth** - Asset growth, equity growth, debt changes
 - **cashflow-statement-growth** - Cash flow growth, capex trends
 
 **Period Variants** (each has three discriminators):
+
 - Base (discriminator: '') - Most recent growth data
 - Annual (discriminator: FY) - Year-over-year growth rates
 - Quarterly (discriminator: quarter) - Quarter-over-quarter growth rates
@@ -577,6 +705,7 @@ The Fundamentals domain provides comprehensive financial statement data, key met
 **Refresh:** Quarterly (min_age_days: 90)
 **Silver Tables:** `silver.fmp_income_statement_growth`, `silver.fmp_balance_sheet_statement_growth`, `silver.fmp_cashflow_statement_growth`
 **API Endpoints:**
+
 - `https://financialmodelingprep.com/stable/income-statement-growth?symbol={ticker}&period={FY|quarter}&limit=__limit__`
 - `https://financialmodelingprep.com/stable/balance-sheet-statement-growth?symbol={ticker}&period={FY|quarter}&limit=__limit__`
 - `https://financialmodelingprep.com/stable/cashflow-statement-growth?symbol={ticker}&period={FY|quarter}&limit=__limit__`
@@ -584,6 +713,7 @@ The Fundamentals domain provides comprehensive financial statement data, key met
 **Documentation:** [Growth Metrics](https://site.financialmodelingprep.com/developer/docs#income-statement-growth)
 
 #### 9. financial-statement-growth
+
 - **Purpose:** Comprehensive growth metrics across all three financial statements
 - **Scope:** Per-ticker
 - **Refresh:** Quarterly (min_age_days: 90)
@@ -595,6 +725,7 @@ The Fundamentals domain provides comprehensive financial statement data, key met
 #### 10. Revenue Segmentation
 
 **revenue-product-segmentation** - Revenue breakdown by product line or business segment
+
 - **Scope:** Per-ticker
 - **Refresh:** Quarterly (min_age_days: 90)
 - **Silver Table:** `silver.fmp_revenue_product_segmentation`
@@ -602,6 +733,7 @@ The Fundamentals domain provides comprehensive financial statement data, key met
 - **Documentation:** [Product Segmentation](https://site.financialmodelingprep.com/developer/docs#revenue-product-segmentation)
 
 **revenue-geographic-segmentation** - Revenue breakdown by geographic region
+
 - **Scope:** Per-ticker
 - **Refresh:** Quarterly (min_age_days: 90)
 - **Silver Table:** `silver.fmp_revenue_geographic_segmentation`
@@ -621,6 +753,7 @@ The Commodities domain provides access to historical price data for tradable com
 ### Datasets
 
 #### 1. commodities-list (Baseline)
+
 - **Purpose:** Discover available commodities tracked by the vendor
 - **Scope:** Global (non-ticker-based)
 - **Refresh:** Yearly (min_age_days: 365)
@@ -630,6 +763,7 @@ The Commodities domain provides access to historical price data for tradable com
 - **Documentation:** [FMP Commodities List](https://site.financialmodelingprep.com/developer/docs#Commoditiescurrency-list)
 
 #### 2. commodities-price-eod (Timeseries)
+
 - **Purpose:** Historical end-of-day price data for each commodity
 - **Scope:** Per-ticker (runs for each symbol from commodities-list)
 - **Refresh:** Daily (min_age_days: 1)
@@ -649,6 +783,7 @@ The Crypto domain provides access to historical price data for cryptocurrencies 
 ### Datasets
 
 #### 1. crypto-list (Baseline)
+
 - **Purpose:** Discover available cryptocurrencies and trading pairs
 - **Scope:** Global (non-ticker-based)
 - **Refresh:** Yearly (min_age_days: 365)
@@ -658,6 +793,7 @@ The Crypto domain provides access to historical price data for cryptocurrencies 
 - **Documentation:** [FMP Cryptocurrency List](https://site.financialmodelingprep.com/developer/docs#cryptocurrency-list)
 
 #### 2. crypto-price-eod (Timeseries)
+
 - **Purpose:** Historical end-of-day price data for each cryptocurrency
 - **Scope:** Per-ticker (runs for each symbol from crypto-list)
 - **Refresh:** Daily (min_age_days: 1)
@@ -677,6 +813,7 @@ The FX domain provides access to historical exchange rate data for currency pair
 ### Datasets
 
 #### 1. fx-list (Baseline)
+
 - **Purpose:** Discover available currency pairs
 - **Scope:** Global (non-ticker-based)
 - **Refresh:** Yearly (min_age_days: 365)
@@ -686,6 +823,7 @@ The FX domain provides access to historical exchange rate data for currency pair
 - **Documentation:** [FMP Forex List](https://site.financialmodelingprep.com/developer/docs#forex-list)
 
 #### 2. fx-price-eod (Timeseries)
+
 - **Purpose:** Historical end-of-day exchange rates for each currency pair
 - **Scope:** Per-ticker (runs for each symbol from fx-list)
 - **Refresh:** Daily (min_age_days: 1)

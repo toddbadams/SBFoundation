@@ -4,8 +4,6 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any, Mapping
 
-from httpx import request
-
 from sbfoundation.dtos.models import BronzeManifestRow
 from sbfoundation.run.dtos.run_request import RunRequest
 from sbfoundation.run.dtos.bronze_result import BronzeResult

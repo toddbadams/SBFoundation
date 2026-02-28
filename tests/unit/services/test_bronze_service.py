@@ -83,7 +83,7 @@ class _StubOpsService:
         self.ingestion_date_calls += 1
         return self._last_ingestion_date
 
-    def insert_bronze_manifest(self, result: RunRequest) -> None:
+    def insert_bronze_manifest(self, result: RunRequest, run=None) -> None:
         self.inserted.append(result)
 
 
@@ -119,6 +119,8 @@ def test_process_run_request_persists_success() -> None:
     request = make_run_request()
 
     service._process_run_request(request)
+    # Manifests are queued by _process_run_request and flushed serially on the main thread.
+    service._flush_manifest_inserts()
 
     assert summary.bronze_files_passed == 1
     assert len(service.result_file_adapter.results) == 1
@@ -141,8 +143,9 @@ def test_concurrent_mode_processes_all_requests() -> None:
     # Create multiple requests
     requests = [make_run_request(overrides={"ticker": ticker}) for ticker in summary.tickers]
 
-    # Process concurrently
+    # Process concurrently, then flush the deferred manifest queue.
     service._process_requests_concurrent(requests)
+    service._flush_manifest_inserts()
 
     # Verify all requests were processed
     assert summary.bronze_files_passed == len(requests)

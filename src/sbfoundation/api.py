@@ -122,6 +122,12 @@ class SBFoundationAPI:
         elif domain == CRYPTO_DOMAIN:
             run = self._handle_crypto(command, run)
 
+        self.ops_service.refresh_coverage_index(
+            run_id=run.run_id,
+            universe_from_date=date.fromisoformat(self._universe_service.from_date),
+            today=self._universe_service.today(),
+        )
+
         self._close_run(run)
 
         try:
@@ -904,11 +910,11 @@ class SBFoundationAPI:
 if __name__ == "__main__":
     #     COMMODITIES_DOMAIN, COMPANY_DOMAIN, CRYPTO_DOMAIN, FX_DOMAIN, FUNDAMENTALS_DOMAIN, MARKET_DOMAIN, TECHNICALS_DOMAIN
     command = RunCommand(
-        domain=TECHNICALS_DOMAIN,
+        domain=COMPANY_DOMAIN,
         concurrent_requests=10,  # Default: 10 workers for optimal throughput
         enable_bronze=True,
         enable_silver=True,
-        ticker_limit=5280,
+        ticker_limit=100,
         ticker_recipe_chunk_size=1000,
         include_indexes=False,
         universe_definition=US_ALL_CAP,

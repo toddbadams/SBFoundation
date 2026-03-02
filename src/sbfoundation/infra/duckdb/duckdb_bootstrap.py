@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS ops.coverage_index (
 
     -- Classification
     is_timeseries        BOOLEAN NOT NULL DEFAULT TRUE,
+    ticker_scope         VARCHAR  NOT NULL DEFAULT 'per_ticker',
+    is_historical        BOOLEAN  NOT NULL DEFAULT FALSE,
 
     -- Bookkeeping
     updated_at           TIMESTAMP NOT NULL,

@@ -7,6 +7,9 @@ from sbfoundation.dataset.loaders.dataset_keymap_loader import DatasetKeymapLoad
 from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbfoundation.ops.infra.duckdb_ops_repo import DuckDbOpsRepo
 
+# Expected start date for datasets that fetch historical date ranges.
+_HISTORICAL_FROM_DATE = date(1990, 1, 1)
+
 
 class CoverageIndexService:
     """Computes and materializes ops.coverage_index from ops.file_ingestions.
@@ -24,7 +27,11 @@ class CoverageIndexService:
         self._logger = logger or LoggerFactory().create_logger(self.__class__.__name__)
         self._ops_repo = ops_repo or DuckDbOpsRepo()
         self._owns_ops_repo = ops_repo is None
-        self._is_timeseries_map: dict[tuple[str, str, str], bool] = self._load_timeseries_map()
+        self._dataset_meta_map: dict[tuple[str, str, str], dict[str, Any]] = self._load_dataset_meta_map()
+        # Backward-compat alias used by some unit tests
+        self._is_timeseries_map: dict[tuple[str, str, str], bool] = {
+            k: v["is_timeseries"] for k, v in self._dataset_meta_map.items()
+        }
 
     def close(self) -> None:
         if self._owns_ops_repo:
@@ -45,7 +52,7 @@ class CoverageIndexService:
 
         Args:
             run_id: Current pipeline run ID (for log correlation).
-            universe_from_date: Earliest expected data date (e.g. 1990-01-01).
+            universe_from_date: Fallback expected-start date for non-historical rows.
             today: Date used as the expected end of coverage.
 
         Returns:
@@ -58,11 +65,10 @@ class CoverageIndexService:
             self._logger.info("No file_ingestions rows found; coverage index unchanged", run_id=run_id)
             return 0
 
-        expected_days = max((today - universe_from_date).days, 1)
         updated_at = datetime.now(tz=timezone.utc)
 
         coverage_rows = [
-            self._build_row(raw, expected_days, universe_from_date, today, updated_at)
+            self._build_row(raw, universe_from_date, today, updated_at)
             for raw in raw_rows
         ]
 
@@ -77,7 +83,6 @@ class CoverageIndexService:
     def _build_row(
         self,
         raw: dict[str, Any],
-        expected_days: int,
         universe_from_date: date,
         today: date,
         updated_at: datetime,
@@ -85,7 +90,10 @@ class CoverageIndexService:
         domain: str = raw["domain"]
         source: str = raw["source"]
         dataset: str = raw["dataset"]
-        is_timeseries: bool = self._is_timeseries_map.get((domain, source, dataset), True)
+        meta = self._dataset_meta_map.get((domain, source, dataset), {})
+        is_timeseries: bool = meta.get("is_timeseries", True)
+        ticker_scope: str = meta.get("ticker_scope", "per_ticker")
+        is_historical: bool = meta.get("is_historical", True)
 
         min_date: date | None = raw["min_date"]
         max_date: date | None = raw["max_date"]
@@ -97,14 +105,18 @@ class CoverageIndexService:
         last_snapshot_date: date | None = None
         age_days: int | None = None
 
-        if is_timeseries:
+        if is_historical:
+            # Historical datasets: measure actual date span against 1990-01-01 → today
+            expected_start = _HISTORICAL_FROM_DATE
+            expected_days = max((today - expected_start).days, 1)
             if min_date is not None and max_date is not None:
                 actual_days = max((max_date - min_date).days, 0)
                 coverage_ratio = round(actual_days / expected_days, 4)
         else:
+            # Snapshot datasets: no date-range coverage; track staleness instead
+            expected_start = universe_from_date
             snapshot_count = total_files
             last_snapshot_date = max_date
-            # Snapshot endpoints typically have no bronze date range; fall back to ingestion time
             if last_snapshot_date is None:
                 last_ingested_at = raw.get("last_ingested_at")
                 if last_ingested_at is not None:
@@ -121,7 +133,7 @@ class CoverageIndexService:
             "min_date": min_date,
             "max_date": max_date,
             "coverage_ratio": coverage_ratio,
-            "expected_start_date": universe_from_date,
+            "expected_start_date": expected_start,
             "expected_end_date": today,
             "total_files": total_files,
             "promotable_files": int(raw["promotable_files"] or 0),
@@ -136,18 +148,21 @@ class CoverageIndexService:
             "last_snapshot_date": last_snapshot_date,
             "age_days": age_days,
             "is_timeseries": is_timeseries,
+            "ticker_scope": ticker_scope,
+            "is_historical": is_historical,
             "updated_at": updated_at,
         }
 
-    def _load_timeseries_map(self) -> dict[tuple[str, str, str], bool]:
-        """Build {(domain, source, dataset): is_timeseries} from dataset_keymap.yaml.
+    def _load_dataset_meta_map(self) -> dict[tuple[str, str, str], dict[str, Any]]:
+        """Build {(domain, source, dataset): meta} from dataset_keymap.yaml.
 
-        Uses row_date_col as the discriminator: non-null means timeseries.
-        The first entry seen per (domain, source, dataset) key wins; all recipes
-        for a given dataset share the same row_date_col.
+        meta keys:
+            is_timeseries  bool  — row_date_col is not null
+            ticker_scope   str   — 'global' | 'per_ticker'
+            is_historical  bool  — any recipe has from/to or limit in query_vars
         """
         try:
-            result: dict[tuple[str, str, str], bool] = {}
+            result: dict[tuple[str, str, str], dict[str, Any]] = {}
             for raw in DatasetKeymapLoader.load_raw_datasets():
                 if not isinstance(raw, dict):
                     continue
@@ -158,10 +173,23 @@ class CoverageIndexService:
                     continue
                 key = (domain, source, dataset)
                 if key not in result:
-                    result[key] = bool(raw.get("row_date_col"))
+                    is_timeseries = bool(raw.get("row_date_col"))
+                    ticker_scope = str(raw.get("ticker_scope") or "per_ticker")
+                    recipes = raw.get("recipes") or []
+                    is_historical = any(
+                        "from" in (r.get("query_vars") or {}) or
+                        "to" in (r.get("query_vars") or {}) or
+                        "limit" in (r.get("query_vars") or {})
+                        for r in recipes
+                    )
+                    result[key] = {
+                        "is_timeseries": is_timeseries,
+                        "ticker_scope": ticker_scope,
+                        "is_historical": is_historical,
+                    }
             return result
         except Exception as exc:
-            self._logger.warning("Failed to load timeseries map from keymap: %s", exc)
+            self._logger.warning("Failed to load dataset meta map from keymap: %s", exc)
             return {}
 
 

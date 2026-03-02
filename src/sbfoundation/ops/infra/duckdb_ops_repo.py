@@ -360,7 +360,7 @@ class DuckDbOpsRepo:
         "error_count", "error_rate",
         "last_ingested_at", "last_run_id",
         "snapshot_count", "last_snapshot_date", "age_days",
-        "is_timeseries", "updated_at",
+        "is_timeseries", "ticker_scope", "is_historical", "updated_at",
     )
 
     def aggregate_file_ingestions_for_coverage(self) -> list[dict[str, Any]]:
@@ -494,6 +494,99 @@ class DuckDbOpsRepo:
             "FROM ops.coverage_index "
             "GROUP BY dataset "
             "ORDER BY avg_coverage_ratio ASC NULLS LAST"
+        )
+        return self._fetch_dicts(sql, [])
+
+    # ---- Split coverage summary queries (used by Home + Global Overview) ----
+
+    def get_per_ticker_historical_summary(self) -> list[dict[str, Any]]:
+        """Per-dataset summary for per_ticker historical datasets, weakest ticker coverage first.
+
+        Returns: domain, source, dataset, tickers_covered, avg_coverage_ratio,
+                 min_date, max_date, expected_start_date, avg_error_rate, last_ingested_at
+        """
+        sql = (
+            "SELECT "
+            "    domain, source, dataset, "
+            "    COUNT(DISTINCT CASE WHEN ticker <> '' THEN ticker END) AS tickers_covered, "
+            "    ROUND(AVG(coverage_ratio), 4)          AS avg_coverage_ratio, "
+            "    MIN(min_date)                           AS min_date, "
+            "    MAX(max_date)                           AS max_date, "
+            "    MIN(expected_start_date)                AS expected_start_date, "
+            "    MAX(expected_end_date)                  AS expected_end_date, "
+            "    ROUND(AVG(error_rate), 4)               AS avg_error_rate, "
+            "    MAX(last_ingested_at)                   AS last_ingested_at "
+            "FROM ops.coverage_index "
+            "WHERE ticker_scope = 'per_ticker' AND is_historical = TRUE "
+            "GROUP BY domain, source, dataset "
+            "ORDER BY avg_coverage_ratio ASC NULLS LAST"
+        )
+        return self._fetch_dicts(sql, [])
+
+    def get_per_ticker_snapshot_summary(self) -> list[dict[str, Any]]:
+        """Per-dataset summary for per_ticker snapshot datasets, most tickers first.
+
+        Returns: domain, source, dataset, tickers_covered, avg_age_days,
+                 last_snapshot_date, avg_error_rate, last_ingested_at
+        """
+        sql = (
+            "SELECT "
+            "    domain, source, dataset, "
+            "    COUNT(DISTINCT CASE WHEN ticker <> '' THEN ticker END) AS tickers_covered, "
+            "    ROUND(AVG(age_days), 1)                AS avg_age_days, "
+            "    MAX(last_snapshot_date)                AS last_snapshot_date, "
+            "    ROUND(AVG(error_rate), 4)              AS avg_error_rate, "
+            "    MAX(last_ingested_at)                  AS last_ingested_at "
+            "FROM ops.coverage_index "
+            "WHERE ticker_scope = 'per_ticker' AND is_historical = FALSE "
+            "GROUP BY domain, source, dataset "
+            "ORDER BY tickers_covered DESC NULLS LAST"
+        )
+        return self._fetch_dicts(sql, [])
+
+    def get_global_historical_summary(self) -> list[dict[str, Any]]:
+        """Per-dataset/discriminator summary for global historical datasets.
+
+        Returns: domain, source, dataset, discriminator, min_date, max_date,
+                 expected_start_date, avg_coverage_ratio, total_files,
+                 avg_error_rate, last_ingested_at
+        """
+        sql = (
+            "SELECT "
+            "    domain, source, dataset, discriminator, "
+            "    MIN(min_date)                           AS min_date, "
+            "    MAX(max_date)                           AS max_date, "
+            "    MIN(expected_start_date)                AS expected_start_date, "
+            "    MAX(expected_end_date)                  AS expected_end_date, "
+            "    ROUND(AVG(coverage_ratio), 4)           AS avg_coverage_ratio, "
+            "    SUM(total_files)                        AS total_files, "
+            "    ROUND(AVG(error_rate), 4)               AS avg_error_rate, "
+            "    MAX(last_ingested_at)                   AS last_ingested_at "
+            "FROM ops.coverage_index "
+            "WHERE ticker_scope = 'global' AND is_historical = TRUE "
+            "GROUP BY domain, source, dataset, discriminator "
+            "ORDER BY domain, dataset, discriminator"
+        )
+        return self._fetch_dicts(sql, [])
+
+    def get_global_snapshot_summary(self) -> list[dict[str, Any]]:
+        """Per-dataset/discriminator summary for global snapshot datasets.
+
+        Returns: domain, source, dataset, discriminator, last_snapshot_date,
+                 avg_age_days, total_files, avg_error_rate, last_ingested_at
+        """
+        sql = (
+            "SELECT "
+            "    domain, source, dataset, discriminator, "
+            "    MAX(last_snapshot_date)                AS last_snapshot_date, "
+            "    ROUND(AVG(age_days), 1)                AS avg_age_days, "
+            "    SUM(total_files)                       AS total_files, "
+            "    ROUND(AVG(error_rate), 4)              AS avg_error_rate, "
+            "    MAX(last_ingested_at)                  AS last_ingested_at "
+            "FROM ops.coverage_index "
+            "WHERE ticker_scope = 'global' AND is_historical = FALSE "
+            "GROUP BY domain, source, dataset, discriminator "
+            "ORDER BY domain, dataset, discriminator"
         )
         return self._fetch_dicts(sql, [])
 

@@ -53,13 +53,16 @@ def _build_repo(conn: duckdb.DuckDBPyConnection) -> DuckDbOpsRepo:
 
 def _build_service(
     repo: DuckDbOpsRepo,
-    is_timeseries_map: dict[tuple[str, str, str], bool],
+    dataset_meta_map: dict[tuple[str, str, str], dict[str, Any]],
 ) -> CoverageIndexService:
+    """Construct a CoverageIndexService with a pre-built meta map (no keymap I/O)."""
     svc = CoverageIndexService.__new__(CoverageIndexService)
     svc._logger = logging.getLogger("test")
     svc._ops_repo = repo
     svc._owns_ops_repo = False
-    svc._is_timeseries_map = is_timeseries_map
+    svc._dataset_meta_map = dataset_meta_map
+    # Backward-compat alias
+    svc._is_timeseries_map = {k: v["is_timeseries"] for k, v in dataset_meta_map.items()}
     return svc
 
 
@@ -102,20 +105,40 @@ def _fetch_index(conn: duckdb.DuckDBPyConnection) -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
-# Tests
+# Shared test fixtures
 # ---------------------------------------------------------------------------
-
 
 UNIVERSE_FROM = date(1990, 1, 1)
 TODAY = date(2025, 1, 1)
-TIMESERIES_MAP = {("technicals", "fmp", "price-eod"): True}
-SNAPSHOT_MAP = {("company", "fmp", "company-profile"): False}
+
+# per_ticker + historical: coverage_ratio is computed against 1990-01-01
+TIMESERIES_META: dict[tuple[str, str, str], dict[str, Any]] = {
+    ("technicals", "fmp", "price-eod"): {
+        "is_timeseries": True,
+        "ticker_scope": "per_ticker",
+        "is_historical": True,
+    }
+}
+
+# per_ticker + snapshot: no coverage_ratio, age_days tracked
+SNAPSHOT_META: dict[tuple[str, str, str], dict[str, Any]] = {
+    ("company", "fmp", "company-profile"): {
+        "is_timeseries": False,
+        "ticker_scope": "per_ticker",
+        "is_historical": False,
+    }
+}
+
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
 
 
 def test_refresh_returns_zero_when_no_data() -> None:
     conn = _build_conn()
     repo = _build_repo(conn)
-    svc = _build_service(repo, TIMESERIES_MAP)
+    svc = _build_service(repo, TIMESERIES_META)
 
     count = svc.refresh(run_id="r1", universe_from_date=UNIVERSE_FROM, today=TODAY)
 
@@ -123,11 +146,11 @@ def test_refresh_returns_zero_when_no_data() -> None:
     assert _fetch_index(conn) == []
 
 
-def test_refresh_timeseries_coverage_ratio() -> None:
+def test_refresh_historical_coverage_ratio() -> None:
     conn = _build_conn()
     _seed(conn, [{"bronze_from_date": date(2020, 1, 1), "bronze_to_date": date(2024, 12, 31)}])
     repo = _build_repo(conn)
-    svc = _build_service(repo, TIMESERIES_MAP)
+    svc = _build_service(repo, TIMESERIES_META)
 
     svc.refresh(run_id="r1", universe_from_date=UNIVERSE_FROM, today=TODAY)
 
@@ -135,6 +158,8 @@ def test_refresh_timeseries_coverage_ratio() -> None:
     assert len(rows) == 1
     row = rows[0]
     assert row["is_timeseries"] is True
+    assert row["is_historical"] is True
+    assert row["ticker_scope"] == "per_ticker"
     assert row["coverage_ratio"] is not None
     assert 0 < row["coverage_ratio"] <= 1.0
     assert row["snapshot_count"] == 0
@@ -144,24 +169,27 @@ def test_refresh_timeseries_coverage_ratio() -> None:
     assert row["max_date"] == date(2024, 12, 31)
 
 
-def test_refresh_coverage_ratio_value() -> None:
-    """coverage_ratio = (max_date - min_date).days / (today - universe_from_date).days"""
+def test_refresh_coverage_ratio_uses_1990_as_expected_start() -> None:
+    """coverage_ratio = (max_date - min_date).days / (today - 1990-01-01).days
+    regardless of the universe_from_date passed in."""
     conn = _build_conn()
-    # Exactly 10 years of data in a 35-year expected window
+    # Exactly 10 years of data
     _seed(conn, [{"bronze_from_date": date(2015, 1, 1), "bronze_to_date": date(2025, 1, 1)}])
     repo = _build_repo(conn)
-    svc = _build_service(repo, TIMESERIES_MAP)
+    svc = _build_service(repo, TIMESERIES_META)
 
-    svc.refresh(run_id="r1", universe_from_date=date(1990, 1, 1), today=date(2025, 1, 1))
+    # Pass a different universe_from_date — should NOT affect historical coverage_ratio
+    svc.refresh(run_id="r1", universe_from_date=date(2000, 1, 1), today=date(2025, 1, 1))
 
     row = _fetch_index(conn)[0]
     actual_days = (date(2025, 1, 1) - date(2015, 1, 1)).days
-    expected_days = (date(2025, 1, 1) - date(1990, 1, 1)).days
+    expected_days = (date(2025, 1, 1) - date(1990, 1, 1)).days  # always 1990-01-01
     assert row["coverage_ratio"] == round(actual_days / expected_days, 4)
+    assert row["expected_start_date"] == date(1990, 1, 1)
 
 
 def test_refresh_snapshot_age_days_from_ingestion_time() -> None:
-    """Snapshot datasets (no bronze dates) fall back to ingestion timestamp for age_days."""
+    """Snapshot datasets (is_historical=False) fall back to ingestion timestamp for age_days."""
     ingest_ts = datetime(2024, 12, 22, 10, 0)  # 10 days before TODAY
     conn = _build_conn()
     _seed(
@@ -178,7 +206,7 @@ def test_refresh_snapshot_age_days_from_ingestion_time() -> None:
         ],
     )
     repo = _build_repo(conn)
-    svc = _build_service(repo, SNAPSHOT_MAP)
+    svc = _build_service(repo, SNAPSHOT_META)
 
     svc.refresh(run_id="r1", universe_from_date=UNIVERSE_FROM, today=TODAY)
 
@@ -186,6 +214,8 @@ def test_refresh_snapshot_age_days_from_ingestion_time() -> None:
     assert len(rows) == 1
     row = rows[0]
     assert row["is_timeseries"] is False
+    assert row["is_historical"] is False
+    assert row["ticker_scope"] == "per_ticker"
     assert row["coverage_ratio"] is None
     assert row["snapshot_count"] == 1
     assert row["last_snapshot_date"] == date(2024, 12, 22)
@@ -198,7 +228,7 @@ def test_refresh_error_rate_computed() -> None:
     _seed(conn, [{"file_id": "f2", "bronze_error": "HTTP 429"}])
     _seed(conn, [{"file_id": "f3", "bronze_error": "timeout"}])
     repo = _build_repo(conn)
-    svc = _build_service(repo, TIMESERIES_MAP)
+    svc = _build_service(repo, TIMESERIES_META)
 
     svc.refresh(run_id="r1", universe_from_date=UNIVERSE_FROM, today=TODAY)
 
@@ -214,7 +244,7 @@ def test_refresh_promotable_files_counted() -> None:
     _seed(conn, [{"file_id": "f2", "bronze_can_promote": False}])
     _seed(conn, [{"file_id": "f3", "bronze_can_promote": True}])
     repo = _build_repo(conn)
-    svc = _build_service(repo, TIMESERIES_MAP)
+    svc = _build_service(repo, TIMESERIES_META)
 
     svc.refresh(run_id="r1", universe_from_date=UNIVERSE_FROM, today=TODAY)
 
@@ -227,7 +257,7 @@ def test_refresh_is_idempotent() -> None:
     conn = _build_conn()
     _seed(conn, [{"bronze_from_date": date(2020, 1, 1), "bronze_to_date": date(2024, 12, 31)}])
     repo = _build_repo(conn)
-    svc = _build_service(repo, TIMESERIES_MAP)
+    svc = _build_service(repo, TIMESERIES_META)
 
     svc.refresh(run_id="r1", universe_from_date=UNIVERSE_FROM, today=TODAY)
     svc.refresh(run_id="r2", universe_from_date=UNIVERSE_FROM, today=TODAY)
@@ -241,10 +271,9 @@ def test_refresh_replaces_stale_values_on_second_call() -> None:
     conn = _build_conn()
     _seed(conn, [{"file_id": "f1", "bronze_from_date": date(2020, 1, 1), "bronze_to_date": date(2022, 1, 1)}])
     repo = _build_repo(conn)
-    svc = _build_service(repo, TIMESERIES_MAP)
+    svc = _build_service(repo, TIMESERIES_META)
     svc.refresh(run_id="r1", universe_from_date=UNIVERSE_FROM, today=TODAY)
 
-    # Add a second file that extends coverage
     _seed(conn, [{"file_id": "f2", "bronze_from_date": date(2022, 1, 2), "bronze_to_date": date(2024, 12, 31)}])
     svc.refresh(run_id="r2", universe_from_date=UNIVERSE_FROM, today=TODAY)
 
@@ -259,7 +288,7 @@ def test_refresh_multiple_tickers_produce_separate_rows() -> None:
     _seed(conn, [{"file_id": "f1", "ticker": "AAPL", "bronze_from_date": date(2020, 1, 1), "bronze_to_date": date(2024, 12, 31)}])
     _seed(conn, [{"file_id": "f2", "ticker": "MSFT", "bronze_from_date": date(2018, 1, 1), "bronze_to_date": date(2024, 12, 31)}])
     repo = _build_repo(conn)
-    svc = _build_service(repo, TIMESERIES_MAP)
+    svc = _build_service(repo, TIMESERIES_META)
 
     count = svc.refresh(run_id="r1", universe_from_date=UNIVERSE_FROM, today=TODAY)
 
@@ -269,35 +298,66 @@ def test_refresh_multiple_tickers_produce_separate_rows() -> None:
     assert tickers == {"AAPL", "MSFT"}
 
 
-def test_unknown_dataset_defaults_to_timeseries() -> None:
-    """Datasets not in is_timeseries_map are treated as timeseries (safe default)."""
+def test_unknown_dataset_defaults_to_historical_timeseries() -> None:
+    """Datasets not in dataset_meta_map default to is_timeseries=True, is_historical=True."""
     conn = _build_conn()
     _seed(conn, [{"bronze_from_date": date(2020, 1, 1), "bronze_to_date": date(2024, 12, 31)}])
     repo = _build_repo(conn)
-    svc = _build_service(repo, {})  # empty map — no known datasets
+    svc = _build_service(repo, {})  # empty map
 
     svc.refresh(run_id="r1", universe_from_date=UNIVERSE_FROM, today=TODAY)
 
     row = _fetch_index(conn)[0]
     assert row["is_timeseries"] is True
+    assert row["is_historical"] is True
     assert row["coverage_ratio"] is not None
 
 
-def test_refresh_expected_window_stored() -> None:
+def test_refresh_historical_expected_window_stored() -> None:
+    """Historical rows always store 1990-01-01 as expected_start_date."""
     conn = _build_conn()
     _seed(conn, [{"bronze_from_date": date(2020, 1, 1), "bronze_to_date": date(2024, 12, 31)}])
     repo = _build_repo(conn)
-    svc = _build_service(repo, TIMESERIES_MAP)
+    svc = _build_service(repo, TIMESERIES_META)
 
-    svc.refresh(run_id="r1", universe_from_date=date(1990, 1, 1), today=date(2025, 6, 30))
+    svc.refresh(run_id="r1", universe_from_date=date(2000, 1, 1), today=date(2025, 6, 30))
 
     row = _fetch_index(conn)[0]
     assert row["expected_start_date"] == date(1990, 1, 1)
     assert row["expected_end_date"] == date(2025, 6, 30)
 
 
-def test_load_timeseries_map_falls_back_on_keymap_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    """If DatasetKeymapLoader raises, _load_timeseries_map returns {} and does not crash."""
+def test_ticker_scope_and_is_historical_stored() -> None:
+    """ticker_scope and is_historical are written to the index row."""
+    global_hist_meta: dict[tuple[str, str, str], dict[str, Any]] = {
+        ("economics", "fmp", "economic-indicators"): {
+            "is_timeseries": True,
+            "ticker_scope": "global",
+            "is_historical": True,
+        }
+    }
+    conn = _build_conn()
+    _seed(conn, [{
+        "domain": "economics",
+        "source": "fmp",
+        "dataset": "economic-indicators",
+        "ticker": "",
+        "bronze_from_date": date(2000, 1, 1),
+        "bronze_to_date": date(2024, 12, 31),
+    }])
+    repo = _build_repo(conn)
+    svc = _build_service(repo, global_hist_meta)
+
+    svc.refresh(run_id="r1", universe_from_date=UNIVERSE_FROM, today=TODAY)
+
+    row = _fetch_index(conn)[0]
+    assert row["ticker_scope"] == "global"
+    assert row["is_historical"] is True
+    assert row["coverage_ratio"] is not None
+
+
+def test_load_dataset_meta_map_falls_back_on_keymap_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """If DatasetKeymapLoader raises, _dataset_meta_map returns {} and does not crash."""
     from sbfoundation.dataset.loaders import dataset_keymap_loader
 
     monkeypatch.setattr(
@@ -308,7 +368,7 @@ def test_load_timeseries_map_falls_back_on_keymap_error(monkeypatch: pytest.Monk
 
     conn = _build_conn()
     repo = _build_repo(conn)
-    # Call __init__ properly so _load_timeseries_map runs via the real path
     svc = CoverageIndexService(ops_repo=repo)
 
+    assert svc._dataset_meta_map == {}
     assert svc._is_timeseries_map == {}

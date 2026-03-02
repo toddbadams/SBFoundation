@@ -83,11 +83,19 @@ class SBFoundationAPI:
     ) -> None:
         self.logger = logger or LoggerFactory().create_logger(__name__)
         self.ops_service = ops_service or OpsService()
-        self._dataset_service = dataset_service or DatasetService(today=today)
         self._universe_service = universe_service or UniverseService()
         self._recovery_service = recovery_service or BronzeRecoveryService()
         self._today = today or self._universe_service.today().isoformat()
+        self._dataset_service = dataset_service or DatasetService(today=self._today)
         self._fmp_api_key = os.getenv("FMP_API_KEY")
+        # Lazy import to avoid circular dependency:
+        # sbfoundation.__init__ → sbfoundation.api → sbuniverse.api → sbuniverse.infra.universe_repo
+        #   → sbfoundation.infra.duckdb_bootstrap → sbfoundation (partially initialized)
+        from sbuniverse.api import UniverseAPI
+        from sbuniverse.universe_definitions import UNIVERSE_REGISTRY as _UNIVERSE_REGISTRY
+
+        self._universe_api = UniverseAPI(logger=self.logger)
+        self._universe_registry = _UNIVERSE_REGISTRY
 
     def run(self, command: RunCommand) -> RunContext:
         """
@@ -199,8 +207,11 @@ class SBFoundationAPI:
         )
         run = self._promote_silver(run, MARKET_DOMAIN)
 
-        # Phase 1c: market-screener (per country — authoritative symbol→dimension mapping)
+        # Phase 1c: market-screener (per universe × exchange — authoritative symbol→dimension mapping)
         run = self._run_market_screener(command, run)
+
+        # Phase 1d: materialize universe snapshots from screener results
+        self._materialize_universe_snapshots(run)
 
         # Phase 2a: market-hours (daily snapshot, as_of_date = today from DTO default)
         run = self._run_market_baseline([MARKET_HOURS_DATASET], command, run)
@@ -281,6 +292,9 @@ class SBFoundationAPI:
 
         if command.include_delisted:
             run = self._run_for_delisted_tickers(command, run, TECHNICALS_DOMAIN)
+
+        # Derived metrics (ADTV, computed market cap, coverage score) require price data.
+        self._compute_derived_metrics(run)
 
         return run
 
@@ -498,19 +512,34 @@ class SBFoundationAPI:
             return []
 
     def _get_filtered_universe(self, command: RunCommand, run_id: str) -> list[str]:
-        """Return ticker symbols filtered by all active dimension filters in command.
+        """Return ticker symbols for the command's universe definition.
 
-        When command.universe_definition is set, its exchanges and country replace
-        the command-level exchanges/countries fields; sectors/industries still apply.
-        Market-cap bounds from the definition are pushed down to the repo query.
+        Primary path: queries silver.universe_member for the latest snapshot of
+        the named universe. This is populated by _materialize_universe_snapshots()
+        after each market-screener run.
 
-        Delegates to UniverseService.get_filtered_tickers() which uses a three-tier
-        fallback: fmp_market_screener → company_profile join → all stock_list.
+        Fallback path: when no snapshot exists (cold start / bootstrap), delegates
+        to UniverseService.get_filtered_tickers() which uses a three-tier query
+        against silver screener and profile tables.
         """
         ud = command.universe_definition
+
+        # Primary: versioned snapshot from silver.universe_member
+        if ud is not None:
+            tickers = self._universe_api.tickers(ud.name)
+            if tickers:
+                if command.ticker_limit > 0:
+                    tickers = tickers[: command.ticker_limit]
+                self.logger.info(
+                    f"Universe: {ud.name} | snapshot | tickers={len(tickers)}",
+                    run_id=run_id,
+                )
+                return tickers
+
+        # Fallback: three-tier repo query (bootstrap / no snapshot yet)
         if ud is not None:
             exchanges = ud.exchanges
-            countries = [ud.country]
+            countries = [ud.country] if ud.country else []
             min_market_cap = ud.min_market_cap_usd
             max_market_cap = ud.max_market_cap_usd
         else:
@@ -532,7 +561,7 @@ class SBFoundationAPI:
         min_cap_str = f"${min_market_cap:,.0f}" if min_market_cap is not None else "none"
         max_cap_str = f"${max_market_cap:,.0f}" if max_market_cap is not None else "unlimited"
         self.logger.info(
-            f"Universe: {ud.name if ud else '(none)'} | "
+            f"Universe: {ud.name if ud else '(none)'} | fallback | "
             f"country={', '.join(countries) if countries else 'all'} | "
             f"exchanges={', '.join(exchanges) if exchanges else 'all'} | "
             f"market_cap={min_cap_str}-{max_cap_str} | "
@@ -542,41 +571,33 @@ class SBFoundationAPI:
         return tickers
 
     def _run_market_screener(self, command: RunCommand, run: RunContext) -> RunContext:
-        """Fetch company-screener data for each (exchange × sector) pair.
+        """Fetch company-screener data for each (universe × exchange) pair.
 
-        The FMP company-screener endpoint silently caps responses at 1000 rows per
-        request. Querying by exchange + sector keeps each response well under that
-        limit, ensuring a complete universe.  Each combination is stored as a
-        distinct Bronze file and tracked with discriminator "{exchange}-{sector}".
+        Replaces the prior global exchange×sector Cartesian product approach.
+        Each UniverseDefinition in UNIVERSE_REGISTRY drives per-exchange calls
+        using its eligibility filter params (market cap, country, ETF flags, etc.)
+        as FMP query parameters. Sector is NOT used as a per-request filter —
+        sector-based selection belongs in the downstream Gold project.
+
+        The FMP company-screener caps responses at 1000 rows per request;
+        iterating per-exchange keeps each response within that limit.
+
+        discriminator = "{universe_name}-{exchange}"
         """
         recipes = [r for r in self._dataset_service.recipes if r.domain == MARKET_DOMAIN and r.dataset == MARKET_SCREENER_DATASET]
         if not recipes:
             self.logger.warning("No recipe found for market-screener", run_id=run.run_id)
             return run
 
-        exchange_codes = self._get_silver_exchange_codes()
-        if not exchange_codes:
-            self.logger.info(
-                "No exchange codes found in silver.fmp_market_exchanges — skipping market-screener",
-                run_id=run.run_id,
-            )
-            return run
-
-        sector_names = self._get_silver_sector_names()
-        if not sector_names:
-            self.logger.info(
-                "No sector names found in silver.fmp_market_sectors — skipping market-screener",
-                run_id=run.run_id,
-            )
-            return run
-
         all_requests: list[RunRequest] = []
-        for exchange in exchange_codes:
-            for sector in sector_names:
-                discriminator = f"{exchange}-{sector}"
+        for universe_def in self._universe_registry.values():
+            base_params = universe_def.to_screener_params()
+            for exchange in universe_def.exchanges:
+                discriminator = f"{universe_def.name}-{exchange}"
+                query_vars = {**base_params, "exchange": exchange}
                 for recipe in recipes:
                     patched = copy.copy(recipe)
-                    patched.query_vars = {"exchange": exchange, "sector": sector}
+                    patched.query_vars = query_vars
                     patched.discriminator = discriminator
                     all_requests.append(
                         RunRequest.from_recipe(
@@ -588,9 +609,10 @@ class SBFoundationAPI:
                         )
                     )
 
+        universe_count = len(self._universe_registry)
         self.logger.info(
             f"{self._processing_msg(command.enable_bronze, 'BRONZE')} market-screener: "
-            f"{len(exchange_codes)} exchanges × {len(sector_names)} sectors = {len(all_requests)} requests",
+            f"{universe_count} universes × per-exchange = {len(all_requests)} requests",
             run_id=run.run_id,
         )
 
@@ -603,6 +625,53 @@ class SBFoundationAPI:
 
         run = self._promote_silver(run, MARKET_DOMAIN)
         return run
+
+    def _materialize_universe_snapshots(self, run: RunContext) -> None:
+        """Materialize universe_member and universe_snapshot for all registered universes.
+
+        Called after screener ingestion completes. Reads silver.fmp_market_screener
+        rows (discriminator prefixed by universe name) and writes versioned snapshots.
+        """
+        self.logger.log_section(run.run_id, "Materializing universe snapshots")
+        as_of_date = date.fromisoformat(run.today) if isinstance(run.today, str) else run.today
+        results = self._universe_api.materialize_snapshots(
+            as_of_date=as_of_date,
+            run_id=run.run_id,
+        )
+        for name, count in results.items():
+            self.logger.info(
+                f"Universe snapshot: {name} → {count} members",
+                run_id=run.run_id,
+            )
+
+    def _compute_derived_metrics(self, run: RunContext) -> None:
+        """Compute and persist derived eligibility metrics for all universe members.
+
+        Called after technicals ingestion so that price data is available for
+        ADTV and data-coverage calculations. Gracefully skips if price tables
+        are not yet populated.
+        """
+        self.logger.log_section(run.run_id, "Computing universe derived metrics")
+        as_of_date = date.fromisoformat(run.today) if isinstance(run.today, str) else run.today
+
+        # Collect the union of all universe members for today's snapshots.
+        all_symbols: set[str] = set()
+        for name in self._universe_registry:
+            all_symbols.update(self._universe_api.tickers(name, as_of_date))
+
+        if not all_symbols:
+            self.logger.warning("No universe members found — skipping derived metrics", run_id=run.run_id)
+            return
+
+        symbols = sorted(all_symbols)
+        from sbuniverse.services.derived_metrics_service import DerivedMetricsService
+
+        svc = DerivedMetricsService(logger=self.logger)
+        try:
+            count = svc.compute_and_persist(symbols=symbols, as_of_date=as_of_date, run_id=run.run_id)
+            self.logger.info(f"Derived metrics: {count} rows written for {len(symbols)} symbols", run_id=run.run_id)
+        finally:
+            svc.close()
 
     def _get_silver_country_codes(self) -> list[str]:
         """Query silver.fmp_market_countries for country codes."""
@@ -910,7 +979,7 @@ class SBFoundationAPI:
 if __name__ == "__main__":
     #     COMMODITIES_DOMAIN, COMPANY_DOMAIN, CRYPTO_DOMAIN, FX_DOMAIN, FUNDAMENTALS_DOMAIN, MARKET_DOMAIN, TECHNICALS_DOMAIN
     command = RunCommand(
-        domain=FUNDAMENTALS_DOMAIN,
+        domain=MARKET_DOMAIN,
         concurrent_requests=10,  # Default: 10 workers for optimal throughput
         enable_bronze=True,
         enable_silver=True,

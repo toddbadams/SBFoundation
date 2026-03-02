@@ -111,6 +111,46 @@ CREATE TABLE IF NOT EXISTS ops.file_ingestions (
 """
 
 
+UNIVERSE_SNAPSHOT_DDL = """
+CREATE TABLE IF NOT EXISTS silver.universe_snapshot (
+    universe_name   VARCHAR     NOT NULL,
+    as_of_date      DATE        NOT NULL,
+    filter_hash     VARCHAR(64) NOT NULL,
+    member_count    INTEGER     NOT NULL,
+    run_id          VARCHAR     NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (universe_name, as_of_date)
+);
+"""
+
+UNIVERSE_MEMBER_DDL = """
+CREATE TABLE IF NOT EXISTS silver.universe_member (
+    universe_name   VARCHAR     NOT NULL,
+    as_of_date      DATE        NOT NULL,
+    filter_hash     VARCHAR(64) NOT NULL,
+    symbol          VARCHAR     NOT NULL,
+    run_id          VARCHAR     NOT NULL,
+    ingested_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (universe_name, as_of_date, symbol)
+);
+"""
+
+UNIVERSE_DERIVED_METRICS_DDL = """
+CREATE TABLE IF NOT EXISTS silver.universe_derived_metrics (
+    symbol                  VARCHAR     NOT NULL,
+    as_of_date              DATE        NOT NULL,
+    computed_market_cap     DOUBLE      NULL,
+    avg_dollar_volume_30d   DOUBLE      NULL,
+    avg_dollar_volume_90d   DOUBLE      NULL,
+    is_actively_trading     BOOLEAN     NULL,
+    data_coverage_score     DOUBLE      NULL,
+    run_id                  VARCHAR     NOT NULL,
+    ingested_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (symbol, as_of_date)
+);
+"""
+
+
 class DuckDbBootstrap:
     """Manages a single DuckDB connection, initializes schema on first connect, and exposes scoped transactions.
 
@@ -172,6 +212,9 @@ class DuckDbBootstrap:
             self._conn.execute(OPS_FILE_INGESTIONS_DDL)
             self._conn.execute(DATASET_WATERMARKS_DDL)
             self._conn.execute(OPS_COVERAGE_INDEX_DDL)
+            self._conn.execute(UNIVERSE_SNAPSHOT_DDL)
+            self._conn.execute(UNIVERSE_MEMBER_DDL)
+            self._conn.execute(UNIVERSE_DERIVED_METRICS_DDL)
             self._conn.execute("COMMIT")
             self._logger.debug("Schema initialization complete")
         except Exception as e:
@@ -184,10 +227,6 @@ class DuckDbBootstrap:
         if self._conn is None:
             return
         if self._owns_connection:
-            try:
-                self._conn.execute("CHECKPOINT")
-            except Exception:
-                pass
             self._conn.close()
         self._conn = None
         self._schema_initialized = False

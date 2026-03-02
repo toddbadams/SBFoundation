@@ -7686,6 +7686,7 @@ datasets:
   silver_table: fmp_market_screener
   key_cols:
   - symbol
+  - discriminator
   row_date_col:
   recipes:
   - plans:
@@ -7757,6 +7758,9 @@ datasets:
     - name: is_fund
       type: bool
       nullable: true
+    - name: discriminator
+      type: str
+      nullable: false
 
 - domain: market
   source: fmp

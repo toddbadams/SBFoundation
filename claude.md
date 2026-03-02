@@ -1,7 +1,7 @@
 # Strawberry Context
 
-**Version**: 3.2
-**Last Updated**: 2026-02-20
+**Version**: 3.3
+**Last Updated**: 2026-03-02
 **Maintenance**: Update when changing architecture patterns, modifying dataset_keymap.yaml structure, or adding new domains/contracts.
 
 ## Purpose
@@ -261,10 +261,26 @@ Use an ExecPlan for complex features or significant refactors. An ExecPlan is a 
 - Context and Orientation     — current state, key files, term definitions
 - Plan of Work                — prose sequence of edits (file + location + change)
 - Concrete Steps              — exact commands with expected output transcripts
-- Validation and Acceptance   — observable behavior to verify (not just "compiles")
+- Validation and Acceptance   — see required structure below
 - Idempotence and Recovery    — safe retry/rollback instructions
 - Artifacts and Notes         — concise transcripts/diffs proving success
 - Interfaces and Dependencies — libraries, types, function signatures required
+
+### Validation and Acceptance — Required Structure
+
+Every ExecPlan **must** include a `Validation and Acceptance` section structured into the following four tiers. Include only the tiers that apply; mark inapplicable tiers as "N/A — not applicable for this change."
+
+**Tier 1 — Quick checks** (no DB or network required; runnable in < 1 minute)
+: Unit tests, import sanity, CLI `--help`, backward-compat assertions, hash/serialization stability. Each check must include the exact command to run and the expected output.
+
+**Tier 2 — DB checks** (requires local DuckDB; no external API calls)
+: Confirm migrations ran, tables exist, UPSERT idempotency, query returns expected shape. Each check must include the exact Python snippet or SQL and the expected output.
+
+**Tier 3 — Integration / dry-run check** (requires config + DB; no live API writes)
+: Run the affected domain or service with `enable_bronze=False` / `enable_silver=False`. Confirm log output, request counts, and discriminator patterns match the new design. This is the **key gate** — must pass before PR approval.
+
+**Tier 4 — Post-live-run checks** (requires a real pipeline run with live API)
+: Confirm Silver tables are populated, row counts are non-zero, and re-running the same date is idempotent. These are listed as numbered acceptance criteria (not necessarily run before PR approval, but must be checked before merging to `main`).
 
 ### ExecPlan Execution Rules
 

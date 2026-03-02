@@ -170,6 +170,8 @@ class SilverService:
         df_projected["bronze_file_id"] = row.bronze_file_id
         df_projected["run_id"] = row.run_id
         df_projected["ingested_at"] = row.ingested_at
+        if "discriminator" in entry.key_cols:
+            df_projected["discriminator"] = row.discriminator or ""
 
         row_date_col = entry.row_date_col or "as_of_date"
         self._ensure_row_date(df_projected, row_date_col, row)

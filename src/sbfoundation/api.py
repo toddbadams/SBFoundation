@@ -145,6 +145,17 @@ class SBFoundationAPI:
             today=self._universe_service.today(),
         )
 
+        # Log run-level integrity summary (non-fatal)
+        try:
+            from sbfoundation.ops.services.data_integrity_service import DataIntegrityService
+            integrity_svc = DataIntegrityService(logger=self.logger)
+            summary = integrity_svc.summary(run.run_id)
+            if summary:
+                self.logger.info(f"Integrity summary: {summary}", run_id=run.run_id)
+            integrity_svc.close()
+        except Exception as exc:
+            self.logger.warning(f"Integrity summary failed (non-fatal): {exc}", run_id=run.run_id)
+
         self._close_run(run)
 
         try:

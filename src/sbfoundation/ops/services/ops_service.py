@@ -190,7 +190,11 @@ class OpsService:
         return self._ops_repo.load_input_watermarks(conn, datasets=datasets)
 
     def refresh_coverage_index(self, *, run_id: str, universe_from_date: date, today: date) -> None:
-        """Recompute ops.coverage_index from ops.file_ingestions. Non-fatal on failure."""
+        """Recompute ops.coverage_index from ops.file_ingestions. Non-fatal on failure.
+
+        DEPRECATED: Superseded by DataIntegrityService / ops.run_integrity (Phase J).
+        Kept for backward compatibility with existing callers and coverage_dashboard.
+        """
         from sbfoundation.coverage.coverage_index_service import CoverageIndexService
 
         try:
@@ -198,6 +202,35 @@ class OpsService:
             svc.refresh(run_id=run_id, universe_from_date=universe_from_date, today=today)
         except Exception as exc:
             self._logger.warning("Coverage index refresh failed (non-fatal): %s", exc, run_id=run_id)
+
+    def record_integrity_event(
+        self,
+        *,
+        run_id: str,
+        layer: str,
+        domain: str | None = None,
+        source: str | None = None,
+        dataset: str | None = None,
+        discriminator: str = "",
+        ticker: str = "",
+        file_id: str | None = None,
+        status: str,
+        rows_in: int | None = None,
+        rows_out: int | None = None,
+        error_message: str | None = None,
+    ) -> None:
+        """Record a data integrity event for Bronze, Silver, or Gold layer."""
+        try:
+            from sbfoundation.ops.services.data_integrity_service import DataIntegrityService
+            svc = DataIntegrityService(logger=self._logger)
+            svc.record(
+                run_id=run_id, layer=layer, domain=domain, source=source,
+                dataset=dataset, discriminator=discriminator, ticker=ticker,
+                file_id=file_id, status=status,
+                rows_in=rows_in, rows_out=rows_out, error_message=error_message,
+            )
+        except Exception as exc:
+            self._logger.warning(f"record_integrity_event failed (non-fatal): {exc}", run_id=run_id)
 
     def get_tickers_with_bronze_error(self, *, dataset: str, error_contains: str) -> set[str]:
         """Get distinct tickers that have a bronze_error containing the specified string."""

@@ -61,7 +61,10 @@
       "Bash(xargs cat:*)",
       "Read(//c/Users/toddb/AppData/Local/pypoetry//**)",
       "Read(//c/Users/toddb/.local/share/**)",
-      "Bash(/c/sb/SBFoundation/.venv/Scripts/python.exe:*)"
+      "Bash(/c/sb/SBFoundation/.venv/Scripts/python.exe:*)",
+      "Bash(poetry add:*)",
+      "Bash(C:/sb/SBFoundation/.venv/Scripts/pip.exe install:*)",
+      "Bash(C:/sb/SBFoundation/.venv/Scripts/python.exe:*)"
     ]
   }
 }

@@ -57,7 +57,11 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(xargs cat:*)",
+      "Read(//c/Users/toddb/AppData/Local/pypoetry//**)",
+      "Read(//c/Users/toddb/.local/share/**)",
+      "Bash(/c/sb/SBFoundation/.venv/Scripts/python.exe:*)"
     ]
   }
 }

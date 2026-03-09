@@ -15,6 +15,7 @@ from sbfoundation.settings import DUCKDB_FILENAME
 SCHEMA_DDL = """
 CREATE SCHEMA IF NOT EXISTS ops;
 CREATE SCHEMA IF NOT EXISTS silver;
+CREATE SCHEMA IF NOT EXISTS gold;
 """
 
 DATASET_WATERMARKS_DDL = """
@@ -294,5 +295,10 @@ class DuckDbBootstrap:
 
     @contextmanager
     def silver_transaction(self) -> Iterator[duckdb.DuckDBPyConnection]:
+        with self.transaction() as conn:
+            yield conn
+
+    @contextmanager
+    def gold_transaction(self) -> Iterator[duckdb.DuckDBPyConnection]:
         with self.transaction() as conn:
             yield conn

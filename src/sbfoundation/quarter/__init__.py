@@ -1,1 +1,3 @@
-# Quarterly bulk pipeline — Phase C
+from sbfoundation.quarter.quarter_service import QuarterService
+
+__all__ = ["QuarterService"]

@@ -20,6 +20,7 @@ from sbfoundation.services.universe_service import UniverseService
 from sbfoundation.universe_definitions import US_ALL_CAP, UniverseDefinition
 from sbfoundation.settings import *
 from sbfoundation.settings import (
+    ANNUAL_DOMAIN,
     COMMODITIES_DOMAIN,
     COMMODITIES_LIST_DATASET,
     COMMODITIES_PRICE_EOD_DATASET,
@@ -27,6 +28,7 @@ from sbfoundation.settings import (
     CRYPTO_DOMAIN,
     CRYPTO_LIST_DATASET,
     CRYPTO_PRICE_EOD_DATASET,
+    EOD_DOMAIN,
     FX_DOMAIN,
     FX_LIST_DATASET,
     FX_PRICE_EOD_DATASET,
@@ -35,6 +37,7 @@ from sbfoundation.settings import (
     MARKET_ETF_LIST_DATASET,
     MARKET_INDEX_LIST_DATASET,
     MARKET_STOCK_LIST_DATASET,
+    QUARTER_DOMAIN,
     TECHNICALS_DOMAIN,
 )
 
@@ -129,6 +132,12 @@ class SBFoundationAPI:
             run = self._handle_fx(command, run)
         elif domain == CRYPTO_DOMAIN:
             run = self._handle_crypto(command, run)
+        elif domain == EOD_DOMAIN:
+            run = self._handle_eod(command, run)
+        elif domain == QUARTER_DOMAIN:
+            run = self._handle_quarter(command, run)
+        elif domain == ANNUAL_DOMAIN:
+            run = self._handle_annual(command, run)
 
         self.ops_service.refresh_coverage_index(
             run_id=run.run_id,
@@ -824,6 +833,81 @@ class SBFoundationAPI:
                 run = self._process_ticker_recipes(recipes, command, run, label="crypto-price-eod", domain=CRYPTO_DOMAIN)
                 run.tickers = original_tickers
 
+        return run
+
+    def _handle_eod(self, command: RunCommand, run: RunContext) -> RunContext:
+        """Handle EOD bulk domain — daily bulk price and company profile snapshots."""
+        self.logger.log_section(run.run_id, "Processing EOD bulk domain")
+        recipes = [r for r in self._dataset_service.recipes if r.domain == EOD_DOMAIN]
+        if not recipes:
+            self.logger.warning("No EOD bulk recipes found", run_id=run.run_id)
+            return run
+        self.logger.info(
+            f"{self._processing_msg(command.enable_bronze, 'BRONZE')} {len(recipes)} EOD bulk datasets",
+            run_id=run.run_id,
+        )
+        if command.enable_bronze:
+            run = self._process_recipe_list(recipes, run)
+        run = self._promote_silver(run, EOD_DOMAIN)
+        self.logger.info("EOD bulk domain complete", run_id=run.run_id)
+        return run
+
+    def _handle_quarter(self, command: RunCommand, run: RunContext) -> RunContext:
+        """Handle quarterly bulk domain — bulk income statement, balance sheet, cashflow.
+
+        Execution is gated: only runs during earnings seasons (Jan-Mar, Apr-May, Jul-Aug, Oct-Nov).
+        """
+        from sbfoundation.quarter import QuarterService
+
+        self.logger.log_section(run.run_id, "Processing quarter bulk domain")
+        today = date.fromisoformat(self._today)
+        if not QuarterService.is_earnings_season(today):
+            self.logger.info(
+                f"Quarter bulk: outside earnings season ({today}) — skipping",
+                run_id=run.run_id,
+            )
+            return run
+        recipes = [r for r in self._dataset_service.recipes if r.domain == QUARTER_DOMAIN]
+        if not recipes:
+            self.logger.warning("No quarterly bulk recipes found", run_id=run.run_id)
+            return run
+        self.logger.info(
+            f"{self._processing_msg(command.enable_bronze, 'BRONZE')} {len(recipes)} quarterly bulk datasets",
+            run_id=run.run_id,
+        )
+        if command.enable_bronze:
+            run = self._process_recipe_list(recipes, run)
+        run = self._promote_silver(run, QUARTER_DOMAIN)
+        self.logger.info("Quarter bulk domain complete", run_id=run.run_id)
+        return run
+
+    def _handle_annual(self, command: RunCommand, run: RunContext) -> RunContext:
+        """Handle annual bulk domain — bulk income statement, balance sheet, cashflow (FY).
+
+        Execution is gated: only runs Jan-Mar (annual filing window).
+        """
+        from sbfoundation.annual import AnnualService
+
+        self.logger.log_section(run.run_id, "Processing annual bulk domain")
+        today = date.fromisoformat(self._today)
+        if not AnnualService.is_annual_season(today):
+            self.logger.info(
+                f"Annual bulk: outside annual filing season ({today}) — skipping",
+                run_id=run.run_id,
+            )
+            return run
+        recipes = [r for r in self._dataset_service.recipes if r.domain == ANNUAL_DOMAIN]
+        if not recipes:
+            self.logger.warning("No annual bulk recipes found", run_id=run.run_id)
+            return run
+        self.logger.info(
+            f"{self._processing_msg(command.enable_bronze, 'BRONZE')} {len(recipes)} annual bulk datasets",
+            run_id=run.run_id,
+        )
+        if command.enable_bronze:
+            run = self._process_recipe_list(recipes, run)
+        run = self._promote_silver(run, ANNUAL_DOMAIN)
+        self.logger.info("Annual bulk domain complete", run_id=run.run_id)
         return run
 
     def _start_run(self, command: RunCommand) -> RunContext:

@@ -1,1 +1,3 @@
-# EOD bulk pipeline — Phase B
+from sbfoundation.eod.eod_service import EodService
+
+__all__ = ["EodService"]

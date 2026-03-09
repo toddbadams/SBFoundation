@@ -1,1 +1,3 @@
-# Annual bulk pipeline — Phase D
+from sbfoundation.annual.annual_service import AnnualService
+
+__all__ = ["AnnualService"]

@@ -8299,3 +8299,564 @@ datasets:
     - name: change_percent
       type: float
       nullable: true
+
+# ---- EOD BULK DOMAIN ----
+- domain: eod
+  source: fmp
+  dataset: eod-bulk-price
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_eod_bulk_price
+  key_cols:
+  - symbol
+  - date
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    data_source_path: v4/batch-request/end-of-day-prices
+    query_vars:
+      date: __to_date__
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    help_url: https://site.financialmodelingprep.com/developer/docs#eod-bulk
+  dto_schema:
+    dto_type: sbfoundation.dtos.eod.eod_bulk_price_dto.EodBulkPriceDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: date
+      type: date
+      nullable: false
+    - name: open
+      type: float
+      nullable: true
+    - name: high
+      type: float
+      nullable: true
+    - name: low
+      type: float
+      nullable: true
+    - name: close
+      type: float
+      nullable: true
+    - name: adj_close
+      type: float
+      nullable: true
+    - name: volume
+      type: int
+      nullable: true
+    - name: unadjusted_volume
+      type: int
+      nullable: true
+    - name: change
+      type: float
+      nullable: true
+    - name: change_pct
+      type: float
+      nullable: true
+    - name: vwap
+      type: float
+      nullable: true
+
+- domain: eod
+  source: fmp
+  dataset: company-profile-bulk
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_company_profile_bulk
+  key_cols:
+  - symbol
+  row_date_col:
+  recipes:
+  - plans:
+    - basic
+    data_source_path: v4/profile/all
+    query_vars: {}
+    date_key:
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    help_url: https://site.financialmodelingprep.com/developer/docs#profile-bulk
+  dto_schema:
+    dto_type: sbfoundation.dtos.eod.eod_bulk_company_profile_dto.EodBulkCompanyProfileDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: company_name
+      type: str
+      nullable: true
+    - name: exchange
+      type: str
+      nullable: true
+    - name: exchange_short_name
+      type: str
+      nullable: true
+    - name: sector
+      type: str
+      nullable: true
+    - name: industry
+      type: str
+      nullable: true
+    - name: country
+      type: str
+      nullable: true
+    - name: currency
+      type: str
+      nullable: true
+    - name: is_etf
+      type: bool
+      nullable: true
+    - name: is_actively_trading
+      type: bool
+      nullable: true
+    - name: market_cap
+      type: float
+      nullable: true
+    - name: price
+      type: float
+      nullable: true
+    - name: beta
+      type: float
+      nullable: true
+    - name: vol_avg
+      type: int
+      nullable: true
+    - name: description
+      type: str
+      nullable: true
+    - name: website
+      type: str
+      nullable: true
+    - name: ceo
+      type: str
+      nullable: true
+    - name: full_time_employees
+      type: int
+      nullable: true
+    - name: ipo_date
+      type: date
+      nullable: true
+
+# ---- QUARTER BULK DOMAIN ----
+- domain: quarter
+  source: fmp
+  dataset: income-statement-bulk-quarter
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_income_statement_bulk_quarter
+  key_cols:
+  - symbol
+  - period
+  - calendar_year
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    data_source_path: v4/income-statement-bulk
+    query_vars:
+      period: quarter
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    help_url: https://site.financialmodelingprep.com/developer/docs#financial-statements-bulk
+  dto_schema:
+    dto_type: sbfoundation.dtos.fundamentals.bulk.income_statement_bulk_dto.IncomeStatementBulkDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: date
+      type: date
+      nullable: true
+    - name: period
+      type: str
+      nullable: false
+    - name: calendar_year
+      type: int
+      nullable: false
+    - name: reported_currency
+      type: str
+      nullable: true
+    - name: revenue
+      type: float
+      nullable: true
+    - name: gross_profit
+      type: float
+      nullable: true
+    - name: operating_income
+      type: float
+      nullable: true
+    - name: net_income
+      type: float
+      nullable: true
+    - name: ebitda
+      type: float
+      nullable: true
+    - name: eps
+      type: float
+      nullable: true
+    - name: eps_diluted
+      type: float
+      nullable: true
+
+- domain: quarter
+  source: fmp
+  dataset: balance-sheet-bulk-quarter
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_balance_sheet_bulk_quarter
+  key_cols:
+  - symbol
+  - period
+  - calendar_year
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    data_source_path: v4/balance-sheet-statement-bulk
+    query_vars:
+      period: quarter
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    help_url: https://site.financialmodelingprep.com/developer/docs#financial-statements-bulk
+  dto_schema:
+    dto_type: sbfoundation.dtos.fundamentals.bulk.balance_sheet_bulk_dto.BalanceSheetBulkDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: date
+      type: date
+      nullable: true
+    - name: period
+      type: str
+      nullable: false
+    - name: calendar_year
+      type: int
+      nullable: false
+    - name: reported_currency
+      type: str
+      nullable: true
+    - name: total_assets
+      type: float
+      nullable: true
+    - name: total_current_assets
+      type: float
+      nullable: true
+    - name: total_liabilities
+      type: float
+      nullable: true
+    - name: total_current_liabilities
+      type: float
+      nullable: true
+    - name: total_stockholders_equity
+      type: float
+      nullable: true
+    - name: cash_and_cash_equivalents
+      type: float
+      nullable: true
+    - name: long_term_debt
+      type: float
+      nullable: true
+    - name: total_debt
+      type: float
+      nullable: true
+    - name: net_debt
+      type: float
+      nullable: true
+
+- domain: quarter
+  source: fmp
+  dataset: cashflow-bulk-quarter
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_cashflow_bulk_quarter
+  key_cols:
+  - symbol
+  - period
+  - calendar_year
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    data_source_path: v4/cash-flow-statement-bulk
+    query_vars:
+      period: quarter
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    help_url: https://site.financialmodelingprep.com/developer/docs#financial-statements-bulk
+  dto_schema:
+    dto_type: sbfoundation.dtos.fundamentals.bulk.cashflow_bulk_dto.CashflowBulkDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: date
+      type: date
+      nullable: true
+    - name: period
+      type: str
+      nullable: false
+    - name: calendar_year
+      type: int
+      nullable: false
+    - name: reported_currency
+      type: str
+      nullable: true
+    - name: operating_cash_flow
+      type: float
+      nullable: true
+    - name: capital_expenditure
+      type: float
+      nullable: true
+    - name: free_cash_flow
+      type: float
+      nullable: true
+    - name: net_income
+      type: float
+      nullable: true
+    - name: dividends_paid
+      type: float
+      nullable: true
+
+# ---- ANNUAL BULK DOMAIN ----
+- domain: annual
+  source: fmp
+  dataset: income-statement-bulk-annual
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_income_statement_bulk_annual
+  key_cols:
+  - symbol
+  - calendar_year
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    data_source_path: v4/income-statement-bulk
+    query_vars:
+      period: annual
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    help_url: https://site.financialmodelingprep.com/developer/docs#financial-statements-bulk
+  dto_schema:
+    dto_type: sbfoundation.dtos.fundamentals.bulk.income_statement_bulk_dto.IncomeStatementBulkDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: date
+      type: date
+      nullable: true
+    - name: period
+      type: str
+      nullable: false
+    - name: calendar_year
+      type: int
+      nullable: false
+    - name: reported_currency
+      type: str
+      nullable: true
+    - name: revenue
+      type: float
+      nullable: true
+    - name: gross_profit
+      type: float
+      nullable: true
+    - name: operating_income
+      type: float
+      nullable: true
+    - name: net_income
+      type: float
+      nullable: true
+    - name: ebitda
+      type: float
+      nullable: true
+    - name: eps
+      type: float
+      nullable: true
+    - name: eps_diluted
+      type: float
+      nullable: true
+
+- domain: annual
+  source: fmp
+  dataset: balance-sheet-bulk-annual
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_balance_sheet_bulk_annual
+  key_cols:
+  - symbol
+  - calendar_year
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    data_source_path: v4/balance-sheet-statement-bulk
+    query_vars:
+      period: annual
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    help_url: https://site.financialmodelingprep.com/developer/docs#financial-statements-bulk
+  dto_schema:
+    dto_type: sbfoundation.dtos.fundamentals.bulk.balance_sheet_bulk_dto.BalanceSheetBulkDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: date
+      type: date
+      nullable: true
+    - name: period
+      type: str
+      nullable: false
+    - name: calendar_year
+      type: int
+      nullable: false
+    - name: reported_currency
+      type: str
+      nullable: true
+    - name: total_assets
+      type: float
+      nullable: true
+    - name: total_current_assets
+      type: float
+      nullable: true
+    - name: total_liabilities
+      type: float
+      nullable: true
+    - name: total_current_liabilities
+      type: float
+      nullable: true
+    - name: total_stockholders_equity
+      type: float
+      nullable: true
+    - name: cash_and_cash_equivalents
+      type: float
+      nullable: true
+    - name: long_term_debt
+      type: float
+      nullable: true
+    - name: total_debt
+      type: float
+      nullable: true
+    - name: net_debt
+      type: float
+      nullable: true
+
+- domain: annual
+  source: fmp
+  dataset: cashflow-bulk-annual
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_cashflow_bulk_annual
+  key_cols:
+  - symbol
+  - calendar_year
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    data_source_path: v4/cash-flow-statement-bulk
+    query_vars:
+      period: annual
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    run_days:
+    - mon
+    - tues
+    - wed
+    - thurs
+    - fri
+    help_url: https://site.financialmodelingprep.com/developer/docs#financial-statements-bulk
+  dto_schema:
+    dto_type: sbfoundation.dtos.fundamentals.bulk.cashflow_bulk_dto.CashflowBulkDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: date
+      type: date
+      nullable: true
+    - name: period
+      type: str
+      nullable: false
+    - name: calendar_year
+      type: int
+      nullable: false
+    - name: reported_currency
+      type: str
+      nullable: true
+    - name: operating_cash_flow
+      type: float
+      nullable: true
+    - name: capital_expenditure
+      type: float
+      nullable: true
+    - name: free_cash_flow
+      type: float
+      nullable: true
+    - name: net_income
+      type: float
+      nullable: true
+    - name: dividends_paid
+      type: float
+      nullable: true

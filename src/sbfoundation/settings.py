@@ -12,6 +12,9 @@ COMPANY_DOMAIN = "company"
 COMMODITIES_DOMAIN = "commodities"
 FX_DOMAIN = "fx"
 CRYPTO_DOMAIN = "crypto"
+EOD_DOMAIN = "eod"
+QUARTER_DOMAIN = "quarter"
+ANNUAL_DOMAIN = "annual"
 DOMAINS: list = [
     MARKET_DOMAIN,
     ECONOMICS_DOMAIN,
@@ -21,6 +24,9 @@ DOMAINS: list = [
     COMMODITIES_DOMAIN,
     FX_DOMAIN,
     CRYPTO_DOMAIN,
+    EOD_DOMAIN,
+    QUARTER_DOMAIN,
+    ANNUAL_DOMAIN,
 ]
 
 # Domain execution order for orchestration (market must run first to populate universe)
@@ -33,6 +39,9 @@ DOMAIN_EXECUTION_ORDER: tuple[str, ...] = (
     COMMODITIES_DOMAIN,
     FX_DOMAIN,
     CRYPTO_DOMAIN,
+    EOD_DOMAIN,
+    QUARTER_DOMAIN,
+    ANNUAL_DOMAIN,
 )
 
 # ---- DATASET NAMES ---- #
@@ -47,6 +56,20 @@ CRYPTO_PRICE_EOD_DATASET = "crypto-price-eod"
 # FX
 FX_LIST_DATASET = "forex-list"
 FX_PRICE_EOD_DATASET = "fx-price-eod"
+
+# EOD Bulk
+EOD_BULK_PRICE_DATASET = "eod-bulk-price"
+EOD_COMPANY_PROFILE_BULK_DATASET = "company-profile-bulk"
+
+# Quarter Bulk
+INCOME_STATEMENT_BULK_QUARTER_DATASET = "income-statement-bulk-quarter"
+BALANCE_SHEET_BULK_QUARTER_DATASET = "balance-sheet-bulk-quarter"
+CASHFLOW_BULK_QUARTER_DATASET = "cashflow-bulk-quarter"
+
+# Annual Bulk
+INCOME_STATEMENT_BULK_ANNUAL_DATASET = "income-statement-bulk-annual"
+BALANCE_SHEET_BULK_ANNUAL_DATASET = "balance-sheet-bulk-annual"
+CASHFLOW_BULK_ANNUAL_DATASET = "cashflow-bulk-annual"
 
 # ---- DATASETS (an internal label for a given dataset, which is represented as a table at the silver layer ----#
 ECONOMICS_INDICATORS_DATASET = "economic-indicators"
@@ -194,6 +217,14 @@ DATASETS: list = [
     CRYPTO_PRICE_EOD_DATASET,
     FX_LIST_DATASET,
     FX_PRICE_EOD_DATASET,
+    EOD_BULK_PRICE_DATASET,
+    EOD_COMPANY_PROFILE_BULK_DATASET,
+    INCOME_STATEMENT_BULK_QUARTER_DATASET,
+    BALANCE_SHEET_BULK_QUARTER_DATASET,
+    CASHFLOW_BULK_QUARTER_DATASET,
+    INCOME_STATEMENT_BULK_ANNUAL_DATASET,
+    BALANCE_SHEET_BULK_ANNUAL_DATASET,
+    CASHFLOW_BULK_ANNUAL_DATASET,
 ]
 
 # ---- CADENCE MODE ---- #

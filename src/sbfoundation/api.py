@@ -6,7 +6,7 @@ import traceback
 
 from sbfoundation.dataset.models.dataset_recipe import DatasetRecipe
 from sbfoundation.dataset.services.dataset_service import DatasetService
-from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
+from sbfoundation.maintenance import DuckDbBootstrap
 from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbfoundation.ops.services.ops_service import OpsService
 from sbfoundation.ops.services.run_stats_reporter import RunStatsReporter
@@ -14,8 +14,8 @@ from sbfoundation.recovery.bronze_recovery_service import BronzeRecoveryService
 from sbfoundation.run.dtos.run_context import RunContext
 from sbfoundation.run.dtos.run_request import RunRequest
 from sbfoundation.run.services.orchestration_ticker_chunk_service import OrchestrationTickerChunkService
-from sbfoundation.services.bronze.bronze_service import BronzeService
-from sbfoundation.services.silver.silver_service import SilverService
+from sbfoundation.bronze import BronzeService
+from sbfoundation.silver import SilverService
 from sbfoundation.services.universe_service import UniverseService
 from sbfoundation.universe_definitions import US_ALL_CAP, UniverseDefinition
 from sbfoundation.settings import *

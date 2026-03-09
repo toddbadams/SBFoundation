@@ -7,7 +7,7 @@ import duckdb
 
 from sbfoundation.dataset.models.dataset_identity import DatasetIdentity
 from sbfoundation.dataset.models.dataset_watermark import DatasetWatermark
-from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
+from sbfoundation.maintenance import DuckDbBootstrap
 from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbfoundation.ops.dtos.file_injestion import DatasetInjestion
 

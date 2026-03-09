@@ -1,14 +1,12 @@
 # Strawberry Context
 
-**Version**: 3.3
-**Last Updated**: 2026-03-02
+**Version**: 3.4
+**Last Updated**: 2026-03-09
 **Maintenance**: Update when changing architecture patterns, modifying dataset_keymap.yaml structure, or adding new domains/contracts.
 
 ## Purpose
 
-Strawberry Foundation is a **Bronze + Silver ONLY data acquisition and validation package**. It ingests raw vendor data (Bronze) and promotes it to validated, typed, conformed datasets (Silver). The pipeline is executed via `src/sbfoundation/api.py` (`SBFoundationAPI`) and configured declaratively in `config/dataset_keymap.yaml`.
-
-**CRITICAL**: This project contains **ONLY Bronze and Silver layers**. The Gold layer (dimension modeling, surrogate keys, star schemas, aggregations) exists in a separate downstream project that imports SBFoundation as a dependency.
+Strawberry Foundation is a **Bronze + Silver + Gold data acquisition, validation, and modeling package**. It ingests raw vendor data (Bronze), promotes it to validated, typed, conformed datasets (Silver), and builds a star-schema analytics layer (Gold) from Silver. The pipeline is executed via `src/sbfoundation/api.py` (`SBFoundationAPI`) and configured declaratively in `config/dataset_keymap.yaml`.
 
 ---
 
@@ -20,6 +18,7 @@ Strawberry Foundation is a **Bronze + Silver ONLY data acquisition and validatio
 - **Writing a DTO?** → Section 8 (DTO Contracts)
 - **Writing a recipe?** → Section 9 (Recipe Contracts)
 - **DuckDB schema?** → Section 10 (DuckDB Storage)
+- **Gold layer design?** → Section 10.4–10.6 (Gold Tables, dims, facts)
 - **Before modifying `/src`?** → Section 11 (DDD Review Checklist)
 - **Logging (format, levels, run_id)?** → Section 13 (Logging)
 
@@ -27,13 +26,13 @@ Strawberry Foundation is a **Bronze + Silver ONLY data acquisition and validatio
 
 ## 1) Architecture
 
-Strawberry implements **ONLY the first two layers** of a medallion/lakehouse architecture:
+Strawberry implements **all three layers** of a medallion/lakehouse architecture:
 
 | Layer | Purpose | Description | In This Project? |
 |---|---|---|---|
 | **Bronze (Raw/Landing)** | Ingest & Preserve | Exact vendor payloads, append-only, immutable, fully traceable | ✅ YES |
 | **Silver (Clean/Conformed)** | Clean & Standardize | Validated, normalized, deduplicated, schema-enforced datasets | ✅ YES |
-| **Gold (Business/Analytics)** | Model & Aggregate | Star schemas, surrogate keys, dimensions, facts, rollups | ❌ NO - Separate project |
+| **Gold (Business/Analytics)** | Model & Aggregate | Star schemas, surrogate keys, dimensions, facts, rollups | ✅ YES |
 
 **What Silver Tables Contain:**
 
@@ -44,13 +43,13 @@ Strawberry implements **ONLY the first two layers** of a medallion/lakehouse arc
 - **NO foreign key relationships**
 - **NO cross-table joins or aggregations**
 
-**What Belongs in Gold (NOT this project):**
+**What Gold Contains:**
 
 - Surrogate key resolution (`instrument_sk`, `company_sk`, etc.)
-- Dimension tables (`dim_instrument`, `dim_company`, etc.)
-- Fact tables with foreign keys
-- Star/snowflake schemas
-- Cross-dataset aggregations and rollups
+- Static dimension tables bootstrapped from code (`dim_date`, `dim_instrument_type`, `dim_country`, `dim_exchange`, `dim_industry`, `dim_sectors`)
+- Data-derived dimension tables built from Silver (`dim_instrument`, `dim_company`)
+- Fact tables with foreign keys to dimensions (`fact_eod`, `fact_quarter`, `fact_annual`)
+- Placeholder columns for features and signals (populated by the feature engine in a later phase)
 
 **Ingested data domains**: fundamentals, market data, analytical data, alternative data (macro/economics).
 
@@ -70,12 +69,13 @@ Strawberry implements **ONLY the first two layers** of a medallion/lakehouse arc
 
 5. **Silver writes are idempotent** via DuckDB UPSERT/MERGE using KEY_COLS from the YAML keymap. No dataset may promote to Silver without a keymap entry.
 
-6. **NO Gold layer operations in this project**. Silver must NOT:
+6. **Silver must NOT contain Gold-layer concerns**. Silver tables must NOT:
    - Resolve surrogate keys (e.g., `instrument_sk`)
-   - Query Gold tables (e.g., `gold.dim_instrument`)
-   - Create dimension or fact tables
-   - Add foreign key columns to Silver tables
+   - Reference Gold tables (e.g., `gold.dim_instrument`)
+   - Add foreign key columns
    - Perform cross-dataset joins or aggregations
+
+   Gold promotion is handled exclusively by `GoldDimService` and `GoldFactService` in the `gold/` package, which read from Silver and write to the `gold` DuckDB schema.
 
 **Enforcement**: `DatasetService` validates keymap on load; `tests/unit/dataset/` validates config parsing; `tests/e2e/` verifies end-to-end behavior; mypy enforces types.
 
@@ -388,7 +388,7 @@ A failed run request does NOT crash the run. A `BronzeResult` is still created w
 
 DuckDB is the canonical store for Silver data plus manifests, watermarks, and operational metadata. Bronze remains immutable raw JSON files on disk.
 
-**Note**: While DuckDB supports a `gold` schema, **this project does not create or manage Gold tables**. The Gold layer is implemented in a separate downstream project.
+**Note**: This project creates and manages all three schemas — `ops`, `silver`, and `gold`. The Gold layer (dims + facts) is built from Silver data by `GoldDimService` and `GoldFactService` in the `gold/` package.
 
 ### 10.1 Configuration
 
@@ -405,7 +405,7 @@ All file paths stored in DuckDB are **repo-root-relative**. Single DuckDB file f
 ```
 ops     — manifests, watermarks, migrations, run summaries (managed by this project)
 silver  — conformed datasets, one table per dataset (managed by this project)
-gold    — NOT MANAGED BY THIS PROJECT (downstream Gold project only)
+gold    — star schema: static dims, data-derived dims, fact tables (managed by this project)
 ```
 
 ### 10.3 ops Tables
@@ -432,9 +432,23 @@ gold    — NOT MANAGED BY THIS PROJECT (downstream Gold project only)
 
 ### 10.5 Gold Tables
 
-- Star-schema modeling (dims/facts)
-- Every Gold table includes: `gold_build_id`, `model_version` (git SHA)
-- Gold outputs reproducible given: referenced input watermarks + git SHA
+**Static dimension tables** (bootstrapped via SQL, never updated by ingestion):
+`dim_date`, `dim_instrument_type`, `dim_country`, `dim_exchange`, `dim_industry`, `dim_sectors`
+
+**Data-derived dimension tables** (built from Silver by `GoldDimService`):
+`dim_instrument` — ticker + instrument type/exchange/sector/industry/country FKs + `instrument_sk` PK
+`dim_company` — ticker + `instrument_sk` FK + company profile fields + dim FKs + `company_sk` PK
+
+**Fact tables** (built from Silver + dims by `GoldFactService`):
+`fact_eod` — one row per (instrument_sk, date_sk); EOD pricing; placeholder columns for features/signals
+`fact_quarter` — one row per (instrument_sk, period_date_sk, period); quarterly fundamentals
+`fact_annual` — one row per (instrument_sk, period_date_sk); annual (FY) fundamentals
+
+**Rules for all Gold tables**:
+- Every table includes: `gold_build_id`, `model_version` (git SHA)
+- Gold outputs are reproducible given: referenced input watermarks + git SHA
+- SK assignment uses DuckDB `SEQUENCE` or stable `ROW_NUMBER()` on first build; subsequent builds MERGE on natural keys to preserve existing SKs
+- Silver tables must NOT be modified to add Gold-layer columns — Gold builds are strictly read-Silver, write-gold
 
 ### 10.6 Dataset Identity (for manifests and watermarks)
 
@@ -447,7 +461,7 @@ Identity = `domain` + `source` + `dataset` + `discriminator` (empty string if un
 
 - Bronze: write file → insert manifest row (actionable error if manifest insert fails; leave file for replay)
 - Silver promotion: MERGE/UPSERT + watermark updates in one transaction
-- Gold build: **NOT in this project** (handled by downstream Gold project)
+- Gold build: MERGE/UPSERT dims + facts + `ops.gold_build` log entry, in one transaction per build
 
 ---
 
@@ -475,7 +489,7 @@ The `ops/telemetry` domain samples host performance metrics and persists them as
 Required: `as_of` (UTC timestamp), `host_id`, `os`, `arch`, `cpu_pct`, `cpu_count_logical`, `ram_*_mb`, `swap_*_mb`, `disk_root_*_gb`, `net_rx_bytes`, `net_tx_bytes`
 Optional (nullable): `cpu_temp_c`, `throttle_flags` (Pi only), `cpu_freq_mhz`, `process_rss_mb`, `process_cpu_pct`
 
-**Gold Rollups** (e.g., 5-minute aggregations): **NOT in this project** (handled by downstream Gold project).
+**Gold Rollups** (e.g., 5-minute aggregations): Implemented in `gold/` as a `GoldFactService` variant, building `gold.fact_host_metrics` from Silver telemetry rows.
 
 **Implementation structure** (`src/sb/SBFoundation/ops/telemetry/`):
 `config.py`, `providers/base.py`, `providers/portable_psutil.py`, `providers/linux_pi_sensors.py`, `schemas.py`, `writer.py`, `rollups.py`, `flow.py`

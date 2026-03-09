@@ -1,18 +1,10 @@
-# SBFoundation — Strawberry Labs Bronze + Silver Pipeline
+# SBFoundation — Strawberry Labs Bronze + Silver + Gold Pipeline
 
-SBFoundation is the data acquisition and validation package for the **Strawberry Labs** AI trading platform. It implements **ONLY the first two layers** of a medallion/lakehouse architecture:
+SBFoundation is the data acquisition, validation, and analytics modeling package for the **Strawberry Labs** AI trading platform. It implements all three layers of a medallion/lakehouse architecture:
 
 - **Bronze** — raw, append-only vendor API responses with full ingestion metadata
-- **Silver** — validated, typed, and conformed datasets (clean, standalone tables with NO relationships)
-
-**What this project does NOT include:**
-
-- ❌ Gold layer (dimension modeling, star schemas, surrogate keys)
-- ❌ Surrogate key resolution (e.g., `instrument_sk`, `company_sk`)
-- ❌ Foreign key relationships or cross-table joins
-- ❌ Aggregations, rollups, or derived analytics tables
-
-Downstream Gold layer construction and strategy execution live in separate packages that import SBFoundation.
+- **Silver** — validated, typed, and conformed datasets (clean, standalone tables with natural business keys only)
+- **Gold** — star-schema analytics layer: static dimensions, data-derived dimensions, and fact tables built from Silver
 
 ---
 
@@ -66,6 +58,7 @@ Silver and operational tables (manifests, watermarks, run history) are stored in
 
 - `ops` — manifests, watermarks, migrations (managed by this project)
 - `silver` — conformed datasets, one table per dataset (managed by this project)
+- `gold` — star schema: static dims, data-derived dims, fact tables (managed by this project)
 
 ### 5. Silver writes are idempotent (MERGE/UPSERT)
 
@@ -129,7 +122,7 @@ The defaults (`DATA_ROOT_FOLDER=c:/sb/SBFoundation/data`, `REPO_ROOT_FOLDER=c:/s
 | Code quality | Black (line-length 150), isort (Black profile), flake8, mypy |
 | Primary data source | Financial Modeling Prep (FMP) via REST |
 | Planned / future | Alpha Vantage, FRED, BIS |
-| Orchestration | Prefect OSS (nightly batch; not in this package) |
+| Orchestration | Prefect OSS (nightly batch; `orchestrate/` package in this project) |
 | UI | Streamlit + streamlit-echarts + Altair (separate package) |
 | Deployment | Docker Compose; used for PROD deploy |
 
@@ -180,9 +173,17 @@ SBFoundation/
 │       │   ├── dtos/                 # RunContext, RunRequest, BronzeResult, ResultMapper
 │       │   └── services/             # RunRequestExecutor, ChunkEngine, DedupeEngine,
 │       │                             # OrchestrationTickerChunkService
+│       ├── bronze/                   # BronzeService, BronzeBatchReader
+│       ├── silver/                   # SilverService, InstrumentPromotionService
+│       ├── gold/                     # GoldDimService (dim_instrument, dim_company),
+│       │                             # GoldFactService (fact_eod, fact_quarter, fact_annual),
+│       │                             # GoldBootstrapService (static dims)
+│       ├── eod/                      # EodService — daily bulk EOD price + company profile
+│       ├── quarter/                  # QuarterService — quarterly bulk fundamentals (earnings seasons)
+│       ├── annual/                   # AnnualService — annual bulk fundamentals (Jan–Mar)
+│       ├── maintenance/              # DuckDB bootstrap, migration runner, static dim seeding
+│       ├── orchestrate/              # Prefect flows: eod_flow, quarter_flow, annual_flow
 │       └── services/
-│           ├── bronze/               # BronzeService, BronzeBatchReader
-│           ├── silver/               # SilverService, InstrumentPromotionService
 │           └── universe_service.py   # Resolves active ticker universe
 ├── apps/
 │   └── coverage_dashboard/       # Standalone Streamlit app (separate Poetry project)
@@ -257,7 +258,17 @@ SilverService.promote()
 silver.<table_name>  (DuckDB)
        │
        ▼
-  [Downstream: Gold layer, Feature Engineer, Signals,  backtesting, portfolio optimization, execution — separate packages]
+GoldDimService / GoldFactService  (gold/ package)
+  ├── Resolves surrogate keys (dim_instrument, dim_company)
+  ├── Builds static dims (dim_date, dim_country, dim_exchange, etc.)
+  ├── MERGE/UPSERT into gold.<dim|fact_table>
+  └── Logs build to ops.gold_build (model_version, input_watermarks, row_counts)
+       │
+       ▼
+gold.<dim|fact_table>  (DuckDB)
+       │
+       ▼
+  [Downstream: Feature Engineer, Signals, backtesting, portfolio optimization, execution — separate packages]
 ```
 
 **Recommended domain execution order:** `market` → `economics` → `company` → `fundamentals` → `technicals` → `commodities` → `fx` → `crypto`

@@ -1,0 +1,5 @@
+[
+  {"symbol": "AAPL", "date": "2026-01-17", "open": 228.50, "high": 234.20, "low": 227.10, "close": 232.80, "adjClose": 232.80, "volume": 52341000, "unadjustedVolume": 52341000, "change": 4.30, "changePercent": 1.88, "vwap": 231.50},
+  {"symbol": "MSFT", "date": "2026-01-17", "open": 412.00, "high": 418.50, "low": 410.20, "close": 415.50, "adjClose": 415.50, "volume": 23456000, "unadjustedVolume": 23456000, "change": 3.50, "changePercent": 0.85, "vwap": 414.20},
+  {"symbol": "GOOGL", "date": "2026-01-17", "open": 178.00, "high": 182.50, "low": 177.50, "close": 180.20, "adjClose": 180.20, "volume": 18765000, "unadjustedVolume": 18765000, "change": 2.20, "changePercent": 1.23, "vwap": 179.80}
+]

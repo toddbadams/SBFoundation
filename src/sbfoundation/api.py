@@ -36,6 +36,7 @@ class RunCommand:
 
     force_from_date: str | None = None  # ISO date (e.g. "1990-01-01"); bypasses watermarks for historical backfill
     year: int | None = None  # Optional calendar year filter passed to annual bulk datasets
+    eod_date: str | None = None  # ISO date override for __to__ query param in eod-bulk-price (e.g. "2024-10-22"); defaults to today
 
     def validate(self) -> None:
         """Validate this RunCommand. Raises ValueError on invalid input."""
@@ -88,6 +89,8 @@ class SBFoundationAPI:
         service = self._build_service(command)
         if isinstance(service, AnnualService):
             run = service.run(run, year=command.year)
+        elif isinstance(service, EodService):
+            run = service.run(run, date=command.eod_date)
         else:
             run = service.run(run)
 

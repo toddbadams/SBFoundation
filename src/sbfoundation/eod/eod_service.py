@@ -1,9 +1,12 @@
 """EOD bulk ingestion service."""
+
 from __future__ import annotations
 
 from sbfoundation.run.dtos.run_context import RunContext
 from sbfoundation.run.services.bulk_pipeline_service import BulkPipelineService
 from sbfoundation.settings import EOD_DOMAIN
+
+_DIMENSION_DATASETS = {"company-profile-bulk"}
 
 
 class EodService(BulkPipelineService):
@@ -14,20 +17,41 @@ class EodService(BulkPipelineService):
     Cadence: daily on weekdays.
     """
 
-    def run(self, run: RunContext) -> RunContext:
+    def run(self, run: RunContext, date: str | None = None) -> RunContext:
+        """Run EOD bulk ingestion.
+
+        Args:
+            run: Current run context.
+            date: ISO 8601 date string to use as the ``__to__`` query parameter
+                for ``eod-bulk-price``. Defaults to today's date when omitted.
+        """
         self._logger.log_section(run.run_id, "Processing EOD bulk domain")
-        recipes = [r for r in self._dataset_service.recipes if r.domain == EOD_DOMAIN]
-        if not recipes:
-            self._logger.warning("No EOD bulk recipes found", run_id=run.run_id)
-            return run
-        self._logger.info(
-            f"{self._processing_msg(self._enable_bronze, 'BRONZE')} {len(recipes)} EOD bulk datasets",
-            run_id=run.run_id,
-        )
-        if self._enable_bronze:
-            run = self._process_recipe_list(recipes, run)
-        run = self._promote_silver(run, EOD_DOMAIN)
-        self._logger.info("EOD bulk domain complete", run_id=run.run_id)
+        original_today = run.today
+        original_force_from_date = self._force_from_date
+        if date is not None:
+            run.today = date
+            self._force_from_date = date  # bypasses the BronzeService dedup gate
+            self._logger.info(f"EOD date override: {date}", run_id=run.run_id)
+        try:
+            recipes = [r for r in self._dataset_service.recipes if r.domain == EOD_DOMAIN]
+            if date is not None:
+                # company-profile-bulk feeds Gold dimensions and is date-independent;
+                # skip it for historical date fetches so only price data is downloaded.
+                recipes = [r for r in recipes if r.dataset not in _DIMENSION_DATASETS]
+            if not recipes:
+                self._logger.warning("No EOD bulk recipes found", run_id=run.run_id)
+                return run
+            self._logger.info(
+                f"{self._processing_msg(self._enable_bronze, 'BRONZE')} {len(recipes)} EOD bulk datasets",
+                run_id=run.run_id,
+            )
+            if self._enable_bronze:
+                run = self._process_recipe_list(recipes, run)
+            run = self._promote_silver(run, EOD_DOMAIN)
+            self._logger.info("EOD bulk domain complete", run_id=run.run_id)
+        finally:
+            run.today = original_today
+            self._force_from_date = original_force_from_date
         return run
 
 
@@ -41,6 +65,7 @@ if __name__ == "__main__":
         enable_bronze=True,
         enable_silver=True,
         enable_gold=True,
+        eod_date="2026-03-09",
     )
     result = SBFoundationAPI(today=date.today().isoformat()).run(command)
     print(

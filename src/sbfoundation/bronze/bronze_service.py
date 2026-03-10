@@ -81,9 +81,11 @@ class BronzeService:
 
         today = self.universe.today()
 
-        # Always check the daily dedup gate, even in force_from_date mode.
-        # force_from_date overrides the content-date watermark (from_date) but must
-        # not allow the same dataset to be re-downloaded multiple times on the same day.
+        # Dedup gate: prevents re-ingesting data already fetched today (by wall-clock).
+        # Skipped when force_from_date is set — that signals an explicit historical or
+        # date-override fetch where the caller intentionally targets a specific date
+        # (e.g. EodService with eod_date="2026-03-09") and the gate would incorrectly
+        # block the request because a prior run already ingested today's data.
         if self._watermarks_cache is not None:
             last_ingestion_date, last_to_date = self._watermarks_cache.get(ticker or "", (None, None))
         else:
@@ -94,7 +96,7 @@ class BronzeService:
                 domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=ticker
             )
 
-        if last_ingestion_date and last_ingestion_date >= today:
+        if not self._force_from_date and last_ingestion_date and last_ingestion_date >= today:
             self.logger.debug(
                 "Skipping duplicate ingestion | dataset=%s | ticker=%s | last_ingestion=%s",
                 dataset,
@@ -105,8 +107,13 @@ class BronzeService:
             return
 
         if self._force_from_date:
-            # Backfill mode: use caller-supplied start date instead of content watermark.
-            request.from_date = self._force_from_date
+            # Backfill / date-override mode: defer setting request.from_date until
+            # after canRun() so the age check uses the original (wide) from_date from
+            # the request rather than the narrow forced window. Without this, a
+            # forced fetch for a recent date (e.g. eod_date="2026-03-09") would
+            # produce (injestion_date - force_from_date).days <= min_age_days and
+            # be incorrectly rejected as "REQUEST IS TOO SOON".
+            pass
         else:
             if last_to_date:
                 request.from_date = last_to_date.isoformat()
@@ -129,6 +136,11 @@ class BronzeService:
                 return
             self._result_bronze_error(result, result.error)
             return
+
+        if self._force_from_date:
+            # Apply the forced start date now, after canRun() has validated against
+            # the original from_date.
+            request.from_date = self._force_from_date
 
         # Call source endpoint and create a BronzeResult
         try:
@@ -499,13 +511,17 @@ class BronzeService:
                     discriminator=recipe.discriminator or "",
                 )
 
-            # Build all requests upfront
+            # Build all requests upfront.
+            # Pass universe.today() as the wall-clock injestion_date and run.today
+            # as to_date so that an eod_date override sets __to__ without corrupting
+            # the injestion_date used by canRun() and manifest tracking.
             reqs = [
                 RunRequest.from_recipe(
                     recipe=recipe,
                     run_id=self.run.run_id,
                     from_date=self.universe.from_date,
-                    today=self.run.today,
+                    today=self.universe.today().isoformat(),
+                    to_date=self.run.today,
                     api_key=self.fmp_api_key,
                     ticker=ticker,
                 )
@@ -544,7 +560,8 @@ class BronzeService:
                     recipe=recipe,
                     run_id=self.run.run_id,
                     from_date=self.universe.from_date,
-                    today=self.run.today,
+                    today=self.universe.today().isoformat(),
+                    to_date=self.run.today,
                     api_key=self.fmp_api_key,
                 )
                 if self._backfill_to_1990:

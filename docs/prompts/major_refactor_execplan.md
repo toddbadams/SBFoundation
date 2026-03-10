@@ -1,11 +1,11 @@
 # ExecPlan: Major Package Restructure + Gold Layer + Bulk Pipelines
 
-**Version**: 1.1
+**Version**: 1.2
 **Created**: 2026-03-09
-**Updated**: 2026-03-09
+**Updated**: 2026-03-10
 **Author**: Claude / User
 **Branch**: `feature/major-refactor`
-**Status**: ✅ ALL PHASES COMPLETE — 423 tests pass
+**Status**: ✅ Phases A–T complete + Phase K (API simplification) complete
 
 ---
 
@@ -118,7 +118,8 @@ CLAUDE.md and README.md have been updated to reflect the expanded scope: Bronze 
 - [x] I.4 — `quarter_flow` (gated by earnings season)
 - [x] I.5 — `annual_flow` (gated to Jan–Mar)
 - [x] I.6 — `prefect.yaml` with three deployments
-- [ ] I.7 — Manual flow trigger not tested (requires running Prefect server)
+- [x] I.7 — `enable_gold=True` added explicitly to all three Prefect flow `RunCommand` constructions
+- [ ] I.8 — Manual flow trigger not tested (requires running Prefect server)
 
 ### Phase J — Data Integrity Layer
 - [x] J.1 — Migration 20260309_004: `ops.run_integrity` table
@@ -133,6 +134,51 @@ CLAUDE.md and README.md have been updated to reflect the expanded scope: Bronze 
 - [x] J.10 — CLI: `python -m sbfoundation.integrity`
 - [x] J.11 — 2 unit tests for `DataIntegrityService`
 - [ ] J.12 — E2E test for run_integrity (future work)
+
+### Phase K — API Simplification: Domain Removal + Gold Promotion Fix
+
+#### K.1 — Gold Promotion Bug Fix
+- [x] K.1.1 — Root cause: `GoldDimService._build_dim_instrument` ran a raw UNION against two Silver tables without existence checks, raising `CatalogException` swallowed by `_promote_gold`'s try/except — Gold was silently skipped on every run
+- [x] K.1.2 — Added `_table_exists(conn, schema, table)` method to `GoldDimService` (mirrors pattern already in `GoldFactService`)
+- [x] K.1.3 — `_build_dim_instrument` now checks `silver.fmp_company_profile_bulk` and `silver.fmp_eod_bulk_price` before building the UNION query; gracefully skips and returns existing count if neither exists
+- [x] K.1.4 — `_build_dim_company` now checks `silver.fmp_company_profile_bulk` before building; gracefully skips if absent
+
+#### K.2 — Prefect Flow Gold Enablement
+- [x] K.2.1 — `eod_flow.py`: added `enable_gold=True` to `RunCommand` (was relying on default)
+- [x] K.2.2 — `quarter_flow.py`: added `enable_gold=True` to `RunCommand`
+- [x] K.2.3 — `annual_flow.py`: added `enable_gold=True` to `RunCommand`
+
+#### K.3 — Remove Legacy Per-Ticker Domains from `settings.py` and `api.py`
+Removed the following domains entirely from both files (all dataset name constants retained):
+- [x] K.3.1 — Removed `MARKET_DOMAIN = "market"`
+- [x] K.3.2 — Removed `COMPANY_DOMAIN = "company"`
+- [x] K.3.3 — Removed `FUNDAMENTALS_DOMAIN = "fundamentals"`
+- [x] K.3.4 — Removed `TECHNICALS_DOMAIN = "technicals"`
+- [x] K.3.5 — Removed `COMMODITIES_DOMAIN = "commodities"`
+- [x] K.3.6 — Removed `FX_DOMAIN = "fx"`
+- [x] K.3.7 — Removed `CRYPTO_DOMAIN = "crypto"`
+- [x] K.3.8 — Updated `DOMAINS` list and `DOMAIN_EXECUTION_ORDER` to contain only `eod`, `quarter`, `annual`
+- [x] K.3.9 — Removed 7 `elif domain == ...` branches from `api.py` `run()`
+- [x] K.3.10 — Removed 7 handler methods: `_handle_market`, `_handle_company`, `_handle_fundamentals`, `_handle_technicals`, `_handle_commodities`, `_handle_fx`, `_handle_crypto` and all their exclusive helpers (~744 lines total)
+- [x] K.3.11 — Removed `OrchestrationTickerChunkService`, `US_ALL_CAP`, `UniverseDefinition` imports (no longer used)
+- [x] K.3.12 — Removed `include_indexes`, `include_delisted`, `universe_definition` fields from `RunCommand`
+
+#### K.4 — Remove `ECONOMICS_DOMAIN`
+- [x] K.4.1 — Removed `ECONOMICS_DOMAIN = "economics"` from `settings.py`
+- [x] K.4.2 — Updated `DOMAINS` and `DOMAIN_EXECUTION_ORDER` (now `eod`, `quarter`, `annual` only)
+- [x] K.4.3 — Removed `elif domain == ECONOMICS_DOMAIN:` branch from `api.py`
+- [x] K.4.4 — Removed `_handle_economics` method from `api.py`
+- [x] K.4.5 — Removed `backfill_to_1990` field from `RunCommand` and its validate check
+- [x] K.4.6 — Removed `_BACKFILL_DOMAINS` frozenset from `api.py`
+
+#### K.5 — Restore Accidentally Deleted Shared Helpers
+- [x] K.5.1 — `_processing_msg` and `_process_recipe_list` were in the line range of the K.3 bulk deletion and were removed along with the unwanted handlers
+- [x] K.5.2 — Recovered original implementations from git history
+- [x] K.5.3 — `_processing_msg` restored to `api.py` (before `_promote_silver`)
+- [x] K.5.4 — `_process_recipe_list` restored without `backfill_to_1990` arg (omitted; `BronzeService` defaults to `False`)
+
+#### K.6 — Import Cleanup
+- [x] K.6.1 — Removed unused imports from `api.py`: `field`, `timedelta`, `copy`, `RunRequest`
 
 ### Phase T — E2E Testing Infrastructure
 - [x] T.1 — `tests/e2e/fixtures/fmp/` directory structure with .gitkeep files
@@ -161,6 +207,10 @@ _To be filled in as work proceeds._
 | 2026-03-09 | CLAUDE.md Gold constraint contradicts this plan's scope | Must resolve before Phase E — RESOLVED |
 | 2026-03-09 | `CoverageIndexService` already tracks `silver_rows_created`/`silver_rows_failed` in `ops.file_ingestions` | Phase J replaces this with per-run, per-layer, per-file granularity in `ops.run_integrity` |
 | 2026-03-09 | Coverage dashboard `apps/coverage_dashboard/` is a separate Poetry project with its own `pyproject.toml` | Removal or replacement decision needed at Phase J.8 |
+| 2026-03-10 | `GoldDimService._build_dim_instrument` raised `CatalogException` when Silver source tables didn't exist — error was silently swallowed by `_promote_gold`'s try/except, so Gold was skipped on every run without any visible failure | Fixed by adding `_table_exists` checks (same pattern already used by `GoldFactService`) |
+| 2026-03-10 | Prefect flow `RunCommand` constructions did not explicitly set `enable_gold=True` — was relying on the dataclass default, which could have been overridden without notice | Made explicit in all three flows |
+| 2026-03-10 | During K.3 bulk deletion of ~744 lines, `_processing_msg` (line ~384) and `_process_recipe_list` (line ~1035) were within the deleted range and were removed along with the unwanted handlers — both are required by the three remaining domain handlers | Recovered from git history; restored without the now-removed `backfill_to_1990` parameter |
+| 2026-03-10 | `BronzeService.__init__` still accepts `backfill_to_1990: bool = False` as a parameter even after the field was removed from `RunCommand` — kept in `BronzeService` for now to avoid a separate unrelated change | `_process_recipe_list` simply omits the arg, letting it default to `False` |
 
 ---
 
@@ -170,6 +220,9 @@ _To be filled in as work proceeds._
 |---|---|---|---|
 | 2026-03-09 | ExecPlan uses Option A (Gold in this project) pending user confirmation | User's notes explicitly include a Gold DB design section | User / Claude |
 | 2026-03-09 | Option A confirmed — Gold in this project | User explicitly requested Gold layer in sbfoundation | User |
+| 2026-03-10 | Remove all per-ticker domains (`market`, `company`, `fundamentals`, `technicals`, `commodities`, `fx`, `crypto`) from `settings.py` and `api.py` | These domains relied on per-ticker orchestration logic that has been superseded by the bulk EOD/quarter/annual pipelines; retaining dead code creates confusion and maintenance risk | User |
+| 2026-03-10 | Remove `economics` domain from `settings.py` and `api.py` | Same rationale as above; economics dataset constants retained for downstream use | User |
+| 2026-03-10 | Do not remove `backfill_to_1990` from `BronzeService.__init__` at this time | The parameter is still technically valid on `BronzeService`; removing it would be a separate, unrelated cleanup and risks introducing a separate bug | Claude |
 
 ---
 
@@ -379,6 +432,24 @@ Same three FMP bulk endpoints as Phase C but with `period=annual` (FY).
 5. **`annual_flow.py`**: `@flow` function that calls `AnnualService`. Scheduled daily at 08:00 ET; service internally gates by Jan–Mar.
 6. **Deployment YAML** (`prefect.yaml`): Defines work pool, schedules, and environment.
 7. **Test**: `prefect deploy` dry-run; manually trigger each flow.
+
+### Phase K — API Simplification: Domain Removal + Gold Promotion Fix
+
+**Objective**: Strip `api.py` and `settings.py` down to the three active bulk domains (`eod`, `quarter`, `annual`). Fix the silent Gold promotion failure caused by missing `_table_exists` guards in `GoldDimService`.
+
+1. **Fix Gold promotion** (`gold/gold_dim_service.py`): Add `_table_exists(conn, schema, table)` method. Guard `_build_dim_instrument` and `_build_dim_company` to skip gracefully when source Silver tables are absent, returning the current table row count instead of raising.
+
+2. **Explicit Gold enablement in Prefect flows** (`orchestrate/eod_flow.py`, `quarter_flow.py`, `annual_flow.py`): Add `enable_gold=True` to each flow's `RunCommand` construction so Gold promotion is unambiguously enabled.
+
+3. **Remove per-ticker domains from `settings.py`**: Delete `MARKET_DOMAIN`, `COMPANY_DOMAIN`, `FUNDAMENTALS_DOMAIN`, `TECHNICALS_DOMAIN`, `COMMODITIES_DOMAIN`, `FX_DOMAIN`, `CRYPTO_DOMAIN` constants, and remove them from `DOMAINS` list and `DOMAIN_EXECUTION_ORDER`. Retain all dataset name constants.
+
+4. **Remove per-ticker domain handlers from `api.py`**: Delete the 7 handler methods and all their exclusive helper methods (~744 lines). Remove `_BACKFILL_DOMAINS`, `backfill_to_1990` from `RunCommand`, and the corresponding `validate()` check. Remove unused imports.
+
+5. **Remove `ECONOMICS_DOMAIN`**: Same treatment as step 3–4. Remove `_handle_economics`, the `elif` branch, `_BACKFILL_DOMAINS`, and `backfill_to_1990`.
+
+6. **Restore accidentally deleted helpers**: `_processing_msg` and `_process_recipe_list` were in the bulk-deleted line range. Recover from git history and re-insert before `_promote_silver`, omitting the `backfill_to_1990` arg from the `BronzeService` call.
+
+7. **Import cleanup**: Remove `field`, `timedelta`, `copy`, `RunRequest` from `api.py` (no longer referenced).
 
 ---
 
@@ -1791,9 +1862,114 @@ mv "$DATA_ROOT_FOLDER/duckdb/SBFoundation_backup_YYYYMMDD.duckdb" \
 
 ---
 
+---
+
+### Phase K Concrete Steps (2026-03-10)
+
+#### Step K.1 — Fix `GoldDimService` Missing Table Guards
+
+Added `_table_exists` method to `src/sbfoundation/gold/gold_dim_service.py`:
+
+```python
+def _table_exists(self, conn: duckdb.DuckDBPyConnection, schema: str, table: str) -> bool:
+    row = conn.execute(
+        "SELECT COUNT(*) FROM information_schema.tables "
+        "WHERE table_schema = ? AND table_name = ?",
+        [schema, table],
+    ).fetchone()
+    return bool(row and row[0] > 0)
+```
+
+`_build_dim_instrument` now dynamically builds a UNION only from tables that exist; skips entirely if neither `silver.fmp_company_profile_bulk` nor `silver.fmp_eod_bulk_price` exist.
+
+`_build_dim_company` now returns current row count immediately if `silver.fmp_company_profile_bulk` does not exist.
+
+#### Step K.2 — Explicit `enable_gold=True` in Prefect Flows
+
+In `orchestrate/eod_flow.py`, `quarter_flow.py`, `annual_flow.py`: added `enable_gold=True` to each `RunCommand(...)` constructor call.
+
+#### Step K.3 — Remove Per-Ticker Domains
+
+`settings.py` — deleted constants and list entries:
+```python
+# Removed:
+MARKET_DOMAIN = "market"
+COMPANY_DOMAIN = "company"
+FUNDAMENTALS_DOMAIN = "fundamentals"
+TECHNICALS_DOMAIN = "technicals"
+COMMODITIES_DOMAIN = "commodities"
+FX_DOMAIN = "fx"
+CRYPTO_DOMAIN = "crypto"
+
+# DOMAINS now contains only:
+DOMAINS: list = [EOD_DOMAIN, QUARTER_DOMAIN, ANNUAL_DOMAIN]
+DOMAIN_EXECUTION_ORDER: tuple[str, ...] = (EOD_DOMAIN, QUARTER_DOMAIN, ANNUAL_DOMAIN)
+```
+
+`api.py` — removed 7 `elif` branches, 7 handler methods, all exclusive helpers, `OrchestrationTickerChunkService`, `US_ALL_CAP`, `UniverseDefinition` imports, `include_indexes`, `include_delisted`, `universe_definition` from `RunCommand`.
+
+#### Step K.4 — Remove `ECONOMICS_DOMAIN`
+
+`settings.py` — deleted `ECONOMICS_DOMAIN = "economics"`.
+
+`api.py` — removed `elif domain == ECONOMICS_DOMAIN:` branch, `_handle_economics` method, `backfill_to_1990` from `RunCommand` and its `validate()` check, `_BACKFILL_DOMAINS` frozenset, `self._backfill_to_1990` assignment in `run()`.
+
+#### Step K.5 — Restore Accidentally Deleted Helpers
+
+Recovered from `git show HEAD:src/sbfoundation/api.py` and re-inserted before `_promote_silver`:
+
+```python
+def _processing_msg(self, enabled: bool, layer: str) -> str:
+    return f"PROCESSING {layer} | " if enabled else f"DRY-RUN {layer} |"
+
+def _process_recipe_list(self, recipes: list[DatasetRecipe], run: RunContext) -> RunContext:
+    """Process a list of recipes through the bronze layer."""
+    if not recipes:
+        return run
+    bronze_service = BronzeService(
+        ops_service=self.ops_service,
+        concurrent_requests=self._concurrent_requests,
+        force_from_date=self._force_from_date,
+        # backfill_to_1990 omitted — defaults to False in BronzeService
+    )
+    try:
+        return bronze_service.register_recipes(run, recipes).process(run)
+    except Exception as exc:
+        self.logger.error("Bronze ingestion failed: %s", exc, run_id=run.run_id)
+        traceback.print_exc()
+        return run
+```
+
+#### Step K.6 — Import Cleanup
+
+Removed from `api.py`:
+- `from dataclasses import dataclass, field` → `from dataclasses import dataclass`
+- `from datetime import date, timedelta` → `from datetime import date`
+- `import copy`
+- `from sbfoundation.run.dtos.run_request import RunRequest`
+
+---
+
 ## Artifacts and Notes
 
-_To be filled in as work proceeds — include test transcripts and diffs proving success._
+### Phase K — Final State of `api.py` (2026-03-10)
+
+`api.py` is now 300 lines (down from ~1,100+). Public surface:
+
+| Symbol | Type | Notes |
+|---|---|---|
+| `RunCommand` | dataclass | `domain`, `concurrent_requests`, `enable_bronze`, `enable_silver`, `enable_gold`, `ticker_limit`, `ticker_recipe_chunk_size`, `force_from_date` |
+| `SBFoundationAPI` | class | `run(command)` → `RunContext` |
+
+Active domain handlers: `_handle_eod`, `_handle_quarter`, `_handle_annual`.
+Shared helpers: `_processing_msg`, `_process_recipe_list`, `_promote_silver`, `_promote_gold`, `_start_run`, `_close_run`.
+
+### Phase K — Final State of `settings.py` (2026-03-10)
+
+`DOMAINS = ["eod", "quarter", "annual"]`
+`DOMAIN_EXECUTION_ORDER = ("eod", "quarter", "annual")`
+
+All dataset name constants retained (economics, market, company, fundamentals, technicals, commodities, fx, crypto, eod, quarter, annual datasets).
 
 ---
 

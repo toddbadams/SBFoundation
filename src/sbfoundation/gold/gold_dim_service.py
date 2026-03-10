@@ -60,13 +60,60 @@ class GoldDimService:
 
         return {"dim_instrument": dim_instrument_rows, "dim_company": dim_company_rows}
 
+    def _table_exists(self, conn: duckdb.DuckDBPyConnection, schema: str, table: str) -> bool:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ?",
+            [schema, table],
+        ).fetchone()
+        return bool(row and row[0] > 0)
+
     def _build_dim_instrument(
         self, conn: duckdb.DuckDBPyConnection, gold_build_id: int | None, model_version: str, now: str
     ) -> int:
         """Populate dim_instrument from silver.fmp_company_profile_bulk + silver.fmp_eod_bulk_price."""
+        profile_exists = self._table_exists(conn, "silver", "fmp_company_profile_bulk")
+        eod_exists = self._table_exists(conn, "silver", "fmp_eod_bulk_price")
 
-        # Collect all known symbols (union of both Silver sources)
-        conn.execute("""
+        if not profile_exists and not eod_exists:
+            self._logger.info("GoldDimService: no silver source tables for dim_instrument — skipping")
+            row = conn.execute("SELECT COUNT(*) FROM gold.dim_instrument").fetchone()
+            return row[0] if row else 0
+
+        profile_select = """
+                SELECT
+                    symbol,
+                    CASE WHEN is_etf THEN 'etf' ELSE 'stock' END AS instrument_type,
+                    exchange_short_name                            AS exchange_code,
+                    sector,
+                    industry,
+                    country                                        AS country_code,
+                    is_etf,
+                    is_actively_trading
+                FROM silver.fmp_company_profile_bulk
+                WHERE symbol IS NOT NULL AND symbol != ''
+        """
+        eod_select = """
+                SELECT
+                    symbol,
+                    'stock'  AS instrument_type,
+                    NULL     AS exchange_code,
+                    NULL     AS sector,
+                    NULL     AS industry,
+                    NULL     AS country_code,
+                    FALSE    AS is_etf,
+                    TRUE     AS is_actively_trading
+                FROM silver.fmp_eod_bulk_price
+                WHERE symbol IS NOT NULL AND symbol != ''
+        """
+
+        if profile_exists and eod_exists:
+            union_sql = f"{profile_select} UNION {eod_select}"
+        elif profile_exists:
+            union_sql = profile_select
+        else:
+            union_sql = eod_select
+
+        conn.execute(f"""
             INSERT INTO gold.dim_instrument (
                 symbol, instrument_type_sk, exchange_sk, sector_sk, industry_sk,
                 country_sk, is_etf, is_actively_trading, gold_build_id, model_version, updated_at
@@ -83,31 +130,7 @@ class GoldDimService:
                 $1                                         AS gold_build_id,
                 $2                                         AS model_version,
                 $3::TIMESTAMP                              AS updated_at
-            FROM (
-                SELECT
-                    symbol,
-                    CASE WHEN is_etf THEN 'etf' ELSE 'stock' END AS instrument_type,
-                    exchange_short_name                            AS exchange_code,
-                    sector,
-                    industry,
-                    country                                        AS country_code,
-                    is_etf,
-                    is_actively_trading
-                FROM silver.fmp_company_profile_bulk
-                WHERE symbol IS NOT NULL AND symbol != ''
-                UNION
-                SELECT
-                    symbol,
-                    'stock'  AS instrument_type,
-                    NULL     AS exchange_code,
-                    NULL     AS sector,
-                    NULL     AS industry,
-                    NULL     AS country_code,
-                    FALSE    AS is_etf,
-                    TRUE     AS is_actively_trading
-                FROM silver.fmp_eod_bulk_price
-                WHERE symbol IS NOT NULL AND symbol != ''
-            ) src
+            FROM ({union_sql}) src
             LEFT JOIN gold.dim_instrument_type dit ON dit.instrument_type = src.instrument_type
             LEFT JOIN gold.dim_exchange dex ON dex.exchange_code = src.exchange_code
             LEFT JOIN gold.dim_sector ds ON ds.sector = src.sector
@@ -123,6 +146,10 @@ class GoldDimService:
         self, conn: duckdb.DuckDBPyConnection, gold_build_id: int | None, model_version: str, now: str
     ) -> int:
         """Populate dim_company from silver.fmp_company_profile_bulk."""
+        if not self._table_exists(conn, "silver", "fmp_company_profile_bulk"):
+            self._logger.info("GoldDimService: silver.fmp_company_profile_bulk not found — skipping dim_company")
+            row = conn.execute("SELECT COUNT(*) FROM gold.dim_company").fetchone()
+            return row[0] if row else 0
 
         conn.execute("""
             INSERT INTO gold.dim_company (

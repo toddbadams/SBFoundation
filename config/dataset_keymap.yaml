@@ -8315,9 +8315,10 @@ datasets:
   recipes:
   - plans:
     - basic
-    data_source_path: v4/batch-request/end-of-day-prices
+    data_source_path: eod-bulk
     query_vars:
-      date: __to_date__
+      date: __to__
+      datatype: csv
     date_key: date
     cadence_mode: interval
     min_age_days: 1
@@ -8381,8 +8382,11 @@ datasets:
   recipes:
   - plans:
     - basic
-    data_source_path: v4/profile/all
-    query_vars: {}
+    data_source_path: profile-bulk
+    query_vars:
+      part: 0
+      datatype: csv
+    paginate_param: part
     date_key:
     cadence_mode: interval
     min_age_days: 1

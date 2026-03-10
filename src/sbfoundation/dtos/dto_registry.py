@@ -67,6 +67,8 @@ from sbfoundation.dtos.market.market_holidays_dto import MarketHolidaysDTO
 from sbfoundation.dtos.commodities.commodities_list_dto import CommoditiesListDTO
 from sbfoundation.dtos.commodities.commodities_price_eod_dto import CommoditiesPriceEodDTO
 from sbfoundation.dtos.crypto.crypto_price_eod_dto import CryptoPriceEodDTO
+from sbfoundation.dtos.eod.eod_bulk_price_dto import EodBulkPriceDTO
+from sbfoundation.dtos.eod.eod_bulk_company_profile_dto import EodBulkCompanyProfileDTO
 from sbfoundation.dtos.fx.fx_list_dto import FxListDTO
 from sbfoundation.dtos.fx.fx_price_eod_dto import FxPriceEodDTO
 
@@ -185,6 +187,9 @@ DTO_REGISTRY = DTORegistry(
         # Crypto domain
         "cryptocurrency-list": CryptocurrencyListDTO,
         "crypto-price-eod": CryptoPriceEodDTO,
+        # EOD bulk domain
+        "eod-bulk-price": EodBulkPriceDTO,
+        "company-profile-bulk": EodBulkCompanyProfileDTO,
         # FX domain
         "forex-list": FxListDTO,
         "fx-price-eod": FxPriceEodDTO,

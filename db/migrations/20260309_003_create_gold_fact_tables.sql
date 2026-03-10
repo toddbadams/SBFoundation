@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS gold.fact_eod (
     momentum_6m       DOUBLE,
     momentum_12m      DOUBLE,
     volatility_30d    DOUBLE,
-    gold_build_id     INTEGER  REFERENCES ops.gold_build(gold_build_id),
+    gold_build_id     INTEGER,
     model_version     VARCHAR,
     updated_at        TIMESTAMP NOT NULL DEFAULT now(),
     PRIMARY KEY (instrument_sk, date_sk)
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS gold.fact_quarter (
     capital_expenditure       DOUBLE,
     free_cash_flow            DOUBLE,
     dividends_paid            DOUBLE,
-    gold_build_id             INTEGER  REFERENCES ops.gold_build(gold_build_id),
+    gold_build_id             INTEGER,
     model_version             VARCHAR,
     updated_at                TIMESTAMP NOT NULL DEFAULT now(),
     PRIMARY KEY (instrument_sk, period, calendar_year)
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS gold.fact_annual (
     capital_expenditure       DOUBLE,
     free_cash_flow            DOUBLE,
     dividends_paid            DOUBLE,
-    gold_build_id             INTEGER  REFERENCES ops.gold_build(gold_build_id),
+    gold_build_id             INTEGER,
     model_version             VARCHAR,
     updated_at                TIMESTAMP NOT NULL DEFAULT now(),
     PRIMARY KEY (instrument_sk, calendar_year)

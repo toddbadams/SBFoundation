@@ -398,6 +398,91 @@ class BronzeService:
                 )
                 break
 
+    def _process_paginated_recipe(self, recipe: DatasetRecipe) -> None:
+        """Process a non-ticker recipe that paginates via an incrementing query param.
+
+        Loops from 0 upward, overriding recipe.paginate_param on each request.
+        Stops when the response is empty.  Each non-empty response is persisted
+        as a separate Bronze file.  The cadence/watermark gate runs once (part=0);
+        subsequent parts are always fetched within the same run.
+        """
+        domain, source, dataset, discriminator = (
+            recipe.domain, recipe.source, recipe.dataset, recipe.discriminator or "",
+        )
+        today = self.universe.today()
+
+        # Cadence gate — check once for the whole paginated set
+        if not self._force_from_date:
+            last_ingestion_date = self.ops_service.get_last_ingestion_date(
+                domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=None
+            )
+            if last_ingestion_date and last_ingestion_date >= today:
+                self.logger.debug(
+                    "Skipping paginated recipe — already ingested today | dataset=%s", dataset, run_id=self.run.run_id
+                )
+                return
+            last_to_date = self.ops_service.get_watermark_date(
+                domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=None
+            )
+            from_date = last_to_date.isoformat() if last_to_date else self.universe.from_date
+        else:
+            from_date = self._force_from_date
+
+        part = 0
+        while True:
+            req = RunRequest.from_recipe(
+                recipe=recipe,
+                run_id=self.run.run_id,
+                from_date=from_date,
+                today=self.run.today,
+                api_key=self.fmp_api_key,
+            )
+            req.query_vars[recipe.paginate_param] = part
+
+            result = BronzeResult(now=self.universe.now(), request=req)
+
+            try:
+                _req = req  # capture for lambda
+                response = self.request_executor.execute(
+                    lambda r=_req: requests.get(r.url, params=r.query_vars, timeout=(CONNECT_TIMEOUT, READ_TIMEOUT)),
+                    f"GET {req.url} {recipe.paginate_param}={part}",
+                )
+                result.add_response(response)
+            except requests.Timeout:
+                self._result_bronze_error(result, f"Connection to {req.url} timed out.")
+                break
+            except requests.ConnectionError:
+                self._result_bronze_error(result, f"Connection to {req.url} failed.")
+                break
+            except requests.RequestException as e:
+                self._result_bronze_error(result, f"Request to {req.url} failed: {e}")
+                break
+            except Exception as e:
+                self._result_bronze_error(result, f"Unexpected error: {e}")
+                break
+
+            # Empty content signals end of pages
+            if not result.content:
+                self.logger.info(
+                    f"Paginated {dataset}: empty response at {recipe.paginate_param}={part} — complete",
+                    run_id=self.run.run_id,
+                )
+                break
+
+            if not result.is_valid_bronze:
+                self._result_bronze_error(result, f"Failed bronze acceptance at {recipe.paginate_param}={part}: {result.error}")
+                break
+
+            filename = self._persist_bronze_file_only(result)
+            self.run.result_bronze_pass(result, filename=filename)
+            self.logger.info(
+                f"Paginated {dataset}: persisted {recipe.paginate_param}={part} | rows={len(result.content)}",
+                run_id=self.run.run_id,
+            )
+            part += 1
+
+        self._flush_manifest_inserts()
+
     def _process_dataset_recipe(self, recipe: DatasetRecipe):
         """Process a recipe for each ticker, or once if not ticker-based."""
         if recipe.is_ticker_based:
@@ -450,19 +535,22 @@ class BronzeService:
             finally:
                 self._watermarks_cache = None
         else:
-            # Non-ticker recipes always sequential (single request)
-            req = RunRequest.from_recipe(
-                recipe=recipe,
-                run_id=self.run.run_id,
-                from_date=self.universe.from_date,
-                today=self.run.today,
-                api_key=self.fmp_api_key,
-            )
-            if self._backfill_to_1990:
-                self._run_backward_fill_loop(req)
+            # Non-ticker recipes: use paginated loop if recipe declares paginate_param
+            if recipe.paginate_param and not self._backfill_to_1990:
+                self._process_paginated_recipe(recipe)
             else:
-                self._process_run_request(req)
-            self._flush_manifest_inserts()
+                req = RunRequest.from_recipe(
+                    recipe=recipe,
+                    run_id=self.run.run_id,
+                    from_date=self.universe.from_date,
+                    today=self.run.today,
+                    api_key=self.fmp_api_key,
+                )
+                if self._backfill_to_1990:
+                    self._run_backward_fill_loop(req)
+                else:
+                    self._process_run_request(req)
+                self._flush_manifest_inserts()
 
     def process(self, run: RunContext) -> RunContext:
         """Run registered recipes, updating and returning the summary."""

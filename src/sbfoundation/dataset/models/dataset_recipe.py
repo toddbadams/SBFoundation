@@ -28,6 +28,7 @@ class DatasetRecipe(BronzeToSilverDTO):
     run_days: list[str] | None = None  # which weekdays this recipe can run (defaults to all)
     discriminator: str | None = None  # an optional discriminator to build deterministic filenames, partitions to avoid collisions
     execution_phase: str = EXECUTION_PHASE_DATA_ACQUISITION  # 'instrument_discovery' or 'data_acquisition'
+    paginate_param: str | None = None  # query var key to paginate on (e.g. "part"); loops 0..N until empty response
     error: str = None  # error description
 
     # todo: expand recipe metadata to include Bronze/Silver lineage hints from

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import hashlib
+from datetime import datetime, timezone
 import threading
 from typing import Iterator
 
@@ -136,6 +138,37 @@ CREATE TABLE IF NOT EXISTS silver.universe_member (
 );
 """
 
+SCHEMA_MIGRATIONS_DDL = """
+CREATE TABLE IF NOT EXISTS ops.schema_migrations (
+    version     VARCHAR     PRIMARY KEY,
+    name        VARCHAR     NOT NULL,
+    applied_at  TIMESTAMP   NOT NULL,
+    checksum    VARCHAR(64) NOT NULL
+);
+"""
+
+OPS_RUN_INTEGRITY_DDL = """
+CREATE TABLE IF NOT EXISTS ops.run_integrity (
+    integrity_id     VARCHAR     PRIMARY KEY DEFAULT gen_random_uuid()::VARCHAR,
+    run_id           VARCHAR     NOT NULL,
+    layer            VARCHAR     NOT NULL,
+    domain           VARCHAR,
+    source           VARCHAR,
+    dataset          VARCHAR,
+    discriminator    VARCHAR     NOT NULL DEFAULT '',
+    ticker           VARCHAR     NOT NULL DEFAULT '',
+    file_id          VARCHAR,
+    status           VARCHAR     NOT NULL,
+    rows_in          BIGINT,
+    rows_out         BIGINT,
+    error_message    VARCHAR,
+    checked_at       TIMESTAMP   NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_run_integrity_run_id  ON ops.run_integrity (run_id);
+CREATE INDEX IF NOT EXISTS idx_run_integrity_status  ON ops.run_integrity (status);
+CREATE INDEX IF NOT EXISTS idx_run_integrity_dataset ON ops.run_integrity (domain, dataset);
+"""
+
 UNIVERSE_DERIVED_METRICS_DDL = """
 CREATE TABLE IF NOT EXISTS silver.universe_derived_metrics (
     symbol                  VARCHAR     NOT NULL,
@@ -194,25 +227,22 @@ class DuckDbBootstrap:
         return self._conn
 
     def _initialize_schema(self) -> None:
-        """Create schemas and core ops tables if they don't exist.
+        """Create schemas, core ops tables, and apply pending migrations.
 
-        Idempotent - safe to call multiple times. Uses CREATE IF NOT EXISTS
-        to ensure existing databases are not disrupted. All DDL runs in a
-        single transaction for atomicity.
-
-        Creates:
-        - ops, silver schemas
-        - ops.file_ingestions table (core metadata table)
-
-        Raises:
-            Exception: If schema creation fails (transaction is rolled back)
+        Idempotent — uses CREATE IF NOT EXISTS throughout. All core DDL runs
+        in one transaction; each migration runs in its own transaction.
+        Migrations use self._conn.execute() directly to avoid acquiring
+        _conn_lock (which transaction() does), preventing a self-deadlock
+        when connect() is called from within read_connection() or transaction().
         """
         try:
             self._conn.execute("BEGIN")
             self._conn.execute(SCHEMA_DDL)
+            self._conn.execute(SCHEMA_MIGRATIONS_DDL)
             self._conn.execute(OPS_FILE_INGESTIONS_DDL)
             self._conn.execute(DATASET_WATERMARKS_DDL)
             self._conn.execute(OPS_COVERAGE_INDEX_DDL)
+            self._conn.execute(OPS_RUN_INTEGRITY_DDL)
             self._conn.execute(UNIVERSE_SNAPSHOT_DDL)
             self._conn.execute(UNIVERSE_MEMBER_DDL)
             self._conn.execute(UNIVERSE_DERIVED_METRICS_DDL)
@@ -222,6 +252,82 @@ class DuckDbBootstrap:
             self._conn.execute("ROLLBACK")
             self._logger.error(f"Schema initialization failed: {e}")
             raise
+
+        self._apply_pending_migrations()
+
+    def _apply_pending_migrations(self) -> None:
+        """Apply pending SQL migrations using the raw connection (no lock).
+
+        Called from _initialize_schema() before _conn_lock is ever acquired,
+        so it must NOT go through transaction() or read_connection(). Each
+        migration runs in its own BEGIN/COMMIT block directly on self._conn.
+
+        Migrations that fail with CatalogException (e.g. ALTER TABLE on a
+        Silver table that doesn't exist yet on a fresh DB) are skipped and
+        recorded as applied — the target schema state is already correct
+        because Silver tables are created by the ingestion code with the
+        right column types from the start.
+        """
+        from sbfoundation.folders import Folders
+        migrations_path = Folders.migration_absolute_path()
+        if not migrations_path.exists():
+            return
+
+        try:
+            rows = self._conn.execute("SELECT version FROM ops.schema_migrations").fetchall()
+            applied = {row[0] for row in rows}
+        except Exception:
+            applied = set()
+
+        pending = sorted(
+            f for f in migrations_path.glob("*.sql")
+            if self._parse_migration_version(f.name) not in applied
+        )
+
+        if not pending:
+            self._logger.info("No pending migrations")
+            return
+
+        self._logger.info(f"Applying {len(pending)} migration(s)")
+        for path in pending:
+            version, name = self._parse_migration_version(path.name), self._parse_migration_name(path.name)
+            sql = path.read_text(encoding="utf-8")
+            checksum = hashlib.sha256(sql.encode()).hexdigest()
+            now = datetime.now(timezone.utc)
+            try:
+                self._conn.execute("BEGIN")
+                self._conn.execute(sql)
+                self._conn.execute(
+                    "INSERT OR IGNORE INTO ops.schema_migrations (version, name, applied_at, checksum) VALUES (?, ?, ?, ?)",
+                    [version, name, now, checksum],
+                )
+                self._conn.execute("COMMIT")
+                self._logger.info(f"Applied migration: {version} — {name}")
+            except duckdb.CatalogException as exc:
+                self._conn.execute("ROLLBACK")
+                self._logger.warning(
+                    f"Migration {version} skipped (table not found — fresh DB, schema already correct): {exc}"
+                )
+                self._conn.execute("BEGIN")
+                self._conn.execute(
+                    "INSERT OR IGNORE INTO ops.schema_migrations (version, name, applied_at, checksum) VALUES (?, ?, ?, ?)",
+                    [version, name, now, checksum],
+                )
+                self._conn.execute("COMMIT")
+            except Exception as exc:
+                self._conn.execute("ROLLBACK")
+                self._logger.error(f"Migration failed: {version} — {exc}")
+                raise
+
+    @staticmethod
+    def _parse_migration_version(filename: str) -> str:
+        parts = filename.removesuffix(".sql").split("_", 2)
+        return f"{parts[0]}_{parts[1]}" if len(parts) >= 2 else filename.removesuffix(".sql")
+
+    @staticmethod
+    def _parse_migration_name(filename: str) -> str:
+        parts = filename.removesuffix(".sql").split("_", 2)
+        return parts[2] if len(parts) >= 3 else ""
 
     def close(self) -> None:
         """Close the database connection if owned by this bootstrap."""

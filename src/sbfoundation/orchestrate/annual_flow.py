@@ -24,6 +24,7 @@ def run_annual_pipeline(today: str | None = None) -> dict:
         concurrent_requests=5,
         enable_bronze=True,
         enable_silver=True,
+        enable_gold=True,
     )
     api = SBFoundationAPI(today=today)
     result = api.run(command)

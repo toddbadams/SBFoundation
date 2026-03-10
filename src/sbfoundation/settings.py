@@ -4,41 +4,17 @@ DEFAULT_LIMIT: int = 1000
 
 
 # ---- DOMAINS ---- #
-MARKET_DOMAIN = "market"
-ECONOMICS_DOMAIN = "economics"
-FUNDAMENTALS_DOMAIN = "fundamentals"
-TECHNICALS_DOMAIN = "technicals"
-COMPANY_DOMAIN = "company"
-COMMODITIES_DOMAIN = "commodities"
-FX_DOMAIN = "fx"
-CRYPTO_DOMAIN = "crypto"
 EOD_DOMAIN = "eod"
 QUARTER_DOMAIN = "quarter"
 ANNUAL_DOMAIN = "annual"
 DOMAINS: list = [
-    MARKET_DOMAIN,
-    ECONOMICS_DOMAIN,
-    COMPANY_DOMAIN,
-    FUNDAMENTALS_DOMAIN,
-    TECHNICALS_DOMAIN,
-    COMMODITIES_DOMAIN,
-    FX_DOMAIN,
-    CRYPTO_DOMAIN,
     EOD_DOMAIN,
     QUARTER_DOMAIN,
     ANNUAL_DOMAIN,
 ]
 
-# Domain execution order for orchestration (market must run first to populate universe)
+# Domain execution order for orchestration
 DOMAIN_EXECUTION_ORDER: tuple[str, ...] = (
-    MARKET_DOMAIN,
-    ECONOMICS_DOMAIN,
-    COMPANY_DOMAIN,
-    FUNDAMENTALS_DOMAIN,
-    TECHNICALS_DOMAIN,
-    COMMODITIES_DOMAIN,
-    FX_DOMAIN,
-    CRYPTO_DOMAIN,
     EOD_DOMAIN,
     QUARTER_DOMAIN,
     ANNUAL_DOMAIN,

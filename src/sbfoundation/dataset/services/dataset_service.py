@@ -123,6 +123,7 @@ class DatasetService:
                     "run_days": recipe.get("run_days"),
                     "discriminator": entry.get("discriminator") or None,
                     "plans": recipe.get("plans"),
+                    "paginate_param": recipe.get("paginate_param") or None,
                 }
                 # Only include execution_phase if explicitly set (otherwise use default)
                 if recipe.get("execution_phase"):

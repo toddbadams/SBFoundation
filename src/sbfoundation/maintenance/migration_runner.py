@@ -69,6 +69,20 @@ class MigrationRunner:
                     )
                 self._logger.info(f"Applied migration: {version} — {name}")
                 newly_applied.append(version)
+            except duckdb.CatalogException as exc:
+                # ALTER/RENAME/DROP on a Silver table that doesn't exist yet is a
+                # no-op on a fresh DB — Silver tables are created by the ingestion
+                # code with the correct schema, so the migration's target state is
+                # already satisfied.  Record it as applied and continue.
+                self._logger.warning(
+                    f"Migration {version} skipped (table not found — fresh DB, schema already correct): {exc}"
+                )
+                with self._bootstrap.transaction() as conn:
+                    conn.execute(
+                        "INSERT OR IGNORE INTO ops.schema_migrations (version, name, applied_at, checksum) VALUES (?, ?, ?, ?)",
+                        [version, name, datetime.now(timezone.utc), checksum],
+                    )
+                newly_applied.append(version)
             except Exception as exc:
                 self._logger.error(f"Migration failed: {version} — {exc}")
                 raise

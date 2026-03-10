@@ -170,7 +170,7 @@ datasets:
   recipes:
   - plans:
     - basic
-    data_source_path: v4/income-statement-bulk
+    data_source_path: income-statement-bulk
     query_vars:
       period: quarter
     date_key: date
@@ -237,7 +237,7 @@ datasets:
   recipes:
   - plans:
     - basic
-    data_source_path: v4/balance-sheet-statement-bulk
+    data_source_path: balance-sheet-statement-bulk
     query_vars:
       period: quarter
     date_key: date
@@ -310,7 +310,7 @@ datasets:
   recipes:
   - plans:
     - basic
-    data_source_path: v4/cash-flow-statement-bulk
+    data_source_path: cash-flow-statement-bulk
     query_vars:
       period: quarter
     date_key: date
@@ -370,7 +370,7 @@ datasets:
   recipes:
   - plans:
     - basic
-    data_source_path: v4/income-statement-bulk
+    data_source_path: income-statement-bulk
     query_vars:
       period: FY
     date_key: date
@@ -436,7 +436,7 @@ datasets:
   recipes:
   - plans:
     - basic
-    data_source_path: v4/balance-sheet-statement-bulk
+    data_source_path: balance-sheet-statement-bulk
     query_vars:
       period: FY
     date_key: date
@@ -508,7 +508,7 @@ datasets:
   recipes:
   - plans:
     - basic
-    data_source_path: v4/cash-flow-statement-bulk
+    data_source_path: cash-flow-statement-bulk
     query_vars:
       period: FY
     date_key: date

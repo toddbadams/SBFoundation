@@ -161,6 +161,7 @@ datasets:
     data_source_path: income-statement-bulk
     query_vars:
       period: quarter
+      datatype: csv
     date_key: date
     cadence_mode: interval
     min_age_days: 1
@@ -222,6 +223,7 @@ datasets:
     data_source_path: balance-sheet-statement-bulk
     query_vars:
       period: quarter
+      datatype: csv
     date_key: date
     cadence_mode: interval
     min_age_days: 1
@@ -289,6 +291,7 @@ datasets:
     data_source_path: cash-flow-statement-bulk
     query_vars:
       period: quarter
+      datatype: csv
     date_key: date
     cadence_mode: interval
     min_age_days: 1
@@ -343,6 +346,7 @@ datasets:
     data_source_path: income-statement-bulk
     query_vars:
       period: FY
+      datatype: csv
     date_key: date
     cadence_mode: interval
     min_age_days: 1
@@ -403,6 +407,7 @@ datasets:
     data_source_path: balance-sheet-statement-bulk
     query_vars:
       period: FY
+      datatype: csv
     date_key: date
     cadence_mode: interval
     min_age_days: 1
@@ -469,6 +474,7 @@ datasets:
     data_source_path: cash-flow-statement-bulk
     query_vars:
       period: FY
+      datatype: csv
     date_key: date
     cadence_mode: interval
     min_age_days: 1

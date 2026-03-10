@@ -1,6 +1,7 @@
 """Quarterly bulk ingestion service."""
 from __future__ import annotations
 
+import dataclasses
 from datetime import date
 
 from sbfoundation.run.dtos.run_context import RunContext
@@ -18,10 +19,26 @@ class QuarterService(BulkPipelineService):
     - Oct 1 - Nov 30  (Q3 filings)
     """
 
-    def run(self, run: RunContext) -> RunContext:
+    def run(
+        self,
+        run: RunContext,
+        year: int | None = None,
+        period: str | None = None,
+    ) -> RunContext:
+        """Run quarterly bulk ingestion.
+
+        Args:
+            run: Current run context.
+            year: Calendar year to fetch (e.g., 2025). When provided together
+                with ``period``, bypasses the earnings-season gate and injects
+                ``year`` and ``period`` as additional query parameters.
+            period: Fiscal quarter to fetch (e.g., "Q1"). Must be provided
+                together with ``year``; ignored when ``year`` is omitted.
+        """
         self._logger.log_section(run.run_id, "Processing quarter bulk domain")
+        override_active = year is not None and period is not None
         today = date.fromisoformat(self._today)
-        if not self.is_earnings_season(today):
+        if not override_active and not self.is_earnings_season(today):
             self._logger.info(
                 f"Quarter bulk: outside earnings season ({today}) — skipping",
                 run_id=run.run_id,
@@ -31,14 +48,26 @@ class QuarterService(BulkPipelineService):
         if not recipes:
             self._logger.warning("No quarterly bulk recipes found", run_id=run.run_id)
             return run
-        self._logger.info(
-            f"{self._processing_msg(self._enable_bronze, 'BRONZE')} {len(recipes)} quarterly bulk datasets",
-            run_id=run.run_id,
-        )
-        if self._enable_bronze:
-            run = self._process_recipe_list(recipes, run)
-        run = self._promote_silver(run, QUARTER_DOMAIN)
-        self._logger.info("Quarter bulk domain complete", run_id=run.run_id)
+        if override_active:
+            self._logger.info(f"Quarter override: year={year} period={period}", run_id=run.run_id)
+            recipes = [
+                dataclasses.replace(r, query_vars={**(r.query_vars or {}), "year": year, "period": period})
+                for r in recipes
+            ]
+        original_force_from_date = self._force_from_date
+        if override_active:
+            self._force_from_date = f"{year}-01-01"  # bypass watermark filter for historical fetch
+        try:
+            self._logger.info(
+                f"{self._processing_msg(self._enable_bronze, 'BRONZE')} {len(recipes)} quarterly bulk datasets",
+                run_id=run.run_id,
+            )
+            if self._enable_bronze:
+                run = self._process_recipe_list(recipes, run)
+            run = self._promote_silver(run, QUARTER_DOMAIN)
+            self._logger.info("Quarter bulk domain complete", run_id=run.run_id)
+        finally:
+            self._force_from_date = original_force_from_date
         return run
 
     @staticmethod
@@ -56,6 +85,8 @@ if __name__ == "__main__":
         enable_bronze=True,
         enable_silver=True,
         enable_gold=True,
+        quarter_year=2025,
+        quarter_period="Q1",
     )
     result = SBFoundationAPI(today=date.today().isoformat()).run(command)
     print(

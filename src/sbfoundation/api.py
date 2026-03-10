@@ -37,6 +37,8 @@ class RunCommand:
     force_from_date: str | None = None  # ISO date (e.g. "1990-01-01"); bypasses watermarks for historical backfill
     year: int | None = None  # Optional calendar year filter passed to annual bulk datasets
     eod_date: str | None = None  # ISO date override for __to__ query param in eod-bulk-price (e.g. "2024-10-22"); defaults to today
+    quarter_year: int | None = None  # Optional calendar year for historical quarter fetch (e.g. 2025); requires quarter_period
+    quarter_period: str | None = None  # Fiscal quarter to fetch (e.g. "Q1"); requires quarter_year; bypasses earnings-season gate
 
     def validate(self) -> None:
         """Validate this RunCommand. Raises ValueError on invalid input."""
@@ -91,6 +93,8 @@ class SBFoundationAPI:
             run = service.run(run, year=command.year)
         elif isinstance(service, EodService):
             run = service.run(run, date=command.eod_date)
+        elif isinstance(service, QuarterService):
+            run = service.run(run, year=command.quarter_year, period=command.quarter_period)
         else:
             run = service.run(run)
 

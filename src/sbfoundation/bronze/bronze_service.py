@@ -81,32 +81,33 @@ class BronzeService:
 
         today = self.universe.today()
 
+        # Always check the daily dedup gate, even in force_from_date mode.
+        # force_from_date overrides the content-date watermark (from_date) but must
+        # not allow the same dataset to be re-downloaded multiple times on the same day.
+        if self._watermarks_cache is not None:
+            last_ingestion_date, last_to_date = self._watermarks_cache.get(ticker or "", (None, None))
+        else:
+            last_ingestion_date = self.ops_service.get_last_ingestion_date(
+                domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=ticker
+            )
+            last_to_date = self.ops_service.get_watermark_date(
+                domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=ticker
+            )
+
+        if last_ingestion_date and last_ingestion_date >= today:
+            self.logger.debug(
+                "Skipping duplicate ingestion | dataset=%s | ticker=%s | last_ingestion=%s",
+                dataset,
+                ticker,
+                last_ingestion_date,
+                run_id=self.run.run_id,
+            )
+            return
+
         if self._force_from_date:
-            # Backfill mode: bypass duplicate-ingestion check and watermarks.
-            # The caller has explicitly requested historical data from a fixed start date.
+            # Backfill mode: use caller-supplied start date instead of content watermark.
             request.from_date = self._force_from_date
         else:
-            # Normal mode: resolve watermarks via bulk cache (when pre-loaded) or per-ticker DB query.
-            if self._watermarks_cache is not None:
-                last_ingestion_date, last_to_date = self._watermarks_cache.get(ticker or "", (None, None))
-            else:
-                last_ingestion_date = self.ops_service.get_last_ingestion_date(
-                    domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=ticker
-                )
-                last_to_date = self.ops_service.get_watermark_date(
-                    domain=domain, source=source, dataset=dataset, discriminator=discriminator, ticker=ticker
-                )
-
-            if last_ingestion_date and last_ingestion_date >= today:
-                self.logger.debug(
-                    "Skipping duplicate ingestion | dataset=%s | ticker=%s | last_ingestion=%s",
-                    dataset,
-                    ticker,
-                    last_ingestion_date,
-                    run_id=self.run.run_id,
-                )
-                return
-
             if last_to_date:
                 request.from_date = last_to_date.isoformat()
 

@@ -181,6 +181,7 @@ datasets:
     - name: calendar_year
       type: int
       nullable: false
+      api: fiscalYear
     - name: reported_currency
       type: str
       nullable: true
@@ -243,6 +244,7 @@ datasets:
     - name: calendar_year
       type: int
       nullable: false
+      api: fiscalYear
     - name: reported_currency
       type: str
       nullable: true
@@ -311,6 +313,7 @@ datasets:
     - name: calendar_year
       type: int
       nullable: false
+      api: fiscalYear
     - name: reported_currency
       type: str
       nullable: true
@@ -366,6 +369,7 @@ datasets:
     - name: calendar_year
       type: int
       nullable: false
+      api: fiscalYear
     - name: reported_currency
       type: str
       nullable: true
@@ -427,6 +431,7 @@ datasets:
     - name: calendar_year
       type: int
       nullable: false
+      api: fiscalYear
     - name: reported_currency
       type: str
       nullable: true
@@ -494,6 +499,7 @@ datasets:
     - name: calendar_year
       type: int
       nullable: false
+      api: fiscalYear
     - name: reported_currency
       type: str
       nullable: true

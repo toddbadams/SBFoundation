@@ -372,7 +372,7 @@ datasets:
     - basic
     data_source_path: v4/income-statement-bulk
     query_vars:
-      period: annual
+      period: FY
     date_key: date
     cadence_mode: interval
     min_age_days: 1
@@ -438,7 +438,7 @@ datasets:
     - basic
     data_source_path: v4/balance-sheet-statement-bulk
     query_vars:
-      period: annual
+      period: FY
     date_key: date
     cadence_mode: interval
     min_age_days: 1
@@ -510,7 +510,7 @@ datasets:
     - basic
     data_source_path: v4/cash-flow-statement-bulk
     query_vars:
-      period: annual
+      period: FY
     date_key: date
     cadence_mode: interval
     min_age_days: 1

@@ -267,5 +267,27 @@ class OpsService:
             discriminator=discriminator, ticker=ticker, floor_date=floor_date,
         )
 
+    def start_gold_build(self, *, run_id: str, model_version: str, started_at: datetime) -> int:
+        return self._ops_repo.start_gold_build(run_id=run_id, model_version=model_version, started_at=started_at)
+
+    def finish_gold_build(
+        self,
+        *,
+        gold_build_id: int,
+        finished_at: datetime,
+        status: str,
+        tables_built: list[str],
+        row_counts: str,
+        error_message: str | None = None,
+    ) -> None:
+        self._ops_repo.finish_gold_build(
+            gold_build_id=gold_build_id,
+            finished_at=finished_at,
+            status=status,
+            tables_built=tables_built,
+            row_counts=row_counts,
+            error_message=error_message,
+        )
+
 
 __all__ = ["OpsService"]

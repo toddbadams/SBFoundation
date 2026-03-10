@@ -16,7 +16,7 @@ class IncomeStatementBulkDTO(BronzeToSilverDTO):
     symbol: str = field(default="_none_", metadata={"api": "symbol"})
     date: date | None = field(default=None, metadata={"api": "date"})
     period: str = field(default="", metadata={"api": "period"})
-    calendar_year: int = field(default=0, metadata={"api": "calendarYear"})
+    calendar_year: int = field(default=0, metadata={"api": "fiscalYear"})
     reported_currency: str | None = field(default=None, metadata={"api": "reportedCurrency"})
     revenue: float | None = field(default=None, metadata={"api": "revenue"})
     gross_profit: float | None = field(default=None, metadata={"api": "grossProfit"})

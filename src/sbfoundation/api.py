@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timezone
 import os
 import traceback
 
@@ -176,21 +176,44 @@ class SBFoundationAPI:
     def _promote_gold(self, run: RunContext) -> None:
         """Promote Silver data into Gold dims and facts. Non-fatal on error."""
         self.logger.log_section(run.run_id, "Promoting to Gold")
+        from sbfoundation.gold.gold_dim_service import _git_sha
+        started_at = datetime.now(timezone.utc)
+        gold_build_id = self.ops_service.start_gold_build(
+            run_id=run.run_id,
+            model_version=_git_sha(),
+            started_at=started_at,
+        )
+        dim_counts: dict = {}
+        fact_counts: dict = {}
+        error_message: str | None = None
         try:
             dim_svc = GoldDimService(bootstrap=self._bootstrap, logger=self.logger)
-            dim_counts = dim_svc.build(run_id=run.run_id)
+            dim_counts = dim_svc.build(gold_build_id=gold_build_id, run_id=run.run_id)
             self.logger.info(f"Gold dims: {dim_counts}", run_id=run.run_id)
         except Exception as exc:
+            error_message = str(exc)
             self.logger.error(f"Gold dim promotion failed: {exc}", run_id=run.run_id)
             traceback.print_exc()
 
         try:
             fact_svc = GoldFactService(bootstrap=self._bootstrap, logger=self.logger)
-            fact_counts = fact_svc.build(run_id=run.run_id)
+            fact_counts = fact_svc.build(gold_build_id=gold_build_id, run_id=run.run_id)
             self.logger.info(f"Gold facts: {fact_counts}", run_id=run.run_id)
         except Exception as exc:
+            error_message = (error_message + " | " if error_message else "") + str(exc)
             self.logger.error(f"Gold fact promotion failed: {exc}", run_id=run.run_id)
             traceback.print_exc()
+
+        all_counts = {**dim_counts, **fact_counts}
+        tables_built = [t for t, n in all_counts.items() if n > 0]
+        self.ops_service.finish_gold_build(
+            gold_build_id=gold_build_id,
+            finished_at=datetime.now(timezone.utc),
+            status="error" if error_message else "complete",
+            tables_built=tables_built,
+            row_counts=str(all_counts),
+            error_message=error_message,
+        )
 
 
 if __name__ == "__main__":

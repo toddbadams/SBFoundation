@@ -11,6 +11,7 @@ from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbfoundation.maintenance import DuckDbBootstrap
 from sbfoundation.ops.services.ops_service import OpsService
 from sbfoundation.run.dtos.run_context import RunContext
+from sbfoundation.ops.requests.promotion_config import PromotionConfig
 from sbfoundation.silver import SilverService
 
 
@@ -74,11 +75,15 @@ class BulkPipelineService(ABC):
 
     def _promote_silver(self, run: RunContext, domain: str | None = None) -> RunContext:
         """Promote Bronze data to Silver, restricted to the given domain."""
+        # When force_from_date is set (backfill/year-specific fetch), disable the watermark
+        # filter so rows with dates before the current watermark are not silently dropped.
+        promotion_config = PromotionConfig(watermark_mode="none") if self._force_from_date else None
         silver_service = SilverService(
             enabled=self._enable_silver,
             ops_service=self._ops_service,
             keymap_service=self._dataset_service,
             bootstrap=self._bootstrap,
+            promotion_config=promotion_config,
         )
         try:
             _promoted_ids, promoted_rows = silver_service.promote(run, domain=domain)

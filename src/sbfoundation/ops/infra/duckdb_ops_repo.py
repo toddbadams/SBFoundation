@@ -665,6 +665,36 @@ class DuckDbOpsRepo:
         )
         return self._fetch_dicts(sql, [])
 
+    # ---- Gold build ---#
+
+    def start_gold_build(self, *, run_id: str, model_version: str, started_at: datetime.datetime) -> int:
+        """Insert a 'running' gold_build record and return the generated gold_build_id."""
+        sql = (
+            "INSERT INTO ops.gold_build (run_id, model_version, started_at, status) "
+            "VALUES (?, ?, ?, 'running') RETURNING gold_build_id"
+        )
+        with self._bootstrap.ops_transaction() as conn:
+            row = conn.execute(sql, [run_id, model_version, started_at]).fetchone()
+        return row[0] if row else 0
+
+    def finish_gold_build(
+        self,
+        *,
+        gold_build_id: int,
+        finished_at: datetime.datetime,
+        status: str,
+        tables_built: list[str],
+        row_counts: str,
+        error_message: str | None = None,
+    ) -> None:
+        sql = (
+            "UPDATE ops.gold_build SET finished_at = ?, status = ?, "
+            "tables_built = ?, row_counts = ?, error_message = ? "
+            "WHERE gold_build_id = ?"
+        )
+        with self._bootstrap.ops_transaction() as conn:
+            conn.execute(sql, [finished_at, status, tables_built, row_counts, error_message, gold_build_id])
+
     # ---- PRIVATE METHODS ---#
 
 

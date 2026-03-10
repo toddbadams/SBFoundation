@@ -70,48 +70,54 @@ class GoldDimService:
     def _build_dim_instrument(
         self, conn: duckdb.DuckDBPyConnection, gold_build_id: int | None, model_version: str, now: str
     ) -> int:
-        """Populate dim_instrument from silver.fmp_company_profile_bulk + silver.fmp_eod_bulk_price."""
+        """Populate dim_instrument from available Silver sources.
+
+        Priority (richest metadata first, ON CONFLICT DO NOTHING preserves first insert):
+          1. silver.fmp_company_profile_bulk  — full metadata
+          2. silver.fmp_eod_bulk_price        — symbol coverage
+          3. silver.fmp_income_statement_bulk_annual   — symbol only (fallback)
+          4. silver.fmp_income_statement_bulk_quarter  — symbol only (fallback)
+        """
         profile_exists = self._table_exists(conn, "silver", "fmp_company_profile_bulk")
         eod_exists = self._table_exists(conn, "silver", "fmp_eod_bulk_price")
+        annual_exists = self._table_exists(conn, "silver", "fmp_income_statement_bulk_annual")
+        quarter_exists = self._table_exists(conn, "silver", "fmp_income_statement_bulk_quarter")
 
-        if not profile_exists and not eod_exists:
+        if not any([profile_exists, eod_exists, annual_exists, quarter_exists]):
             self._logger.info("GoldDimService: no silver source tables for dim_instrument — skipping")
             row = conn.execute("SELECT COUNT(*) FROM gold.dim_instrument").fetchone()
             return row[0] if row else 0
 
-        profile_select = """
-                SELECT
-                    symbol,
-                    CASE WHEN is_etf THEN 'etf' ELSE 'stock' END AS instrument_type,
-                    exchange_short_name                            AS exchange_code,
-                    sector,
-                    industry,
-                    country                                        AS country_code,
-                    is_etf,
-                    is_actively_trading
-                FROM silver.fmp_company_profile_bulk
-                WHERE symbol IS NOT NULL AND symbol != ''
-        """
-        eod_select = """
-                SELECT
-                    symbol,
-                    'stock'  AS instrument_type,
-                    NULL     AS exchange_code,
-                    NULL     AS sector,
-                    NULL     AS industry,
-                    NULL     AS country_code,
-                    FALSE    AS is_etf,
-                    TRUE     AS is_actively_trading
-                FROM silver.fmp_eod_bulk_price
-                WHERE symbol IS NOT NULL AND symbol != ''
-        """
+        symbol_only_select = "symbol, 'stock' AS instrument_type, NULL AS exchange_code, NULL AS sector, NULL AS industry, NULL AS country_code, FALSE AS is_etf, TRUE AS is_actively_trading"
 
-        if profile_exists and eod_exists:
-            union_sql = f"{profile_select} UNION {eod_select}"
-        elif profile_exists:
-            union_sql = profile_select
-        else:
-            union_sql = eod_select
+        parts = []
+        if profile_exists:
+            parts.append("""
+                SELECT symbol,
+                    CASE WHEN is_etf THEN 'etf' ELSE 'stock' END AS instrument_type,
+                    exchange_short_name AS exchange_code,
+                    sector, industry,
+                    country AS country_code,
+                    is_etf, is_actively_trading
+                FROM silver.fmp_company_profile_bulk
+                WHERE symbol IS NOT NULL AND symbol != ''""")
+        if eod_exists:
+            parts.append(f"""
+                SELECT {symbol_only_select}
+                FROM silver.fmp_eod_bulk_price
+                WHERE symbol IS NOT NULL AND symbol != ''""")
+        if annual_exists:
+            parts.append(f"""
+                SELECT {symbol_only_select}
+                FROM silver.fmp_income_statement_bulk_annual
+                WHERE symbol IS NOT NULL AND symbol != ''""")
+        if quarter_exists:
+            parts.append(f"""
+                SELECT {symbol_only_select}
+                FROM silver.fmp_income_statement_bulk_quarter
+                WHERE symbol IS NOT NULL AND symbol != ''""")
+
+        union_sql = " UNION ".join(parts)
 
         conn.execute(f"""
             INSERT INTO gold.dim_instrument (

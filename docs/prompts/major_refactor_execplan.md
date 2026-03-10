@@ -1,11 +1,11 @@
 # ExecPlan: Major Package Restructure + Gold Layer + Bulk Pipelines
 
-**Version**: 1.2
+**Version**: 1.4
 **Created**: 2026-03-09
 **Updated**: 2026-03-10
 **Author**: Claude / User
 **Branch**: `feature/major-refactor`
-**Status**: ✅ Phases A–T complete + Phase K (API simplification) complete
+**Status**: ✅ Phases A–T + K + L + M complete — 415 tests pass
 
 ---
 
@@ -180,6 +180,82 @@ Removed the following domains entirely from both files (all dataset name constan
 #### K.6 — Import Cleanup
 - [x] K.6.1 — Removed unused imports from `api.py`: `field`, `timedelta`, `copy`, `RunRequest`
 
+### Phase L — Domain Services as Ingestion Entry Points
+
+#### L.1 — Base Class
+- [x] L.1.1 — Create `src/sbfoundation/run/services/bulk_pipeline_service.py` with `BulkPipelineService` abstract base
+- [x] L.1.2 — Inject shared deps via `__init__`: `ops_service`, `dataset_service`, `bootstrap`, `logger`, `enable_bronze`, `enable_silver`, `concurrent_requests`, `force_from_date`, `today`
+- [x] L.1.3 — Move `_processing_msg` from `api.py` to base class
+- [x] L.1.4 — Move `_process_recipe_list` from `api.py` to base class
+- [x] L.1.5 — Move `_promote_silver` from `api.py` to base class
+- [x] L.1.6 — Declare `run(self, run: RunContext) -> RunContext` as abstract method
+- [x] L.1.7 — Export from `src/sbfoundation/run/services/__init__.py`
+
+#### L.2 — EodService
+- [x] L.2.1 — `EodService` extends `BulkPipelineService`
+- [x] L.2.2 — Implement `run(self, run: RunContext) -> RunContext` — body moved from `api._handle_eod`
+- [x] L.2.3 — Remove stub `__init__`; use base class `__init__` (no subclass-specific state needed)
+
+#### L.3 — QuarterService
+- [x] L.3.1 — `QuarterService` extends `BulkPipelineService`
+- [x] L.3.2 — Implement `run(self, run: RunContext) -> RunContext` — body moved from `api._handle_quarter` (uses `self._today` for season gate)
+- [x] L.3.3 — Retain `is_earnings_season(today: date) -> bool` as `@staticmethod`
+
+#### L.4 — AnnualService
+- [x] L.4.1 — `AnnualService` extends `BulkPipelineService`
+- [x] L.4.2 — Implement `run(self, run: RunContext) -> RunContext` — body moved from `api._handle_annual` (uses `self._today` for season gate)
+- [x] L.4.3 — Retain `is_annual_season(today: date) -> bool` as `@staticmethod`
+
+#### L.5 — `api.py` Slim-Down
+- [x] L.5.1 — Add `_build_service(command: RunCommand) -> BulkPipelineService` factory to `SBFoundationAPI`
+- [x] L.5.2 — Replace `if domain == EOD_DOMAIN: run = self._handle_eod(command, run)` dispatch block with `run = self._build_service(command).run(run)`
+- [x] L.5.3 — Remove `_handle_eod`, `_handle_quarter`, `_handle_annual` from `api.py`
+- [x] L.5.4 — Remove `_processing_msg`, `_process_recipe_list`, `_promote_silver` from `api.py` (now on base class)
+- [x] L.5.5 — Remove `self._enable_silver`, `self._concurrent_requests`, `self._force_from_date` instance assignments from `run()` (pass directly to service `__init__`)
+- [x] L.5.6 — Confirm `_promote_gold`, `_start_run`, `_close_run` remain in `api.py`
+
+#### L.6 — Validation
+- [x] L.6.1 — All import checks pass
+- [x] L.6.2 — Structural assertions pass (helpers inherited, not duplicated)
+- [x] L.6.3 — 415 tests pass (`python -m pytest tests/ -x -q`)
+- [x] L.6.4 — Test helper and `test_run_command_validate.py` updated to remove references to deleted domain constants
+
+### Phase M — Dataset Keymap + Registry Reduction (Bulk-Only)
+
+#### M.1 — Dataset Keymap Pruned to Bulk Datasets Only
+- [x] M.1.1 — Removed all 108 non-bulk dataset entries from `config/dataset_keymap.yaml`
+- [x] M.1.2 — Retained 8 entries: `eod-bulk-price`, `company-profile-bulk`, `income-statement-bulk-quarter`, `balance-sheet-bulk-quarter`, `cashflow-bulk-quarter`, `income-statement-bulk-annual`, `balance-sheet-bulk-annual`, `cashflow-bulk-annual`
+- [x] M.1.3 — File reduced from 8,866 lines to 556 lines
+
+Removed dataset categories:
+- All per-ticker company datasets: `company-profile`, `company-notes`, `company-officers`, `company-employees`, `company-market-cap`, `company-shares-float`, `company-peers`, `company-delisted`
+- All per-ticker fundamentals: `income-statement`, `balance-sheet-statement`, `cashflow-statement`, `key-metrics`, `metric-ratios`, `key-metrics-ttm`, `ratios-ttm`, `financial-scores`, `owner-earnings`, `enterprise-values`, `income-statement-growth`, `balance-sheet-statement-growth`, `cashflow-statement-growth`, `financial-statement-growth`, `revenue-product-segmentation`, `revenue-geographic-segmentation`, `latest-financial-statements`
+- All technicals: `technicals-historical-price-eod-full`, `technicals-historical-price-eod-non-split-adjusted`, `technicals-historical-price-eod-dividend-adjusted`, `technicals-sma-*`, `technicals-ema-*`, `technicals-wma-*`, `technicals-dema-*`, `technicals-tema-20`, `technicals-rsi-*`, `technicals-standard-deviation-20`, `technicals-williams-14`, `technicals-adx-14`
+- All economics: `economic-indicators` (multiple discriminators), `treasury-rates`, `market-risk-premium`
+- All instrument lists: `stock-list`, `etf-list`, `index-list`, `cryptocurrency-list`, `etf-holdings`
+- All market: `market-countries`, `market-exchanges`, `market-sectors`, `market-industries`, `market-screener`, `market-sector-performance`, `market-industry-performance`, `market-sector-pe`, `market-industry-pe`, `market-hours`, `market-holidays`
+- All commodities: `commodities-list`, `commodities-price-eod`
+- All crypto: `crypto-price-eod`
+- All FX: `forex-list`, `fx-price-eod`
+
+#### M.2 — `DTO_REGISTRY` Pruned to Match
+- [x] M.2.1 — Removed all DTO imports for deleted datasets (company, economics, fundamentals, technicals, instrument, market, commodities, crypto, FX)
+- [x] M.2.2 — `DTO_REGISTRY` now contains only 8 entries matching the keymap
+- [x] M.2.3 — `dto_registry.py` reduced to 5 imports + registry construction
+
+#### M.3 — `settings.py` `DATASETS` List Pruned
+- [x] M.3.1 — Removed ~70 dataset constant definitions (company, economics, fundamentals, technicals, market, instrument)
+- [x] M.3.2 — Removed commodity/crypto/FX dataset constants (`COMMODITIES_LIST_DATASET`, `CRYPTO_LIST_DATASET`, `FX_LIST_DATASET`, etc.)
+- [x] M.3.3 — `DATASETS` list now contains only the 8 bulk dataset constants
+- [x] M.3.4 — `DOMAINS`, `EOD_DOMAIN`, `QUARTER_DOMAIN`, `ANNUAL_DOMAIN` unchanged
+
+#### M.4 — `AnnualService.run()` Year Parameter
+- [x] M.4.1 — Added optional `year: int | None = None` parameter to `AnnualService.run()`
+- [x] M.4.2 — When `year` is set, each recipe gets a `dataclasses.replace` copy with `{"year": year}` merged into `query_vars` — original recipe objects are not mutated
+- [x] M.4.3 — Added `year: int | None = None` field to `RunCommand`
+- [x] M.4.4 — `api.py` uses `isinstance(service, AnnualService)` to pass `year=command.year` when calling `run()`
+- [x] M.4.5 — `__main__` block updated to show `year=2024` example
+
 ### Phase T — E2E Testing Infrastructure
 - [x] T.1 — `tests/e2e/fixtures/fmp/` directory structure with .gitkeep files
 - [x] T.2 — `tests/e2e/conftest.py` with `mem_duck` and `fmp_server` fixtures
@@ -223,6 +299,12 @@ _To be filled in as work proceeds._
 | 2026-03-10 | Remove all per-ticker domains (`market`, `company`, `fundamentals`, `technicals`, `commodities`, `fx`, `crypto`) from `settings.py` and `api.py` | These domains relied on per-ticker orchestration logic that has been superseded by the bulk EOD/quarter/annual pipelines; retaining dead code creates confusion and maintenance risk | User |
 | 2026-03-10 | Remove `economics` domain from `settings.py` and `api.py` | Same rationale as above; economics dataset constants retained for downstream use | User |
 | 2026-03-10 | Do not remove `backfill_to_1990` from `BronzeService.__init__` at this time | The parameter is still technically valid on `BronzeService`; removing it would be a separate, unrelated cleanup and risks introducing a separate bug | Claude |
+| 2026-03-10 | Domain services (`EodService`, `QuarterService`, `AnnualService`) own the ingestion run logic; `api.py` becomes a thin coordinator | Puts domain-specific concerns (recipe selection, season gating) inside the domain package; `api.py` should only orchestrate lifecycle (start/close run, Gold promotion, stats) | User |
+| 2026-03-10 | Base class `BulkPipelineService` lives in `src/sbfoundation/run/services/` | `run/services/` already holds execution infrastructure (executor, chunk engine); the pipeline base class is execution infrastructure, not a domain concept | Claude |
+| 2026-03-10 | `_promote_gold`, `_start_run`, `_close_run` remain in `api.py` | Gold promotion spans all domains and runs once after any domain completes; run lifecycle is a coordinator concern, not a single-domain concern | Claude |
+| 2026-03-10 | Prefect flows unchanged by Phase L | Flows call `SBFoundationAPI().run(command)` — the public interface is stable; the refactor is internal to the API | Claude |
+| 2026-03-10 | Remove all non-bulk datasets from keymap, DTO registry, and settings | Only bulk (EOD, quarter, annual) datasets are actively used; per-ticker and list datasets add dead configuration that complicates validation and loading | User |
+| 2026-03-10 | `year` parameter on `AnnualService.run()` rather than stored at construction | The parameter is specific to a single `run()` call, not persistent service state; passing at call site allows per-invocation control and keeps the constructor signature stable | Claude |
 
 ---
 
@@ -432,6 +514,92 @@ Same three FMP bulk endpoints as Phase C but with `period=annual` (FY).
 5. **`annual_flow.py`**: `@flow` function that calls `AnnualService`. Scheduled daily at 08:00 ET; service internally gates by Jan–Mar.
 6. **Deployment YAML** (`prefect.yaml`): Defines work pool, schedules, and environment.
 7. **Test**: `prefect deploy` dry-run; manually trigger each flow.
+
+### Phase L — Domain Services as Ingestion Entry Points
+
+**Objective**: Move all per-domain ingestion logic out of `api.py` into the three domain services (`EodService`, `QuarterService`, `AnnualService`), each inheriting shared Bronze + Silver pipeline mechanics from a common base class in `run/services/`. `api.py` becomes a thin coordinator: dependency wiring + run lifecycle + Gold promotion only.
+
+**Current state**: `EodService`, `QuarterService`, `AnnualService` are stubs (logger only). All ingestion logic (`_handle_*`, `_process_recipe_list`, `_promote_silver`) lives in `SBFoundationAPI`.
+
+**Target state**:
+
+```
+src/sbfoundation/
+├── run/services/
+│   └── bulk_pipeline_service.py   ← NEW base class
+├── eod/
+│   └── eod_service.py             ← extends BulkPipelineService; owns run()
+├── quarter/
+│   └── quarter_service.py         ← extends BulkPipelineService; owns run()
+├── annual/
+│   └── annual_service.py          ← extends BulkPipelineService; owns run()
+└── api.py                         ← thin coordinator only
+```
+
+**What moves where**:
+
+| Method | From | To |
+|---|---|---|
+| `_processing_msg` | `api.py` | `BulkPipelineService` |
+| `_process_recipe_list` | `api.py` | `BulkPipelineService` |
+| `_promote_silver` | `api.py` | `BulkPipelineService` |
+| `_handle_eod` body | `api.py` | `EodService.run()` |
+| `_handle_quarter` body | `api.py` | `QuarterService.run()` |
+| `_handle_annual` body | `api.py` | `AnnualService.run()` |
+| `_start_run` | `api.py` | stays |
+| `_close_run` | `api.py` | stays |
+| `_promote_gold` | `api.py` | stays |
+
+**`api.py` after Phase L** (structural sketch):
+
+```python
+def run(self, command: RunCommand) -> RunContext:
+    command.validate()
+    # ... recovery check ...
+    run = self._start_run(command)
+    run = self._build_service(command).run(run)   # ← single dispatch line
+    if command.enable_silver and command.enable_gold:
+        self._promote_gold(run)
+    # ... coverage, integrity, stats ...
+    self._close_run(run)
+    return run
+
+def _build_service(self, command: RunCommand) -> BulkPipelineService:
+    kwargs = dict(
+        ops_service=self.ops_service,
+        dataset_service=self._dataset_service,
+        bootstrap=self._bootstrap,
+        logger=self.logger,
+        enable_bronze=command.enable_bronze,
+        enable_silver=command.enable_silver,
+        concurrent_requests=command.concurrent_requests,
+        force_from_date=command.force_from_date,
+        today=self._today,
+    )
+    if command.domain == EOD_DOMAIN:
+        return EodService(**kwargs)
+    if command.domain == QUARTER_DOMAIN:
+        return QuarterService(**kwargs)
+    if command.domain == ANNUAL_DOMAIN:
+        return AnnualService(**kwargs)
+    raise ValueError(f"Unknown domain: {command.domain}")
+```
+
+**No Prefect flow changes required.** All three flows still call `SBFoundationAPI().run(command)` — the public API is unchanged.
+
+1. **Create `BulkPipelineService`** in `src/sbfoundation/run/services/bulk_pipeline_service.py`. Inject all shared deps in `__init__`. Move `_processing_msg`, `_process_recipe_list`, `_promote_silver` verbatim. Declare `run(self, run: RunContext) -> RunContext` as abstract.
+
+2. **Extend `EodService`** from `BulkPipelineService`. Remove stub `__init__`. Implement `run()` with the body of `api._handle_eod` (filter recipes by `EOD_DOMAIN`, call `_process_recipe_list` if `enable_bronze`, call `_promote_silver`).
+
+3. **Extend `QuarterService`** from `BulkPipelineService`. Remove stub `__init__`. Implement `run()` with the body of `api._handle_quarter` (season gate using `self._today`, filter recipes, process). Retain `is_earnings_season` static method.
+
+4. **Extend `AnnualService`** from `BulkPipelineService`. Remove stub `__init__`. Implement `run()` with the body of `api._handle_annual` (season gate, filter, process). Retain `is_annual_season` static method.
+
+5. **Slim `api.py`**: Add `_build_service()` factory. Replace the `if/elif` dispatch block with a single `self._build_service(command).run(run)` call. Remove `_handle_eod`, `_handle_quarter`, `_handle_annual`, `_processing_msg`, `_process_recipe_list`, `_promote_silver`, and the `self._enable_silver / self._concurrent_requests / self._force_from_date` transient assignments.
+
+6. **Update exports** in `src/sbfoundation/run/services/__init__.py` to expose `BulkPipelineService`.
+
+---
 
 ### Phase K — API Simplification: Domain Removal + Gold Promotion Fix
 
@@ -1864,6 +2032,342 @@ mv "$DATA_ROOT_FOLDER/duckdb/SBFoundation_backup_YYYYMMDD.duckdb" \
 
 ---
 
+### Phase L Concrete Steps
+
+#### Step L.1 — Create `BulkPipelineService`
+
+Create `src/sbfoundation/run/services/bulk_pipeline_service.py`:
+
+```python
+"""Abstract base class for bulk Bronze+Silver ingestion domain services."""
+from __future__ import annotations
+
+import traceback
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+from sbfoundation.bronze import BronzeService
+from sbfoundation.dataset.models.dataset_recipe import DatasetRecipe
+from sbfoundation.dataset.services.dataset_service import DatasetService
+from sbfoundation.infra.logger import LoggerFactory, SBLogger
+from sbfoundation.maintenance import DuckDbBootstrap
+from sbfoundation.ops.services.ops_service import OpsService
+from sbfoundation.run.dtos.run_context import RunContext
+from sbfoundation.silver import SilverService
+
+
+class BulkPipelineService(ABC):
+    """Shared Bronze + Silver pipeline mechanics for bulk ingestion domain services.
+
+    Subclasses implement run() with domain-specific recipe selection and
+    season gating. Bronze fetch, Silver promotion, and helper utilities
+    are provided here.
+    """
+
+    def __init__(
+        self,
+        *,
+        ops_service: OpsService,
+        dataset_service: DatasetService,
+        bootstrap: DuckDbBootstrap,
+        logger: SBLogger | None = None,
+        enable_bronze: bool,
+        enable_silver: bool,
+        concurrent_requests: int,
+        force_from_date: str | None,
+        today: str,
+    ) -> None:
+        self._ops_service = ops_service
+        self._dataset_service = dataset_service
+        self._bootstrap = bootstrap
+        self._logger = logger or LoggerFactory().create_logger(self.__class__.__name__)
+        self._enable_bronze = enable_bronze
+        self._enable_silver = enable_silver
+        self._concurrent_requests = concurrent_requests
+        self._force_from_date = force_from_date
+        self._today = today
+
+    @abstractmethod
+    def run(self, run: RunContext) -> RunContext:
+        """Execute Bronze + Silver ingestion for this domain. Return updated RunContext."""
+
+    # ------------------------------------------------------------------ #
+    # Shared helpers                                                       #
+    # ------------------------------------------------------------------ #
+
+    def _processing_msg(self, enabled: bool, layer: str) -> str:
+        return f"PROCESSING {layer} | " if enabled else f"DRY-RUN {layer} |"
+
+    def _process_recipe_list(self, recipes: list[DatasetRecipe], run: RunContext) -> RunContext:
+        """Process a list of recipes through the Bronze layer."""
+        if not recipes:
+            return run
+        bronze_service = BronzeService(
+            ops_service=self._ops_service,
+            concurrent_requests=self._concurrent_requests,
+            force_from_date=self._force_from_date,
+        )
+        try:
+            return bronze_service.register_recipes(run, recipes).process(run)
+        except Exception as exc:
+            self._logger.error("Bronze ingestion failed: %s", exc, run_id=run.run_id)
+            traceback.print_exc()
+            return run
+
+    def _promote_silver(self, run: RunContext, domain: str | None = None) -> RunContext:
+        """Promote Bronze data to Silver, restricted to the given domain."""
+        silver_service = SilverService(
+            enabled=self._enable_silver,
+            ops_service=self._ops_service,
+            keymap_service=self._dataset_service,
+            bootstrap=self._bootstrap,
+        )
+        try:
+            _promoted_ids, promoted_rows = silver_service.promote(run, domain=domain)
+        except Exception as e:
+            self._logger.error(f"Silver promotion: {e}", run_id=run.run_id)
+            promoted_rows = 0
+            traceback.print_exc()
+        finally:
+            silver_service.close()
+        run.silver_dto_count += promoted_rows
+        return run
+```
+
+#### Step L.2 — Update `src/sbfoundation/run/services/__init__.py`
+
+Add export:
+```python
+from sbfoundation.run.services.bulk_pipeline_service import BulkPipelineService
+__all__ = [..., "BulkPipelineService"]
+```
+
+#### Step L.3 — Implement `EodService.run()`
+
+Replace the stub `eod_service.py` body:
+
+```python
+"""EOD bulk ingestion service."""
+from __future__ import annotations
+
+from sbfoundation.run.dtos.run_context import RunContext
+from sbfoundation.run.services.bulk_pipeline_service import BulkPipelineService
+from sbfoundation.settings import EOD_DOMAIN
+
+
+class EodService(BulkPipelineService):
+    """Orchestrates daily bulk EOD + company profile bulk ingestion."""
+
+    def run(self, run: RunContext) -> RunContext:
+        self._logger.log_section(run.run_id, "Processing EOD bulk domain")
+        recipes = [r for r in self._dataset_service.recipes if r.domain == EOD_DOMAIN]
+        if not recipes:
+            self._logger.warning("No EOD bulk recipes found", run_id=run.run_id)
+            return run
+        self._logger.info(
+            f"{self._processing_msg(self._enable_bronze, 'BRONZE')} {len(recipes)} EOD bulk datasets",
+            run_id=run.run_id,
+        )
+        if self._enable_bronze:
+            run = self._process_recipe_list(recipes, run)
+        run = self._promote_silver(run, EOD_DOMAIN)
+        self._logger.info("EOD bulk domain complete", run_id=run.run_id)
+        return run
+```
+
+#### Step L.4 — Implement `QuarterService.run()`
+
+```python
+"""Quarterly bulk ingestion service."""
+from __future__ import annotations
+
+from datetime import date
+
+from sbfoundation.run.dtos.run_context import RunContext
+from sbfoundation.run.services.bulk_pipeline_service import BulkPipelineService
+from sbfoundation.settings import QUARTER_DOMAIN
+
+
+class QuarterService(BulkPipelineService):
+    """Orchestrates bulk quarterly fundamental ingestion (earnings seasons only)."""
+
+    def run(self, run: RunContext) -> RunContext:
+        self._logger.log_section(run.run_id, "Processing quarter bulk domain")
+        today = date.fromisoformat(self._today)
+        if not self.is_earnings_season(today):
+            self._logger.info(
+                f"Quarter bulk: outside earnings season ({today}) — skipping",
+                run_id=run.run_id,
+            )
+            return run
+        recipes = [r for r in self._dataset_service.recipes if r.domain == QUARTER_DOMAIN]
+        if not recipes:
+            self._logger.warning("No quarterly bulk recipes found", run_id=run.run_id)
+            return run
+        self._logger.info(
+            f"{self._processing_msg(self._enable_bronze, 'BRONZE')} {len(recipes)} quarterly bulk datasets",
+            run_id=run.run_id,
+        )
+        if self._enable_bronze:
+            run = self._process_recipe_list(recipes, run)
+        run = self._promote_silver(run, QUARTER_DOMAIN)
+        self._logger.info("Quarter bulk domain complete", run_id=run.run_id)
+        return run
+
+    @staticmethod
+    def is_earnings_season(today: date) -> bool:
+        """Return True if today falls within an earnings filing window."""
+        m = today.month
+        return m in (1, 2, 3, 4, 5, 7, 8, 10, 11)
+```
+
+#### Step L.5 — Implement `AnnualService.run()`
+
+```python
+"""Annual bulk ingestion service."""
+from __future__ import annotations
+
+from datetime import date
+
+from sbfoundation.run.dtos.run_context import RunContext
+from sbfoundation.run.services.bulk_pipeline_service import BulkPipelineService
+from sbfoundation.settings import ANNUAL_DOMAIN
+
+
+class AnnualService(BulkPipelineService):
+    """Orchestrates bulk annual fundamental ingestion (Jan–Mar only)."""
+
+    def run(self, run: RunContext) -> RunContext:
+        self._logger.log_section(run.run_id, "Processing annual bulk domain")
+        today = date.fromisoformat(self._today)
+        if not self.is_annual_season(today):
+            self._logger.info(
+                f"Annual bulk: outside annual filing season ({today}) — skipping",
+                run_id=run.run_id,
+            )
+            return run
+        recipes = [r for r in self._dataset_service.recipes if r.domain == ANNUAL_DOMAIN]
+        if not recipes:
+            self._logger.warning("No annual bulk recipes found", run_id=run.run_id)
+            return run
+        self._logger.info(
+            f"{self._processing_msg(self._enable_bronze, 'BRONZE')} {len(recipes)} annual bulk datasets",
+            run_id=run.run_id,
+        )
+        if self._enable_bronze:
+            run = self._process_recipe_list(recipes, run)
+        run = self._promote_silver(run, ANNUAL_DOMAIN)
+        self._logger.info("Annual bulk domain complete", run_id=run.run_id)
+        return run
+
+    @staticmethod
+    def is_annual_season(today: date) -> bool:
+        """Return True if today falls within the annual filing window (Jan–Mar)."""
+        return today.month in (1, 2, 3)
+```
+
+#### Step L.6 — Slim `api.py`
+
+Replace the body of `SBFoundationAPI.run()` dispatch block and remove dead methods:
+
+```python
+# In run():
+# BEFORE:
+self._enable_silver = command.enable_silver
+self._concurrent_requests = command.concurrent_requests
+self._force_from_date: str | None = command.force_from_date
+run = self._start_run(command)
+domain = command.domain
+if domain == EOD_DOMAIN:
+    run = self._handle_eod(command, run)
+elif domain == QUARTER_DOMAIN:
+    run = self._handle_quarter(command, run)
+elif domain == ANNUAL_DOMAIN:
+    run = self._handle_annual(command, run)
+
+# AFTER:
+run = self._start_run(command)
+run = self._build_service(command).run(run)
+```
+
+Add `_build_service()`:
+
+```python
+def _build_service(self, command: RunCommand) -> BulkPipelineService:
+    kwargs: dict = dict(
+        ops_service=self.ops_service,
+        dataset_service=self._dataset_service,
+        bootstrap=self._bootstrap,
+        logger=self.logger,
+        enable_bronze=command.enable_bronze,
+        enable_silver=command.enable_silver,
+        concurrent_requests=command.concurrent_requests,
+        force_from_date=command.force_from_date,
+        today=self._today,
+    )
+    if command.domain == EOD_DOMAIN:
+        return EodService(**kwargs)
+    if command.domain == QUARTER_DOMAIN:
+        return QuarterService(**kwargs)
+    if command.domain == ANNUAL_DOMAIN:
+        return AnnualService(**kwargs)
+    raise ValueError(f"Unknown domain: {command.domain}")
+```
+
+Delete from `api.py`: `_handle_eod`, `_handle_quarter`, `_handle_annual`, `_processing_msg`, `_process_recipe_list`, `_promote_silver`.
+
+Update imports in `api.py`:
+```python
+from sbfoundation.annual import AnnualService
+from sbfoundation.eod import EodService
+from sbfoundation.quarter import QuarterService
+from sbfoundation.run.services import BulkPipelineService
+# Remove: SilverService (no longer used directly in api.py)
+```
+
+---
+
+### Phase L Validation and Acceptance
+
+**Tier 1 — Quick checks**:
+```bash
+python -c "from sbfoundation.run.services.bulk_pipeline_service import BulkPipelineService; print('Base import OK')"
+python -c "from sbfoundation.eod import EodService; print('EodService OK')"
+python -c "from sbfoundation.quarter import QuarterService; print('QuarterService OK')"
+python -c "from sbfoundation.annual import AnnualService; print('AnnualService OK')"
+python -c "from sbfoundation.api import SBFoundationAPI, RunCommand; print('API import OK')"
+poetry run pytest tests/unit/ -x -q
+```
+Expected: all pass, zero import errors.
+
+**Tier 2 — Structural check**:
+```python
+# Confirm EodService has no _promote_silver of its own — it inherits
+import inspect
+from sbfoundation.eod import EodService
+from sbfoundation.run.services import BulkPipelineService
+assert issubclass(EodService, BulkPipelineService)
+assert "_promote_silver" not in EodService.__dict__
+assert "_process_recipe_list" not in EodService.__dict__
+assert callable(EodService.run)
+print("Structure OK")
+```
+
+**Tier 3 — Dry-run (no live API)**:
+```python
+from sbfoundation.api import SBFoundationAPI, RunCommand
+from sbfoundation.settings import EOD_DOMAIN
+result = SBFoundationAPI(today="2026-03-10").run(
+    RunCommand(domain=EOD_DOMAIN, concurrent_requests=1, enable_bronze=False, enable_silver=False)
+)
+print(f"run_id={result.run_id}  silver_rows={result.silver_dto_count}")
+# Expected: run_id non-empty, silver_rows=0, no exception
+```
+
+**Tier 4 — Post-live-run**: same acceptance criteria as Phase K.
+
+---
+
 ### Phase K Concrete Steps (2026-03-10)
 
 #### Step K.1 — Fix `GoldDimService` Missing Table Guards
@@ -2013,4 +2517,4 @@ All dataset name constants retained (economics, market, company, fundamentals, t
 
 ---
 
-*ExecPlan: major-refactor | Last updated: 2026-03-09 | Status: NOT STARTED*
+*ExecPlan: major-refactor | Last updated: 2026-03-10 | All phases complete — 415 tests pass*

@@ -13,7 +13,7 @@ from sbfoundation.settings import (
     BASE_URL,
     CADENCES,
     EOD_DOMAIN,
-    COMPANY_INFO_DATASET,
+    EOD_BULK_PRICE_DATASET,
     DATA_SOURCES_CONFIG,
     DEFAULT_LIMIT,
     FMP_DATA_SOURCE,
@@ -24,7 +24,7 @@ def make_dataset_recipe(**overrides: object) -> DatasetRecipe:
     base = {
         "domain": EOD_DOMAIN,
         "source": FMP_DATA_SOURCE,
-        "dataset": COMPANY_INFO_DATASET,
+        "dataset": EOD_BULK_PRICE_DATASET,
         "data_source_path": "/tmp",
         "query_vars": {"constant": "value"},
         "date_key": "date",

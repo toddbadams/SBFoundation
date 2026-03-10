@@ -35,6 +35,7 @@ class RunCommand:
     ticker_recipe_chunk_size: int = 0  # number of recipes to run per chunk
 
     force_from_date: str | None = None  # ISO date (e.g. "1990-01-01"); bypasses watermarks for historical backfill
+    year: int | None = None  # Optional calendar year filter passed to annual bulk datasets
 
     def validate(self) -> None:
         """Validate this RunCommand. Raises ValueError on invalid input."""
@@ -84,7 +85,11 @@ class SBFoundationAPI:
             self._recovery_service.recover()
 
         run = self._start_run(command)
-        run = self._build_service(command).run(run)
+        service = self._build_service(command)
+        if isinstance(service, AnnualService):
+            run = service.run(run, year=command.year)
+        else:
+            run = service.run(run)
 
         if command.enable_silver and command.enable_gold:
             self._promote_gold(run)

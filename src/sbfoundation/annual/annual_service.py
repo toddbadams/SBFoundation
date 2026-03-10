@@ -1,4 +1,5 @@
 """Annual bulk ingestion service."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -29,10 +30,7 @@ class AnnualService(BulkPipelineService):
             self._logger.warning("No annual bulk recipes found", run_id=run.run_id)
             return run
         if year is not None:
-            recipes = [
-                dataclasses.replace(r, query_vars={**r.query_vars, "year": year})
-                for r in recipes
-            ]
+            recipes = [dataclasses.replace(r, query_vars={**r.query_vars, "year": year}) for r in recipes]
             self._logger.info(f"Annual bulk: filtering to year={year}", run_id=run.run_id)
         self._logger.info(
             f"{self._processing_msg(self._enable_bronze, 'BRONZE')} {len(recipes)} annual bulk datasets",
@@ -59,7 +57,7 @@ if __name__ == "__main__":
         enable_bronze=True,
         enable_silver=True,
         enable_gold=True,
-        year=2024,  # omit to fetch all available years
+        year=2023,  # omit to fetch all available years
     )
     result = SBFoundationAPI(today=date.today().isoformat()).run(command)
     print(

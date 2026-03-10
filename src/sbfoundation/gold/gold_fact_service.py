@@ -178,7 +178,7 @@ class GoldFactService:
             JOIN gold.dim_instrument inst ON inst.symbol = inc.symbol
             {bs_join}
             {cf_join}
-            WHERE inc.symbol IS NOT NULL
+            WHERE inc.symbol IS NOT NULL AND inc.calendar_year IS NOT NULL
             ON CONFLICT (instrument_sk, period, calendar_year) DO UPDATE SET
                 reported_currency = EXCLUDED.reported_currency,
                 revenue = EXCLUDED.revenue,
@@ -252,7 +252,7 @@ class GoldFactService:
             JOIN gold.dim_instrument inst ON inst.symbol = inc.symbol
             {bs_join}
             {cf_join}
-            WHERE inc.symbol IS NOT NULL
+            WHERE inc.symbol IS NOT NULL AND inc.calendar_year IS NOT NULL
             ON CONFLICT (instrument_sk, calendar_year) DO UPDATE SET
                 reported_currency = EXCLUDED.reported_currency,
                 revenue = EXCLUDED.revenue,

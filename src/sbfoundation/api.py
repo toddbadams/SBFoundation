@@ -129,6 +129,12 @@ class SBFoundationAPI:
 
     def _build_service(self, command: RunCommand) -> BulkPipelineService:
         """Factory: instantiate the correct domain service for this command."""
+        # When year is specified without an explicit force_from_date, derive one so the
+        # watermark gate (last_ingestion_date >= today) doesn't skip the year-specific fetch.
+        force_from_date = command.force_from_date
+        if command.year is not None and force_from_date is None:
+            force_from_date = f"{command.year}-01-01"
+
         kwargs: dict = dict(
             ops_service=self.ops_service,
             dataset_service=self._dataset_service,
@@ -137,7 +143,7 @@ class SBFoundationAPI:
             enable_bronze=command.enable_bronze,
             enable_silver=command.enable_silver,
             concurrent_requests=command.concurrent_requests,
-            force_from_date=command.force_from_date,
+            force_from_date=force_from_date,
             today=self._today,
         )
         if command.domain == EOD_DOMAIN:

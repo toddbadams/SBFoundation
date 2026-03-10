@@ -69,6 +69,9 @@ from sbfoundation.dtos.commodities.commodities_price_eod_dto import CommoditiesP
 from sbfoundation.dtos.crypto.crypto_price_eod_dto import CryptoPriceEodDTO
 from sbfoundation.dtos.eod.eod_bulk_price_dto import EodBulkPriceDTO
 from sbfoundation.dtos.eod.eod_bulk_company_profile_dto import EodBulkCompanyProfileDTO
+from sbfoundation.dtos.fundamentals.bulk.income_statement_bulk_dto import IncomeStatementBulkDTO
+from sbfoundation.dtos.fundamentals.bulk.balance_sheet_bulk_dto import BalanceSheetBulkDTO
+from sbfoundation.dtos.fundamentals.bulk.cashflow_bulk_dto import CashflowBulkDTO
 from sbfoundation.dtos.fx.fx_list_dto import FxListDTO
 from sbfoundation.dtos.fx.fx_price_eod_dto import FxPriceEodDTO
 
@@ -187,6 +190,14 @@ DTO_REGISTRY = DTORegistry(
         # Crypto domain
         "cryptocurrency-list": CryptocurrencyListDTO,
         "crypto-price-eod": CryptoPriceEodDTO,
+        # Quarter bulk domain
+        "income-statement-bulk-quarter": IncomeStatementBulkDTO,
+        "balance-sheet-bulk-quarter": BalanceSheetBulkDTO,
+        "cashflow-bulk-quarter": CashflowBulkDTO,
+        # Annual bulk domain
+        "income-statement-bulk-annual": IncomeStatementBulkDTO,
+        "balance-sheet-bulk-annual": BalanceSheetBulkDTO,
+        "cashflow-bulk-annual": CashflowBulkDTO,
         # EOD bulk domain
         "eod-bulk-price": EodBulkPriceDTO,
         "company-profile-bulk": EodBulkCompanyProfileDTO,

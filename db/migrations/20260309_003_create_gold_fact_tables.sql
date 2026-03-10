@@ -1,4 +1,6 @@
 -- Gold layer: fact tables (built from Silver + dims by GoldFactService)
+-- Note: DuckDB does not support REFERENCES across different schemas, so FK constraints
+-- are enforced by application logic (GoldFactService) rather than DDL.
 
 CREATE SEQUENCE IF NOT EXISTS gold.gold_build_seq START 1;
 
@@ -17,8 +19,8 @@ CREATE TABLE IF NOT EXISTS ops.gold_build (
 
 -- fact_eod: one row per (instrument_sk, date_sk)
 CREATE TABLE IF NOT EXISTS gold.fact_eod (
-    instrument_sk     INTEGER  NOT NULL REFERENCES gold.dim_instrument(instrument_sk),
-    date_sk           INTEGER  NOT NULL REFERENCES gold.dim_date(date_sk),
+    instrument_sk     INTEGER  NOT NULL,
+    date_sk           INTEGER  NOT NULL,
     open              DOUBLE,
     high              DOUBLE,
     low               DOUBLE,
@@ -43,10 +45,10 @@ CREATE TABLE IF NOT EXISTS gold.fact_eod (
 
 -- fact_quarter: one row per (instrument_sk, period, calendar_year)
 CREATE TABLE IF NOT EXISTS gold.fact_quarter (
-    instrument_sk             INTEGER  NOT NULL REFERENCES gold.dim_instrument(instrument_sk),
+    instrument_sk             INTEGER  NOT NULL,
     period                    VARCHAR  NOT NULL,
     calendar_year             INTEGER  NOT NULL,
-    period_date_sk            INTEGER  REFERENCES gold.dim_date(date_sk),
+    period_date_sk            INTEGER,
     reported_currency         VARCHAR,
     revenue                   DOUBLE,
     gross_profit              DOUBLE,
@@ -76,9 +78,9 @@ CREATE TABLE IF NOT EXISTS gold.fact_quarter (
 
 -- fact_annual: one row per (instrument_sk, calendar_year)
 CREATE TABLE IF NOT EXISTS gold.fact_annual (
-    instrument_sk             INTEGER  NOT NULL REFERENCES gold.dim_instrument(instrument_sk),
+    instrument_sk             INTEGER  NOT NULL,
     calendar_year             INTEGER  NOT NULL,
-    period_date_sk            INTEGER  REFERENCES gold.dim_date(date_sk),
+    period_date_sk            INTEGER,
     reported_currency         VARCHAR,
     revenue                   DOUBLE,
     gross_profit              DOUBLE,

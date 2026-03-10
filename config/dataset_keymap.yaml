@@ -21,12 +21,6 @@ datasets:
     date_key: date
     cadence_mode: interval
     min_age_days: 1
-    run_days:
-    - mon
-    - tues
-    - wed
-    - thurs
-    - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#eod-bulk
   dto_schema:
     dto_type: sbfoundation.dtos.eod.eod_bulk_price_dto.EodBulkPriceDTO
@@ -88,12 +82,6 @@ datasets:
     date_key: null
     cadence_mode: interval
     min_age_days: 1
-    run_days:
-    - mon
-    - tues
-    - wed
-    - thurs
-    - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#profile-bulk
   dto_schema:
     dto_type: sbfoundation.dtos.eod.eod_bulk_company_profile_dto.EodBulkCompanyProfileDTO
@@ -176,12 +164,6 @@ datasets:
     date_key: date
     cadence_mode: interval
     min_age_days: 1
-    run_days:
-    - mon
-    - tues
-    - wed
-    - thurs
-    - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#financial-statements-bulk
   dto_schema:
     dto_type: sbfoundation.dtos.fundamentals.bulk.income_statement_bulk_dto.IncomeStatementBulkDTO
@@ -243,12 +225,6 @@ datasets:
     date_key: date
     cadence_mode: interval
     min_age_days: 1
-    run_days:
-    - mon
-    - tues
-    - wed
-    - thurs
-    - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#financial-statements-bulk
   dto_schema:
     dto_type: sbfoundation.dtos.fundamentals.bulk.balance_sheet_bulk_dto.BalanceSheetBulkDTO
@@ -316,12 +292,6 @@ datasets:
     date_key: date
     cadence_mode: interval
     min_age_days: 1
-    run_days:
-    - mon
-    - tues
-    - wed
-    - thurs
-    - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#financial-statements-bulk
   dto_schema:
     dto_type: sbfoundation.dtos.fundamentals.bulk.cashflow_bulk_dto.CashflowBulkDTO
@@ -376,12 +346,6 @@ datasets:
     date_key: date
     cadence_mode: interval
     min_age_days: 1
-    run_days:
-    - mon
-    - tues
-    - wed
-    - thurs
-    - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#financial-statements-bulk
   dto_schema:
     dto_type: sbfoundation.dtos.fundamentals.bulk.income_statement_bulk_dto.IncomeStatementBulkDTO
@@ -442,12 +406,6 @@ datasets:
     date_key: date
     cadence_mode: interval
     min_age_days: 1
-    run_days:
-    - mon
-    - tues
-    - wed
-    - thurs
-    - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#financial-statements-bulk
   dto_schema:
     dto_type: sbfoundation.dtos.fundamentals.bulk.balance_sheet_bulk_dto.BalanceSheetBulkDTO
@@ -514,12 +472,6 @@ datasets:
     date_key: date
     cadence_mode: interval
     min_age_days: 1
-    run_days:
-    - mon
-    - tues
-    - wed
-    - thurs
-    - fri
     help_url: https://site.financialmodelingprep.com/developer/docs#financial-statements-bulk
   dto_schema:
     dto_type: sbfoundation.dtos.fundamentals.bulk.cashflow_bulk_dto.CashflowBulkDTO

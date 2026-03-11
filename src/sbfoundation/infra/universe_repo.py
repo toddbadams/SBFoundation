@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
+from sbfoundation.maintenance import DuckDbBootstrap
 from sbfoundation.infra.logger import LoggerFactory, SBLogger
 
 

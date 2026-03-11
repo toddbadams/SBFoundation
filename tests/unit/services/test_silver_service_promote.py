@@ -437,7 +437,7 @@ class TestResolveDtoType:
         service = object.__new__(SilverService)
 
         # Should either get from registry or raise ValueError
-        with patch("sbfoundation.services.silver.silver_service.DTO_REGISTRY", {"company-profile": _TestDTO}):
+        with patch("sbfoundation.silver.silver_service.DTO_REGISTRY", {"company-profile": _TestDTO}):
             dto_type = service._resolve_dto_type(row, result_mock)
             assert dto_type is _TestDTO
 
@@ -448,7 +448,7 @@ class TestResolveDtoType:
         row = _make_manifest_row(dataset="unknown-dataset")
         service = object.__new__(SilverService)
 
-        with patch("sbfoundation.services.silver.silver_service.DTO_REGISTRY", {}):
+        with patch("sbfoundation.silver.silver_service.DTO_REGISTRY", {}):
             with pytest.raises(ValueError, match="Missing DTO mapping"):
                 service._resolve_dto_type(row, result_mock)
 

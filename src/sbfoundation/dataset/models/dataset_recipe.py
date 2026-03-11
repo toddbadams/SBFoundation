@@ -25,27 +25,13 @@ class DatasetRecipe(BronzeToSilverDTO):
     min_age_days: int  # when in interval cadendnce mode in market days.  ingestion_date >= base_date + N
     is_ticker_based: bool  # does this recipe run across all tickers?
     help_url: str  # a URL for online API documentation of this source endpoint
-    run_days: list[str] | None = None  # which weekdays this recipe can run (defaults to all)
     discriminator: str | None = None  # an optional discriminator to build deterministic filenames, partitions to avoid collisions
     execution_phase: str = EXECUTION_PHASE_DATA_ACQUISITION  # 'instrument_discovery' or 'data_acquisition'
+    paginate_param: str | None = None  # query var key to paginate on (e.g. "part"); loops 0..N until empty response
     error: str = None  # error description
 
     # todo: expand recipe metadata to include Bronze/Silver lineage hints from
     # docs/AI_context/architecture.md.md for richer manifests.
-
-    def __post_init__(self) -> None:
-        if not self.run_days:
-            self.run_days = list(DAYS_OF_WEEK)
-            return
-
-        if isinstance(self.run_days, str):
-            raw = [self.run_days]
-        else:
-            raw = list(self.run_days)
-
-        self.run_days = [str(day).strip().lower() for day in raw if str(day).strip()]
-        if not self.run_days:
-            self.run_days = list(DAYS_OF_WEEK)
 
     def create_file_id(self) -> str:
         return uuid.uuid4().hex
@@ -69,10 +55,6 @@ class DatasetRecipe(BronzeToSilverDTO):
             self.error = "INVALID CADENCE MODE"
             return False
 
-        if any(day not in DAYS_OF_WEEK for day in (self.run_days or [])):
-            self.error = "INVALID RUN DAYS"
-            return False
-
         if self.execution_phase not in EXECUTION_PHASES:
             self.error = "INVALID EXECUTION PHASE"
             return False
@@ -83,11 +65,6 @@ class DatasetRecipe(BronzeToSilverDTO):
     @property
     def msg(self) -> str:
         return f"domain={self.domain} | source={self.source} | dataset={self.dataset} | discriminator={self.discriminator}"
-
-    def runs_on(self, day: str) -> bool:
-        if not day:
-            return True
-        return day.lower() in (self.run_days or DAYS_OF_WEEK)
 
     @property
     def uses_date_range(self) -> bool:

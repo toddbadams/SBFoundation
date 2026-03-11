@@ -1,0 +1,36 @@
+# Prefect deployment configuration for sbfoundation flows
+# Apply with: prefect deploy --all
+name: sbfoundation
+
+pull:
+  - prefect.deployments.steps.git_clone:
+      repository: "."
+      branch: main
+
+deployments:
+  - name: eod-daily
+    flow: sbfoundation/orchestrate/eod_flow.py:eod_flow
+    description: "Daily bulk EOD price + company profile ingestion (weekdays, 18:00 ET)"
+    schedules:
+      - cron: "0 23 * * 1-5"   # 23:00 UTC = 18:00 ET (EST), Mon–Fri
+        timezone: "America/New_York"
+    work_pool:
+      name: default
+
+  - name: quarter-earnings-season
+    flow: sbfoundation/orchestrate/quarter_flow.py:quarter_flow
+    description: "Quarterly bulk fundamental ingestion (daily during earnings seasons)"
+    schedules:
+      - cron: "0 13 * * 1-5"   # 13:00 UTC = 08:00 ET, Mon–Fri
+        timezone: "America/New_York"
+    work_pool:
+      name: default
+
+  - name: annual-fy-season
+    flow: sbfoundation/orchestrate/annual_flow.py:annual_flow
+    description: "Annual bulk fundamental ingestion (daily Jan–Mar)"
+    schedules:
+      - cron: "0 13 * * 1-5"   # 13:00 UTC = 08:00 ET, Mon–Fri
+        timezone: "America/New_York"
+    work_pool:
+      name: default

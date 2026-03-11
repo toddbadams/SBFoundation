@@ -8,7 +8,7 @@ from typing import Any, Iterator
 import duckdb
 
 from sbfoundation.folders import Folders
-from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
+from sbfoundation.maintenance import DuckDbBootstrap
 
 
 def _n(value: Any) -> int:

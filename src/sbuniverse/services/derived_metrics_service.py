@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
+from sbfoundation.maintenance import DuckDbBootstrap
 from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbuniverse.infra.universe_repo import UniverseRepo
 

@@ -120,9 +120,9 @@ class DatasetService:
                     "min_age_days": recipe.get("min_age_days"),
                     "is_ticker_based": is_ticker_based,
                     "help_url": recipe.get("help_url"),
-                    "run_days": recipe.get("run_days"),
                     "discriminator": entry.get("discriminator") or None,
                     "plans": recipe.get("plans"),
+                    "paginate_param": recipe.get("paginate_param") or None,
                 }
                 # Only include execution_phase if explicitly set (otherwise use default)
                 if recipe.get("execution_phase"):
@@ -132,11 +132,8 @@ class DatasetService:
         return recipe_rows
 
     def _load_recipes(self) -> list[DatasetRecipe]:
-        """Load and filter recipes based on today and plan. Called once on init."""
+        """Load and filter recipes based on plan. Called once on init."""
         recipe_rows = self._load_recipe_rows_from_keymap()
-        day_of_week = DAYS_OF_WEEK_BY_INDEX.get(self._today.weekday())
-        if not day_of_week:
-            return []
         plan_norm = self._plan.strip().lower() if self._plan else ""
         # Build set of plans included in the user's plan (additive hierarchy)
         included_plans: set[str] = set()
@@ -161,8 +158,7 @@ class DatasetService:
             if not recipe.isValid():
                 self._logger.warning("Skipping invalid recipe: %s | error=%s", recipe.msg, recipe.error)
                 continue
-            if recipe.runs_on(day_of_week):
-                recipes.append(recipe)
+            recipes.append(recipe)
         return recipes
 
     @property

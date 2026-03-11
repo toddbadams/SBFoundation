@@ -51,16 +51,18 @@ class AnnualService(BulkPipelineService):
 if __name__ == "__main__":
     from sbfoundation.api import SBFoundationAPI, RunCommand
 
-    command = RunCommand(
-        domain=ANNUAL_DOMAIN,
-        concurrent_requests=1,  # sync mode for debugging
-        enable_bronze=True,
-        enable_silver=True,
-        enable_gold=True,
-        year=2023,  # omit to fetch all available years
-    )
-    result = SBFoundationAPI(today=date.today().isoformat()).run(command)
-    print(
-        f"run_id={result.run_id}  bronze_passed={result.bronze_files_passed}"
-        f"  bronze_failed={result.bronze_files_failed}  silver_rows={result.silver_dto_count}"
-    )
+    for _year in range(2020, 2026):
+        print(f"\n===== {_year} =====")
+        command = RunCommand(
+            domain=ANNUAL_DOMAIN,
+            concurrent_requests=1,  # sync mode for debugging
+            enable_bronze=True,
+            enable_silver=True,
+            enable_gold=True,
+            year=_year,
+        )
+        result = SBFoundationAPI(today=date.today().isoformat()).run(command)
+        print(
+            f"run_id={result.run_id}  bronze_passed={result.bronze_files_passed}"
+            f"  bronze_failed={result.bronze_files_failed}  silver_rows={result.silver_dto_count}"
+        )

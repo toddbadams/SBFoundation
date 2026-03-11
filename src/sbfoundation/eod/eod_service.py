@@ -56,19 +56,27 @@ class EodService(BulkPipelineService):
 
 
 if __name__ == "__main__":
-    from datetime import date
+    from datetime import date, timedelta
     from sbfoundation.api import SBFoundationAPI, RunCommand
 
-    command = RunCommand(
-        domain=EOD_DOMAIN,
-        concurrent_requests=1,  # sync mode for debugging
-        enable_bronze=True,
-        enable_silver=True,
-        enable_gold=True,
-        eod_date="2026-03-09",
-    )
-    result = SBFoundationAPI(today=date.today().isoformat()).run(command)
-    print(
-        f"run_id={result.run_id}  bronze_passed={result.bronze_files_passed}"
-        f"  bronze_failed={result.bronze_files_failed}  silver_rows={result.silver_dto_count}"
-    )
+    _start = date(2026, 1, 1)
+    _end = date(2026, 3, 9)
+    _day = _start
+    while _day <= _end:
+        if _day.weekday() < 5:  # Mon–Fri only
+            _eod_date = _day.isoformat()
+            print(f"\n===== EOD {_eod_date} =====")
+            command = RunCommand(
+                domain=EOD_DOMAIN,
+                concurrent_requests=1,  # sync mode for debugging
+                enable_bronze=True,
+                enable_silver=True,
+                enable_gold=True,
+                eod_date=_eod_date,
+            )
+            result = SBFoundationAPI(today=date.today().isoformat()).run(command)
+            print(
+                f"run_id={result.run_id}  bronze_passed={result.bronze_files_passed}"
+                f"  bronze_failed={result.bronze_files_failed}  silver_rows={result.silver_dto_count}"
+            )
+        _day += timedelta(days=1)

@@ -1,4 +1,5 @@
 """Quarterly bulk ingestion service."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -50,10 +51,7 @@ class QuarterService(BulkPipelineService):
             return run
         if override_active:
             self._logger.info(f"Quarter override: year={year} period={period}", run_id=run.run_id)
-            recipes = [
-                dataclasses.replace(r, query_vars={**(r.query_vars or {}), "year": year, "period": period})
-                for r in recipes
-            ]
+            recipes = [dataclasses.replace(r, query_vars={**(r.query_vars or {}), "year": year, "period": period}) for r in recipes]
         original_force_from_date = self._force_from_date
         if override_active:
             self._force_from_date = f"{year}-01-01"  # bypass watermark filter for historical fetch
@@ -79,17 +77,20 @@ class QuarterService(BulkPipelineService):
 if __name__ == "__main__":
     from sbfoundation.api import SBFoundationAPI, RunCommand
 
-    command = RunCommand(
-        domain=QUARTER_DOMAIN,
-        concurrent_requests=1,  # sync mode for debugging
-        enable_bronze=True,
-        enable_silver=True,
-        enable_gold=True,
-        quarter_year=2025,
-        quarter_period="Q1",
-    )
-    result = SBFoundationAPI(today=date.today().isoformat()).run(command)
-    print(
-        f"run_id={result.run_id}  bronze_passed={result.bronze_files_passed}"
-        f"  bronze_failed={result.bronze_files_failed}  silver_rows={result.silver_dto_count}"
-    )
+    for _year in range(2022, 2025):
+        for _period in ("Q1", "Q2", "Q3", "Q4"):
+            print(f"\n===== {_year} {_period} =====")
+            command = RunCommand(
+                domain=QUARTER_DOMAIN,
+                concurrent_requests=1,  # sync mode for debugging
+                enable_bronze=True,
+                enable_silver=True,
+                enable_gold=True,
+                quarter_year=_year,
+                quarter_period=_period,
+            )
+            result = SBFoundationAPI(today=date.today().isoformat()).run(command)
+            print(
+                f"run_id={result.run_id}  bronze_passed={result.bronze_files_passed}"
+                f"  bronze_failed={result.bronze_files_failed}  silver_rows={result.silver_dto_count}"
+            )

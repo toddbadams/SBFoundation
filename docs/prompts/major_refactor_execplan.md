@@ -1,11 +1,11 @@
 # ExecPlan: Major Package Restructure + Gold Layer + Bulk Pipelines
 
-**Version**: 1.4
+**Version**: 1.5
 **Created**: 2026-03-09
-**Updated**: 2026-03-10
+**Updated**: 2026-03-11
 **Author**: Claude / User
 **Branch**: `feature/major-refactor`
-**Status**: ✅ Phases A–T + K + L + M complete — 415 tests pass
+**Status**: ✅ COMPLETE — All phases done, PR merged to main
 
 ---
 
@@ -256,6 +256,12 @@ Removed dataset categories:
 - [x] M.4.4 — `api.py` uses `isinstance(service, AnnualService)` to pass `year=command.year` when calling `run()`
 - [x] M.4.5 — `__main__` block updated to show `year=2024` example
 
+### Phase N — Historical Backfill Scripts (`__main__` blocks)
+- [x] N.1 — `AnnualService.__main__`: updated to loop over years 2020–2025 for historical annual backfill
+- [x] N.2 — `EodService.__main__`: updated to loop over all weekdays 2026-01-01 → 2026-03-09 for historical EOD backfill
+- [x] N.3 — `QuarterService.__main__`: updated to loop over years 2022–2024 × Q1/Q2/Q3/Q4 for historical quarterly backfill
+- [x] N.4 — `QuarterService`: minor style fix — flattened 4-line list comprehension to single line (Black-compatible)
+
 ### Phase T — E2E Testing Infrastructure
 - [x] T.1 — `tests/e2e/fixtures/fmp/` directory structure with .gitkeep files
 - [x] T.2 — `tests/e2e/conftest.py` with `mem_duck` and `fmp_server` fixtures
@@ -310,7 +316,25 @@ _To be filled in as work proceeds._
 
 ## Outcomes & Retrospective
 
-_To be filled in when complete._
+**Completed**: 2026-03-11
+
+### What Was Achieved
+
+1. **Clean package boundaries** — `bronze`, `silver`, `gold`, `run`, `ops`, `eod`, `quarter`, `annual`, `maintenance`, `orchestrate` are first-class sub-packages with clear responsibilities. `api.py` is now a thin coordinator (~200 lines vs the original ~1,045 lines).
+2. **Bulk pipelines** — `EodService`, `QuarterService`, and `AnnualService` each own their domain ingestion logic, season gating, and recipe construction, inheriting shared infrastructure from `BulkPipelineService`.
+3. **Gold star schema** — Static dims (date, instrument_type, country, exchange, industry, sector) bootstrapped via migrations; data-derived dims (instrument, company) and facts (eod, quarter, annual) built from Silver by `GoldDimService` and `GoldFactService`.
+4. **Prefect orchestration** — Three scheduled flows (`eod_flow`, `quarter_flow`, `annual_flow`) with cron triggers and explicit `enable_gold=True`.
+5. **Dataset keymap pruned** — Reduced from 8,866 lines (116 datasets) to 556 lines (8 bulk datasets). DTO registry and settings pruned to match.
+6. **Historical backfill scripts** — `__main__` blocks on each service updated to loop over historical date/year/period ranges for one-time data population.
+7. **423 tests pass** — Includes 3 e2e tests against in-memory DuckDB fixtures.
+
+### Gaps (deferred to future work)
+
+- H.5 — `MaintenanceService` unit tests not implemented
+- I.8 — Prefect manual flow trigger not tested against live server
+- J.2/J.3/J.5/J.6 — `ops.run_integrity_summary` view and `DataIntegrityService` hooks deferred
+- T.4/T.9 — `test_market_bronze_silver.py` and `test_gold_facts.py` deferred
+- Phase 0 DuckDB backup steps not automated (performed manually)
 
 ---
 

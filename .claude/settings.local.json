@@ -77,7 +77,8 @@
       "Bash(grep -n \"ERROR\\\\|Traceback\\\\|Exception\\\\|raise\\\\|recipe failure\" \"C:/sb/SBFoundation/data/logs/logs_2026-03-10.txt\" | awk 'NR>=1 && NR<=60')",
       "Bash(awk 'NR>=1 && NR<=60' \"C:/sb/SBFoundation/data/logs/logs_2026-03-10.txt\")",
       "Bash(awk 'NR>=30 && NR<=50' \"C:/sb/SBFoundation/data/logs/logs_2026-03-10.txt\")",
-      "Bash(awk 'NR>=430 && NR<=445' \"C:/sb/SBFoundation/data/logs/logs_2026-03-10.txt\")"
+      "Bash(awk 'NR>=430 && NR<=445' \"C:/sb/SBFoundation/data/logs/logs_2026-03-10.txt\")",
+      "Bash(cmd.exe /c \"where gh 2>nul\")"
     ]
   }
 }

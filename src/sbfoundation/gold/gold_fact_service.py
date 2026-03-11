@@ -26,7 +26,8 @@ class GoldFactService:
     Silver sources:
     - silver.fmp_eod_bulk_price        -> fact_eod
     - silver.fmp_income_statement_bulk_quarter + balance_sheet + cashflow -> fact_quarter
-    - silver.fmp_income_statement_bulk_annual  + balance_sheet + cashflow -> fact_annual
+    - silver.fmp_income_statement_bulk_annual  + balance_sheet + cashflow
+        + key_metrics_bulk_annual (optional) + ratios_bulk_annual (optional) -> fact_annual
 
     Idempotency: INSERT INTO ... ON CONFLICT DO UPDATE (upsert) so re-runs are safe.
     """
@@ -129,9 +130,10 @@ class GoldFactService:
         bs_select = (
             "bs.total_assets, bs.total_current_assets, bs.total_liabilities, "
             "bs.total_current_liabilities, bs.total_stockholders_equity, "
-            "bs.cash_and_cash_equivalents, bs.long_term_debt, bs.total_debt, bs.net_debt,"
+            "bs.cash_and_cash_equivalents, bs.long_term_debt, bs.total_debt, bs.net_debt, "
+            "bs.deferred_revenue, bs.goodwill_and_intangible_assets,"
             if bs_exists else
-            "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,"
+            "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,"
         )
         cf_select = (
             "cf.operating_cash_flow, cf.capital_expenditure, cf.free_cash_flow, cf.dividends_paid,"
@@ -154,8 +156,11 @@ class GoldFactService:
                 instrument_sk, period, calendar_year, period_date_sk,
                 reported_currency,
                 revenue, gross_profit, operating_income, net_income, ebitda, eps, eps_diluted,
+                research_and_development_expenses, selling_general_and_administrative_expenses,
+                interest_expense, income_before_tax, income_tax_expense, depreciation_and_amortization,
                 total_assets, total_current_assets, total_liabilities, total_current_liabilities,
                 total_stockholders_equity, cash_and_cash_equivalents, long_term_debt, total_debt, net_debt,
+                deferred_revenue, goodwill_and_intangible_assets,
                 operating_cash_flow, capital_expenditure, free_cash_flow, dividends_paid,
                 gold_build_id, model_version, updated_at
             )
@@ -169,6 +174,9 @@ class GoldFactService:
                 inc.reported_currency,
                 inc.revenue, inc.gross_profit, inc.operating_income, inc.net_income,
                 inc.ebitda, inc.eps, inc.eps_diluted,
+                inc.research_and_development_expenses, inc.selling_general_and_administrative_expenses,
+                inc.interest_expense, inc.income_before_tax, inc.income_tax_expense,
+                inc.depreciation_and_amortization,
                 {bs_select}
                 {cf_select}
                 $1             AS gold_build_id,
@@ -182,7 +190,33 @@ class GoldFactService:
             ON CONFLICT (instrument_sk, period, calendar_year) DO UPDATE SET
                 reported_currency = EXCLUDED.reported_currency,
                 revenue = EXCLUDED.revenue,
+                gross_profit = EXCLUDED.gross_profit,
+                operating_income = EXCLUDED.operating_income,
                 net_income = EXCLUDED.net_income,
+                ebitda = EXCLUDED.ebitda,
+                eps = EXCLUDED.eps,
+                eps_diluted = EXCLUDED.eps_diluted,
+                research_and_development_expenses = EXCLUDED.research_and_development_expenses,
+                selling_general_and_administrative_expenses = EXCLUDED.selling_general_and_administrative_expenses,
+                interest_expense = EXCLUDED.interest_expense,
+                income_before_tax = EXCLUDED.income_before_tax,
+                income_tax_expense = EXCLUDED.income_tax_expense,
+                depreciation_and_amortization = EXCLUDED.depreciation_and_amortization,
+                total_assets = EXCLUDED.total_assets,
+                total_current_assets = EXCLUDED.total_current_assets,
+                total_liabilities = EXCLUDED.total_liabilities,
+                total_current_liabilities = EXCLUDED.total_current_liabilities,
+                total_stockholders_equity = EXCLUDED.total_stockholders_equity,
+                cash_and_cash_equivalents = EXCLUDED.cash_and_cash_equivalents,
+                long_term_debt = EXCLUDED.long_term_debt,
+                total_debt = EXCLUDED.total_debt,
+                net_debt = EXCLUDED.net_debt,
+                deferred_revenue = EXCLUDED.deferred_revenue,
+                goodwill_and_intangible_assets = EXCLUDED.goodwill_and_intangible_assets,
+                operating_cash_flow = EXCLUDED.operating_cash_flow,
+                capital_expenditure = EXCLUDED.capital_expenditure,
+                free_cash_flow = EXCLUDED.free_cash_flow,
+                dividends_paid = EXCLUDED.dividends_paid,
                 gold_build_id = EXCLUDED.gold_build_id,
                 model_version = EXCLUDED.model_version,
                 updated_at = EXCLUDED.updated_at
@@ -198,21 +232,39 @@ class GoldFactService:
             self._logger.info("GoldFactService: silver annual income statement not found — skipping fact_annual")
             return 0
 
-        bs_exists = self._table_exists(conn, "silver", "fmp_balance_sheet_bulk_annual")
-        cf_exists = self._table_exists(conn, "silver", "fmp_cashflow_bulk_annual")
+        bs_exists  = self._table_exists(conn, "silver", "fmp_balance_sheet_bulk_annual")
+        cf_exists  = self._table_exists(conn, "silver", "fmp_cashflow_bulk_annual")
+        km_exists  = self._table_exists(conn, "silver", "fmp_key_metrics_bulk_annual")
+        rat_exists = self._table_exists(conn, "silver", "fmp_ratios_bulk_annual")
 
         bs_select = (
             "bs.total_assets, bs.total_current_assets, bs.total_liabilities, "
             "bs.total_current_liabilities, bs.total_stockholders_equity, "
-            "bs.cash_and_cash_equivalents, bs.long_term_debt, bs.total_debt, bs.net_debt,"
+            "bs.cash_and_cash_equivalents, bs.long_term_debt, bs.total_debt, bs.net_debt, "
+            "bs.deferred_revenue, bs.goodwill_and_intangible_assets,"
             if bs_exists else
-            "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,"
+            "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,"
         )
         cf_select = (
             "cf.operating_cash_flow, cf.capital_expenditure, cf.free_cash_flow, cf.dividends_paid,"
             if cf_exists else
             "NULL, NULL, NULL, NULL,"
         )
+        km_select = (
+            "km.roic, km.invested_capital, km.revenue_per_employee, "
+            "km.capex_to_ocf, km.ev_to_ebitda, km.debt_to_equity AS debt_to_equity_km, "
+            "km.days_sales_outstanding, km.days_payables_outstanding, km.days_inventory,"
+            if km_exists else
+            "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,"
+        )
+        rat_select = (
+            "rat.gross_profit_margin, rat.operating_profit_margin, rat.net_profit_margin, "
+            "rat.fcf_to_sales_ratio, rat.return_on_assets, rat.return_on_equity, "
+            "rat.return_on_capital_employed, rat.effective_tax_rate, rat.debt_ratio, rat.interest_coverage,"
+            if rat_exists else
+            "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,"
+        )
+
         bs_join = (
             "LEFT JOIN silver.fmp_balance_sheet_bulk_annual bs "
             "ON bs.symbol = inc.symbol AND bs.calendar_year = inc.calendar_year"
@@ -223,15 +275,33 @@ class GoldFactService:
             "ON cf.symbol = inc.symbol AND cf.calendar_year = inc.calendar_year"
             if cf_exists else ""
         )
+        km_join = (
+            "LEFT JOIN silver.fmp_key_metrics_bulk_annual km "
+            "ON km.symbol = inc.symbol AND km.calendar_year = inc.calendar_year"
+            if km_exists else ""
+        )
+        rat_join = (
+            "LEFT JOIN silver.fmp_ratios_bulk_annual rat "
+            "ON rat.symbol = inc.symbol AND rat.calendar_year = inc.calendar_year"
+            if rat_exists else ""
+        )
 
         conn.execute(f"""
             INSERT INTO gold.fact_annual (
                 instrument_sk, calendar_year, period_date_sk,
                 reported_currency,
                 revenue, gross_profit, operating_income, net_income, ebitda, eps, eps_diluted,
+                research_and_development_expenses, selling_general_and_administrative_expenses,
+                interest_expense, income_before_tax, income_tax_expense, depreciation_and_amortization,
                 total_assets, total_current_assets, total_liabilities, total_current_liabilities,
                 total_stockholders_equity, cash_and_cash_equivalents, long_term_debt, total_debt, net_debt,
+                deferred_revenue, goodwill_and_intangible_assets,
                 operating_cash_flow, capital_expenditure, free_cash_flow, dividends_paid,
+                roic, invested_capital, revenue_per_employee, capex_to_ocf, ev_to_ebitda,
+                debt_to_equity_km, days_sales_outstanding, days_payables_outstanding, days_inventory,
+                gross_profit_margin, operating_profit_margin, net_profit_margin, fcf_to_sales_ratio,
+                return_on_assets, return_on_equity, return_on_capital_employed,
+                effective_tax_rate, debt_ratio, interest_coverage,
                 gold_build_id, model_version, updated_at
             )
             SELECT
@@ -243,8 +313,13 @@ class GoldFactService:
                 inc.reported_currency,
                 inc.revenue, inc.gross_profit, inc.operating_income, inc.net_income,
                 inc.ebitda, inc.eps, inc.eps_diluted,
+                inc.research_and_development_expenses, inc.selling_general_and_administrative_expenses,
+                inc.interest_expense, inc.income_before_tax, inc.income_tax_expense,
+                inc.depreciation_and_amortization,
                 {bs_select}
                 {cf_select}
+                {km_select}
+                {rat_select}
                 $1             AS gold_build_id,
                 $2             AS model_version,
                 $3::TIMESTAMP  AS updated_at
@@ -252,11 +327,58 @@ class GoldFactService:
             JOIN gold.dim_instrument inst ON inst.symbol = inc.symbol
             {bs_join}
             {cf_join}
+            {km_join}
+            {rat_join}
             WHERE inc.symbol IS NOT NULL AND inc.calendar_year IS NOT NULL
             ON CONFLICT (instrument_sk, calendar_year) DO UPDATE SET
                 reported_currency = EXCLUDED.reported_currency,
                 revenue = EXCLUDED.revenue,
+                gross_profit = EXCLUDED.gross_profit,
+                operating_income = EXCLUDED.operating_income,
                 net_income = EXCLUDED.net_income,
+                ebitda = EXCLUDED.ebitda,
+                eps = EXCLUDED.eps,
+                eps_diluted = EXCLUDED.eps_diluted,
+                research_and_development_expenses = EXCLUDED.research_and_development_expenses,
+                selling_general_and_administrative_expenses = EXCLUDED.selling_general_and_administrative_expenses,
+                interest_expense = EXCLUDED.interest_expense,
+                income_before_tax = EXCLUDED.income_before_tax,
+                income_tax_expense = EXCLUDED.income_tax_expense,
+                depreciation_and_amortization = EXCLUDED.depreciation_and_amortization,
+                total_assets = EXCLUDED.total_assets,
+                total_current_assets = EXCLUDED.total_current_assets,
+                total_liabilities = EXCLUDED.total_liabilities,
+                total_current_liabilities = EXCLUDED.total_current_liabilities,
+                total_stockholders_equity = EXCLUDED.total_stockholders_equity,
+                cash_and_cash_equivalents = EXCLUDED.cash_and_cash_equivalents,
+                long_term_debt = EXCLUDED.long_term_debt,
+                total_debt = EXCLUDED.total_debt,
+                net_debt = EXCLUDED.net_debt,
+                deferred_revenue = EXCLUDED.deferred_revenue,
+                goodwill_and_intangible_assets = EXCLUDED.goodwill_and_intangible_assets,
+                operating_cash_flow = EXCLUDED.operating_cash_flow,
+                capital_expenditure = EXCLUDED.capital_expenditure,
+                free_cash_flow = EXCLUDED.free_cash_flow,
+                dividends_paid = EXCLUDED.dividends_paid,
+                roic = EXCLUDED.roic,
+                invested_capital = EXCLUDED.invested_capital,
+                revenue_per_employee = EXCLUDED.revenue_per_employee,
+                capex_to_ocf = EXCLUDED.capex_to_ocf,
+                ev_to_ebitda = EXCLUDED.ev_to_ebitda,
+                debt_to_equity_km = EXCLUDED.debt_to_equity_km,
+                days_sales_outstanding = EXCLUDED.days_sales_outstanding,
+                days_payables_outstanding = EXCLUDED.days_payables_outstanding,
+                days_inventory = EXCLUDED.days_inventory,
+                gross_profit_margin = EXCLUDED.gross_profit_margin,
+                operating_profit_margin = EXCLUDED.operating_profit_margin,
+                net_profit_margin = EXCLUDED.net_profit_margin,
+                fcf_to_sales_ratio = EXCLUDED.fcf_to_sales_ratio,
+                return_on_assets = EXCLUDED.return_on_assets,
+                return_on_equity = EXCLUDED.return_on_equity,
+                return_on_capital_employed = EXCLUDED.return_on_capital_employed,
+                effective_tax_rate = EXCLUDED.effective_tax_rate,
+                debt_ratio = EXCLUDED.debt_ratio,
+                interest_coverage = EXCLUDED.interest_coverage,
                 gold_build_id = EXCLUDED.gold_build_id,
                 model_version = EXCLUDED.model_version,
                 updated_at = EXCLUDED.updated_at

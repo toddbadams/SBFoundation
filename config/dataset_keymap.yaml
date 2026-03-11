@@ -206,6 +206,30 @@ datasets:
     - name: eps_diluted
       type: float
       nullable: true
+    - name: research_and_development_expenses
+      type: float
+      nullable: true
+      api: researchAndDevelopmentExpenses
+    - name: selling_general_and_administrative_expenses
+      type: float
+      nullable: true
+      api: sellingGeneralAndAdministrativeExpenses
+    - name: interest_expense
+      type: float
+      nullable: true
+      api: interestExpense
+    - name: income_before_tax
+      type: float
+      nullable: true
+      api: incomeBeforeTax
+    - name: income_tax_expense
+      type: float
+      nullable: true
+      api: incomeTaxExpense
+    - name: depreciation_and_amortization
+      type: float
+      nullable: true
+      api: depreciationAndAmortization
 - domain: quarter
   source: fmp
   dataset: balance-sheet-bulk-quarter
@@ -275,6 +299,14 @@ datasets:
     - name: net_debt
       type: float
       nullable: true
+    - name: deferred_revenue
+      type: float
+      nullable: true
+      api: deferredRevenue
+    - name: goodwill_and_intangible_assets
+      type: float
+      nullable: true
+      api: goodwillAndIntangibleAssets
 - domain: quarter
   source: fmp
   dataset: cashflow-bulk-quarter
@@ -394,6 +426,30 @@ datasets:
     - name: eps_diluted
       type: float
       nullable: true
+    - name: research_and_development_expenses
+      type: float
+      nullable: true
+      api: researchAndDevelopmentExpenses
+    - name: selling_general_and_administrative_expenses
+      type: float
+      nullable: true
+      api: sellingGeneralAndAdministrativeExpenses
+    - name: interest_expense
+      type: float
+      nullable: true
+      api: interestExpense
+    - name: income_before_tax
+      type: float
+      nullable: true
+      api: incomeBeforeTax
+    - name: income_tax_expense
+      type: float
+      nullable: true
+      api: incomeTaxExpense
+    - name: depreciation_and_amortization
+      type: float
+      nullable: true
+      api: depreciationAndAmortization
 - domain: annual
   source: fmp
   dataset: balance-sheet-bulk-annual
@@ -462,6 +518,14 @@ datasets:
     - name: net_debt
       type: float
       nullable: true
+    - name: deferred_revenue
+      type: float
+      nullable: true
+      api: deferredRevenue
+    - name: goodwill_and_intangible_assets
+      type: float
+      nullable: true
+      api: goodwillAndIntangibleAssets
 - domain: annual
   source: fmp
   dataset: cashflow-bulk-annual
@@ -518,3 +582,350 @@ datasets:
     - name: dividends_paid
       type: float
       nullable: true
+- domain: quarter
+  source: fmp
+  dataset: key-metrics-bulk-quarter
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_key_metrics_bulk_quarter
+  key_cols:
+  - symbol
+  - period
+  - calendar_year
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    data_source_path: key-metrics-bulk
+    query_vars:
+      period: quarter
+      datatype: csv
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 90
+    help_url: https://site.financialmodelingprep.com/developer/docs#key-metrics-bulk
+  dto_schema:
+    dto_type: sbfoundation.dtos.fundamentals.bulk.key_metrics_bulk_dto.KeyMetricsBulkDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: date
+      type: date
+      nullable: true
+    - name: period
+      type: str
+      nullable: false
+    - name: calendar_year
+      type: int
+      nullable: false
+      api: fiscalYear
+    - name: roic
+      type: float
+      nullable: true
+      api: returnOnInvestedCapital
+    - name: invested_capital
+      type: float
+      nullable: true
+      api: investedCapital
+    - name: revenue_per_employee
+      type: float
+      nullable: true
+      api: revenuePerEmployee
+    - name: capex_to_ocf
+      type: float
+      nullable: true
+      api: capexToOperatingCashFlow
+    - name: ev_to_ebitda
+      type: float
+      nullable: true
+      api: enterpriseValueOverEBITDA
+    - name: debt_to_equity
+      type: float
+      nullable: true
+      api: debtToEquity
+    - name: asset_turnover
+      type: float
+      nullable: true
+      api: assetTurnover
+    - name: days_sales_outstanding
+      type: float
+      nullable: true
+      api: daysSalesOutstanding
+    - name: days_payables_outstanding
+      type: float
+      nullable: true
+      api: daysPayablesOutstanding
+    - name: days_inventory
+      type: float
+      nullable: true
+      api: daysOfInventoryOnHand
+    - name: receivables_turnover
+      type: float
+      nullable: true
+      api: receivablesTurnover
+- domain: annual
+  source: fmp
+  dataset: key-metrics-bulk-annual
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_key_metrics_bulk_annual
+  key_cols:
+  - symbol
+  - calendar_year
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    data_source_path: key-metrics-bulk
+    query_vars:
+      period: FY
+      datatype: csv
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 365
+    help_url: https://site.financialmodelingprep.com/developer/docs#key-metrics-bulk
+  dto_schema:
+    dto_type: sbfoundation.dtos.fundamentals.bulk.key_metrics_bulk_dto.KeyMetricsBulkDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: date
+      type: date
+      nullable: true
+    - name: period
+      type: str
+      nullable: false
+    - name: calendar_year
+      type: int
+      nullable: false
+      api: fiscalYear
+    - name: roic
+      type: float
+      nullable: true
+      api: returnOnInvestedCapital
+    - name: invested_capital
+      type: float
+      nullable: true
+      api: investedCapital
+    - name: revenue_per_employee
+      type: float
+      nullable: true
+      api: revenuePerEmployee
+    - name: capex_to_ocf
+      type: float
+      nullable: true
+      api: capexToOperatingCashFlow
+    - name: ev_to_ebitda
+      type: float
+      nullable: true
+      api: enterpriseValueOverEBITDA
+    - name: debt_to_equity
+      type: float
+      nullable: true
+      api: debtToEquity
+    - name: asset_turnover
+      type: float
+      nullable: true
+      api: assetTurnover
+    - name: days_sales_outstanding
+      type: float
+      nullable: true
+      api: daysSalesOutstanding
+    - name: days_payables_outstanding
+      type: float
+      nullable: true
+      api: daysPayablesOutstanding
+    - name: days_inventory
+      type: float
+      nullable: true
+      api: daysOfInventoryOnHand
+    - name: receivables_turnover
+      type: float
+      nullable: true
+      api: receivablesTurnover
+- domain: annual
+  source: fmp
+  dataset: ratios-bulk-annual
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_ratios_bulk_annual
+  key_cols:
+  - symbol
+  - calendar_year
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    data_source_path: ratios-bulk
+    query_vars:
+      period: FY
+      datatype: csv
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 365
+    help_url: https://site.financialmodelingprep.com/developer/docs#ratios-bulk
+  dto_schema:
+    dto_type: sbfoundation.dtos.fundamentals.bulk.ratios_bulk_dto.RatiosBulkDTO
+    columns:
+    - name: symbol
+      type: str
+      nullable: false
+    - name: date
+      type: date
+      nullable: true
+    - name: period
+      type: str
+      nullable: false
+    - name: calendar_year
+      type: int
+      nullable: false
+      api: calendarYear
+    - name: gross_profit_margin
+      type: float
+      nullable: true
+      api: grossProfitMargin
+    - name: operating_profit_margin
+      type: float
+      nullable: true
+      api: operatingProfitMargin
+    - name: net_profit_margin
+      type: float
+      nullable: true
+      api: netProfitMargin
+    - name: fcf_to_sales_ratio
+      type: float
+      nullable: true
+      api: freeCashFlowToSalesRatio
+    - name: return_on_assets
+      type: float
+      nullable: true
+      api: returnOnAssets
+    - name: return_on_equity
+      type: float
+      nullable: true
+      api: returnOnEquity
+    - name: return_on_capital_employed
+      type: float
+      nullable: true
+      api: returnOnCapitalEmployed
+    - name: effective_tax_rate
+      type: float
+      nullable: true
+      api: effectiveTaxRate
+    - name: debt_ratio
+      type: float
+      nullable: true
+      api: debtRatio
+    - name: interest_coverage
+      type: float
+      nullable: true
+      api: interestCoverage
+- domain: eod
+  source: fred
+  dataset: fred-dgs10
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fred_dgs10
+  key_cols:
+  - date
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    data_source_path: series/observations
+    query_vars:
+      series_id: DGS10
+      file_type: json
+      observation_start: '1962-01-01'
+      sort_order: asc
+    json_content_key: observations
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 1
+    help_url: https://fred.stlouisfed.org/series/DGS10
+  dto_schema:
+    dto_type: sbfoundation.dtos.economics.fred_dgs10_dto.FredDgs10DTO
+    columns:
+    - name: date
+      type: date
+      nullable: false
+    - name: rate
+      type: float
+      nullable: true
+      api: value
+- domain: eod
+  source: fred
+  dataset: fred-usrecm
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fred_usrecm
+  key_cols:
+  - date
+  row_date_col: date
+  recipes:
+  - plans:
+    - basic
+    data_source_path: series/observations
+    query_vars:
+      series_id: USRECM
+      file_type: json
+      observation_start: '1967-01-01'
+      sort_order: asc
+    json_content_key: observations
+    date_key: date
+    cadence_mode: interval
+    min_age_days: 28
+    help_url: https://fred.stlouisfed.org/series/USRECM
+  dto_schema:
+    dto_type: sbfoundation.dtos.economics.fred_usrecm_dto.FredUsrecmDTO
+    columns:
+    - name: date
+      type: date
+      nullable: false
+    - name: recession_flag
+      type: int
+      nullable: true
+      api: value
+- domain: eod
+  source: fmp
+  dataset: market-risk-premium
+  discriminator: ''
+  ticker_scope: global
+  silver_schema: silver
+  silver_table: fmp_market_risk_premium
+  key_cols:
+  - country
+  row_date_col: null
+  recipes:
+  - plans:
+    - basic
+    data_source_path: market-risk-premium
+    query_vars: {}
+    date_key: null
+    cadence_mode: interval
+    min_age_days: 30
+    help_url: https://site.financialmodelingprep.com/developer/docs#market-risk-premium
+  dto_schema:
+    dto_type: sbfoundation.dtos.economics.market_risk_premium_dto.MarketRiskPremiumDTO
+    columns:
+    - name: country
+      type: str
+      nullable: false
+    - name: continent
+      type: str
+      nullable: true
+    - name: total_equity_risk_premium
+      type: float
+      nullable: true
+      api: totalEquityRiskPremium
+    - name: country_risk_premium
+      type: float
+      nullable: true
+      api: countryRiskPremium

@@ -35,15 +35,33 @@ INCOME_STATEMENT_BULK_ANNUAL_DATASET = "income-statement-bulk-annual"
 BALANCE_SHEET_BULK_ANNUAL_DATASET = "balance-sheet-bulk-annual"
 CASHFLOW_BULK_ANNUAL_DATASET = "cashflow-bulk-annual"
 
+# Key Metrics Bulk (FMP pre-computed ratios)
+KEY_METRICS_BULK_QUARTER_DATASET = "key-metrics-bulk-quarter"
+KEY_METRICS_BULK_ANNUAL_DATASET = "key-metrics-bulk-annual"
+
+# Ratios Bulk (FMP pre-computed profitability/leverage ratios)
+RATIOS_BULK_ANNUAL_DATASET = "ratios-bulk-annual"
+
+# Economics / Macro (FRED and FMP global)
+FRED_DGS10_DATASET = "fred-dgs10"
+FRED_USRECM_DATASET = "fred-usrecm"
+MARKET_RISK_PREMIUM_DATASET = "market-risk-premium"
+
 DATASETS: list = [
     EOD_BULK_PRICE_DATASET,
     EOD_COMPANY_PROFILE_BULK_DATASET,
     INCOME_STATEMENT_BULK_QUARTER_DATASET,
     BALANCE_SHEET_BULK_QUARTER_DATASET,
     CASHFLOW_BULK_QUARTER_DATASET,
+    KEY_METRICS_BULK_QUARTER_DATASET,
     INCOME_STATEMENT_BULK_ANNUAL_DATASET,
     BALANCE_SHEET_BULK_ANNUAL_DATASET,
     CASHFLOW_BULK_ANNUAL_DATASET,
+    KEY_METRICS_BULK_ANNUAL_DATASET,
+    RATIOS_BULK_ANNUAL_DATASET,
+    FRED_DGS10_DATASET,
+    FRED_USRECM_DATASET,
+    MARKET_RISK_PREMIUM_DATASET,
 ]
 
 # ---- CADENCE MODE ---- #
@@ -104,8 +122,10 @@ RETRY_MAX_ATTEMPTS = "retry_max_attemps"
 RETRY_BASE_DELAY = "retry_base_delay"
 THROTTLE_MAX_CALLS_PER_MINUTE = "throttle_max_calls"
 API_KEY = "API_KEY"  # this defines the label for the actual key in the .env file
+API_KEY_QUERY_PARAM = "api_key_query_param"  # the query-parameter name used to pass the API key (default: "apikey")
 BASE_URL = "base_url"
 FMP_BASE_URL_STABLE: str = "https://financialmodelingprep.com/stable/"
+FRED_BASE_URL: str = "https://api.stlouisfed.org/fred/"
 DATA_SOURCES_CONFIG = {
     FMP_DATA_SOURCE: {
         RETRY_MAX_ATTEMPTS: 3,
@@ -113,7 +133,15 @@ DATA_SOURCES_CONFIG = {
         THROTTLE_MAX_CALLS_PER_MINUTE: 3000,
         API_KEY: "FMP_API_KEY",
         BASE_URL: FMP_BASE_URL_STABLE,
-    }
+    },
+    FRED_DATA_SOURCE: {
+        RETRY_MAX_ATTEMPTS: 3,
+        RETRY_BASE_DELAY: 0.5,
+        THROTTLE_MAX_CALLS_PER_MINUTE: 120,
+        API_KEY: "FRED_API_KEY",
+        BASE_URL: FRED_BASE_URL,
+        API_KEY_QUERY_PARAM: "api_key",  # FRED uses "api_key", not "apikey"
+    },
 }
 
 # ---- EXECUTION PHASES ---- #

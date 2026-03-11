@@ -51,7 +51,7 @@ class AnnualService(BulkPipelineService):
 if __name__ == "__main__":
     from sbfoundation.api import SBFoundationAPI, RunCommand
 
-    for _year in range(2020, 2026):
+    for _year in range(2018, 2019):
         print(f"\n===== {_year} =====")
         command = RunCommand(
             domain=ANNUAL_DOMAIN,

@@ -126,6 +126,7 @@ class SBFoundationAPI:
             report_path = reporter.write_report(
                 run.run_id,
                 universe_tickers=run.tickers or None,
+                run_command=command,
             )
             reporter.close()
             self.logger.info(f"Run report written: {report_path}", run_id=run.run_id)

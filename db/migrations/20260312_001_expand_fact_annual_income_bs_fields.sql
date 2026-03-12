@@ -15,10 +15,8 @@ ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS goodwill_and_intangible_as
 -- From fmp_key_metrics_bulk_annual
 ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS roic                       DOUBLE;
 ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS invested_capital           DOUBLE;
-ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS revenue_per_employee       DOUBLE;
 ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS capex_to_ocf               DOUBLE;
 ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS ev_to_ebitda               DOUBLE;
-ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS debt_to_equity_km          DOUBLE;
 ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS days_sales_outstanding     DOUBLE;
 ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS days_payables_outstanding  DOUBLE;
 ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS days_inventory             DOUBLE;
@@ -27,10 +25,6 @@ ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS days_inventory            
 ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS gross_profit_margin        DOUBLE;
 ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS operating_profit_margin    DOUBLE;
 ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS net_profit_margin          DOUBLE;
-ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS fcf_to_sales_ratio         DOUBLE;
-ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS return_on_assets           DOUBLE;
-ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS return_on_equity           DOUBLE;
-ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS return_on_capital_employed DOUBLE;
 ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS effective_tax_rate         DOUBLE;
 ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS debt_ratio                 DOUBLE;
 ALTER TABLE gold.fact_annual ADD COLUMN IF NOT EXISTS interest_coverage          DOUBLE;

@@ -21,10 +21,6 @@ class EodBulkPriceDTO(BronzeToSilverDTO):
     close: float | None = field(default=None, metadata={"api": "close"})
     adj_close: float | None = field(default=None, metadata={"api": "adjClose"})
     volume: int | None = field(default=None, metadata={"api": "volume"})
-    unadjusted_volume: int | None = field(default=None, metadata={"api": "unadjustedVolume"})
-    change: float | None = field(default=None, metadata={"api": "change"})
-    change_pct: float | None = field(default=None, metadata={"api": "changePercent"})
-    vwap: float | None = field(default=None, metadata={"api": "vwap"})
 
     @property
     def key_date(self) -> date:

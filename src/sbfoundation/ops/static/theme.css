@@ -1,0 +1,273 @@
+/* ═══════════════════════════════════════════════════════════
+   GEOPOLITICAL PORTFOLIO MONITOR — Theme
+   Dark intelligence-terminal aesthetic
+   ═══════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
+
+/* ── CSS Variables ── */
+:root {
+  /* backgrounds */
+  --bg-base:      #080c14;
+  --bg-surface:   #0d1117;
+  --bg-elevated:  #161b22;
+  --bg-overlay:   #1a2332;
+
+  /* borders */
+  --border-subtle: #1a2332;
+  --border-muted:  #21262d;
+  --border-base:   #30363d;
+
+  /* text */
+  --text-primary:   #f0f6fc;
+  --text-secondary: #c9d1d9;
+  --text-muted:     #8b949e;
+  --text-faint:     #6e7681;
+  --text-dim:       #484f58;
+  --text-ghost:     #30363d;
+
+  /* accent */
+  --accent:       #58a6ff;
+  --accent-light: #79c0ff;
+
+  /* severity */
+  --sev-critical-bg:     #3a0000;
+  --sev-critical-border: #ef233c;
+  --sev-critical-text:   #ef233c;
+
+  --sev-high-bg:     #2a1000;
+  --sev-high-border: #e76f51;
+  --sev-high-text:   #e76f51;
+
+  --sev-medium-bg:     #2a2000;
+  --sev-medium-border: #e9c46a;
+  --sev-medium-text:   #e9c46a;
+
+  --sev-low-bg:     #0a2e1a;
+  --sev-low-border: #2d6a4f;
+  --sev-low-text:   #95d5b2;
+
+  /* portfolio sector colors */
+  --sector-energy:  #e76f51;
+  --sector-defense: #264d73;
+  --sector-gold:    #e9c46a;
+  --sector-tactical:#6e7681;
+
+  /* typography */
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+  /* radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+}
+
+/* ── Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* ── Base ── */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+code {
+  color: var(--accent);
+  font-family: var(--font-mono);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-surface); }
+::-webkit-scrollbar-thumb { background: var(--border-base); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ── Keyframe Animations ── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scanLine {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+/* ── Interactive Components ── */
+.alert-card {
+  animation: fadeIn 0.4s ease-out;
+  transition: background 0.2s, transform 0.2s;
+}
+.alert-card:hover {
+  background: var(--bg-elevated) !important;
+  transform: translateX(4px);
+}
+
+.scan-btn {
+  transition: filter 0.15s, transform 0.15s;
+  cursor: pointer;
+  user-select: none;
+}
+.scan-btn:hover  { filter: brightness(1.2); transform: scale(1.02); }
+.scan-btn:active { transform: scale(0.98); }
+
+.monitor-pill {
+  transition: background 0.2s, border-color 0.2s;
+  cursor: pointer;
+}
+.monitor-pill:hover {
+  background: var(--bg-overlay) !important;
+  border-color: var(--accent) !important;
+}
+
+/* ── Priority Pulse ── */
+.priority-badge {
+  animation: pulse 2s infinite;
+}
+
+/* ── Scanning Indicator ── */
+.scanning-label {
+  animation: pulse 1.5s infinite;
+}
+
+/* ── Progress Bar ── */
+.progress-bar {
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  height: 6px;
+  overflow: hidden;
+}
+.progress-bar__fill {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  transition: width 0.3s ease;
+}
+
+/* ── Toggle Switch ── */
+.toggle {
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s;
+}
+.toggle--on  { background: #238636; }
+.toggle--off { background: var(--border-base); }
+
+.toggle__knob {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  position: absolute;
+  top: 3px;
+  transition: left 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.toggle__knob--on  { left: 21px; }
+.toggle__knob--off { left: 3px; }
+
+/* ── Section Labels ── */
+.section-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+/* ── Ticker Chip ── */
+.ticker-chip {
+  display: inline-block;
+  background: #1f2937;
+  color: var(--accent);
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ── Action Row ── */
+.action-row {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  background: var(--bg-elevated);
+  border-left: 2px solid var(--accent);
+  margin-bottom: 4px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* ── Header ── */
+.app-header {
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(180deg, var(--bg-surface), var(--bg-base));
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 280px;
+  border-right: 1px solid var(--border-subtle);
+  padding: 16px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+/* ── Activity Log ── */
+.activity-log {
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  padding: 8px;
+}
+.activity-log__entry {
+  font-size: 9px;
+  color: var(--text-faint);
+  line-height: 1.6;
+  border-bottom: 1px solid var(--bg-elevated);
+  padding: 3px 0;
+}
+.activity-log__empty {
+  font-size: 10px;
+  color: var(--text-ghost);
+}
+
+/* ── Empty State ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-dim);
+  text-align: center;
+}
+.empty-state__icon   { font-size: 48px; margin-bottom: 16px; }
+.empty-state__title  { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+.empty-state__hint   { font-size: 11px; margin-bottom: 20px; }
+.empty-state__detail { font-size: 10px; color: var(--text-ghost); max-width: 400px; line-height: 1.8; }

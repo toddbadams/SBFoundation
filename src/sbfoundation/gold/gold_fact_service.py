@@ -82,15 +82,13 @@ class GoldFactService:
         conn.execute("""
             INSERT INTO gold.fact_eod (
                 instrument_sk, date_sk,
-                open, high, low, close, adj_close,
-                volume, unadjusted_volume, change, change_pct, vwap,
+                open, high, low, close, adj_close, volume,
                 gold_build_id, model_version, updated_at
             )
             SELECT
                 inst.instrument_sk,
                 CAST(strftime(src.date::DATE, '%Y%m%d') AS INTEGER) AS date_sk,
-                src.open, src.high, src.low, src.close, src.adj_close,
-                src.volume, src.unadjusted_volume, src.change, src.change_pct, src.vwap,
+                src.open, src.high, src.low, src.close, src.adj_close, src.volume,
                 $1             AS gold_build_id,
                 $2             AS model_version,
                 $3::TIMESTAMP  AS updated_at
@@ -104,10 +102,6 @@ class GoldFactService:
                 close = EXCLUDED.close,
                 adj_close = EXCLUDED.adj_close,
                 volume = EXCLUDED.volume,
-                unadjusted_volume = EXCLUDED.unadjusted_volume,
-                change = EXCLUDED.change,
-                change_pct = EXCLUDED.change_pct,
-                vwap = EXCLUDED.vwap,
                 gold_build_id = EXCLUDED.gold_build_id,
                 model_version = EXCLUDED.model_version,
                 updated_at = EXCLUDED.updated_at
@@ -251,18 +245,16 @@ class GoldFactService:
             "NULL, NULL, NULL, NULL,"
         )
         km_select = (
-            "km.roic, km.invested_capital, km.revenue_per_employee, "
-            "km.capex_to_ocf, km.ev_to_ebitda, km.debt_to_equity AS debt_to_equity_km, "
+            "km.roic, km.invested_capital, km.capex_to_ocf, km.ev_to_ebitda, "
             "km.days_sales_outstanding, km.days_payables_outstanding, km.days_inventory,"
             if km_exists else
-            "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,"
+            "NULL, NULL, NULL, NULL, NULL, NULL, NULL,"
         )
         rat_select = (
             "rat.gross_profit_margin, rat.operating_profit_margin, rat.net_profit_margin, "
-            "rat.fcf_to_sales_ratio, rat.return_on_assets, rat.return_on_equity, "
-            "rat.return_on_capital_employed, rat.effective_tax_rate, rat.debt_ratio, rat.interest_coverage,"
+            "rat.effective_tax_rate, rat.debt_ratio, rat.interest_coverage,"
             if rat_exists else
-            "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,"
+            "NULL, NULL, NULL, NULL, NULL, NULL,"
         )
 
         bs_join = (
@@ -297,10 +289,9 @@ class GoldFactService:
                 total_stockholders_equity, cash_and_cash_equivalents, long_term_debt, total_debt, net_debt,
                 deferred_revenue, goodwill_and_intangible_assets,
                 operating_cash_flow, capital_expenditure, free_cash_flow, dividends_paid,
-                roic, invested_capital, revenue_per_employee, capex_to_ocf, ev_to_ebitda,
-                debt_to_equity_km, days_sales_outstanding, days_payables_outstanding, days_inventory,
-                gross_profit_margin, operating_profit_margin, net_profit_margin, fcf_to_sales_ratio,
-                return_on_assets, return_on_equity, return_on_capital_employed,
+                roic, invested_capital, capex_to_ocf, ev_to_ebitda,
+                days_sales_outstanding, days_payables_outstanding, days_inventory,
+                gross_profit_margin, operating_profit_margin, net_profit_margin,
                 effective_tax_rate, debt_ratio, interest_coverage,
                 gold_build_id, model_version, updated_at
             )
@@ -362,20 +353,14 @@ class GoldFactService:
                 dividends_paid = EXCLUDED.dividends_paid,
                 roic = EXCLUDED.roic,
                 invested_capital = EXCLUDED.invested_capital,
-                revenue_per_employee = EXCLUDED.revenue_per_employee,
                 capex_to_ocf = EXCLUDED.capex_to_ocf,
                 ev_to_ebitda = EXCLUDED.ev_to_ebitda,
-                debt_to_equity_km = EXCLUDED.debt_to_equity_km,
                 days_sales_outstanding = EXCLUDED.days_sales_outstanding,
                 days_payables_outstanding = EXCLUDED.days_payables_outstanding,
                 days_inventory = EXCLUDED.days_inventory,
                 gross_profit_margin = EXCLUDED.gross_profit_margin,
                 operating_profit_margin = EXCLUDED.operating_profit_margin,
                 net_profit_margin = EXCLUDED.net_profit_margin,
-                fcf_to_sales_ratio = EXCLUDED.fcf_to_sales_ratio,
-                return_on_assets = EXCLUDED.return_on_assets,
-                return_on_equity = EXCLUDED.return_on_equity,
-                return_on_capital_employed = EXCLUDED.return_on_capital_employed,
                 effective_tax_rate = EXCLUDED.effective_tax_rate,
                 debt_ratio = EXCLUDED.debt_ratio,
                 interest_coverage = EXCLUDED.interest_coverage,

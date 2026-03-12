@@ -49,18 +49,6 @@ datasets:
     - name: volume
       type: int
       nullable: true
-    - name: unadjusted_volume
-      type: int
-      nullable: true
-    - name: change
-      type: float
-      nullable: true
-    - name: change_pct
-      type: float
-      nullable: true
-    - name: vwap
-      type: float
-      nullable: true
 - domain: eod
   source: fmp
   dataset: company-profile-bulk
@@ -364,6 +352,7 @@ datasets:
     - name: dividends_paid
       type: float
       nullable: true
+      api: netDividendsPaid
 - domain: annual
   source: fmp
   dataset: income-statement-bulk-annual
@@ -582,6 +571,7 @@ datasets:
     - name: dividends_paid
       type: float
       nullable: true
+      api: netDividendsPaid
 - domain: quarter
   source: fmp
   dataset: key-metrics-bulk-quarter
@@ -629,10 +619,6 @@ datasets:
       type: float
       nullable: true
       api: investedCapital
-    - name: revenue_per_employee
-      type: float
-      nullable: true
-      api: revenuePerEmployee
     - name: capex_to_ocf
       type: float
       nullable: true
@@ -640,31 +626,19 @@ datasets:
     - name: ev_to_ebitda
       type: float
       nullable: true
-      api: enterpriseValueOverEBITDA
-    - name: debt_to_equity
-      type: float
-      nullable: true
-      api: debtToEquity
-    - name: asset_turnover
-      type: float
-      nullable: true
-      api: assetTurnover
+      api: evToEBITDA
     - name: days_sales_outstanding
       type: float
       nullable: true
-      api: daysSalesOutstanding
+      api: daysOfSalesOutstanding
     - name: days_payables_outstanding
       type: float
       nullable: true
-      api: daysPayablesOutstanding
+      api: daysOfPayablesOutstanding
     - name: days_inventory
       type: float
       nullable: true
-      api: daysOfInventoryOnHand
-    - name: receivables_turnover
-      type: float
-      nullable: true
-      api: receivablesTurnover
+      api: daysOfInventoryOutstanding
 - domain: annual
   source: fmp
   dataset: key-metrics-bulk-annual
@@ -711,10 +685,6 @@ datasets:
       type: float
       nullable: true
       api: investedCapital
-    - name: revenue_per_employee
-      type: float
-      nullable: true
-      api: revenuePerEmployee
     - name: capex_to_ocf
       type: float
       nullable: true
@@ -722,31 +692,19 @@ datasets:
     - name: ev_to_ebitda
       type: float
       nullable: true
-      api: enterpriseValueOverEBITDA
-    - name: debt_to_equity
-      type: float
-      nullable: true
-      api: debtToEquity
-    - name: asset_turnover
-      type: float
-      nullable: true
-      api: assetTurnover
+      api: evToEBITDA
     - name: days_sales_outstanding
       type: float
       nullable: true
-      api: daysSalesOutstanding
+      api: daysOfSalesOutstanding
     - name: days_payables_outstanding
       type: float
       nullable: true
-      api: daysPayablesOutstanding
+      api: daysOfPayablesOutstanding
     - name: days_inventory
       type: float
       nullable: true
-      api: daysOfInventoryOnHand
-    - name: receivables_turnover
-      type: float
-      nullable: true
-      api: receivablesTurnover
+      api: daysOfInventoryOutstanding
 - domain: annual
   source: fmp
   dataset: ratios-bulk-annual
@@ -784,7 +742,7 @@ datasets:
     - name: calendar_year
       type: int
       nullable: false
-      api: calendarYear
+      api: fiscalYear
     - name: gross_profit_margin
       type: float
       nullable: true
@@ -797,22 +755,6 @@ datasets:
       type: float
       nullable: true
       api: netProfitMargin
-    - name: fcf_to_sales_ratio
-      type: float
-      nullable: true
-      api: freeCashFlowToSalesRatio
-    - name: return_on_assets
-      type: float
-      nullable: true
-      api: returnOnAssets
-    - name: return_on_equity
-      type: float
-      nullable: true
-      api: returnOnEquity
-    - name: return_on_capital_employed
-      type: float
-      nullable: true
-      api: returnOnCapitalEmployed
     - name: effective_tax_rate
       type: float
       nullable: true
@@ -820,11 +762,11 @@ datasets:
     - name: debt_ratio
       type: float
       nullable: true
-      api: debtRatio
+      api: debtToAssetsRatio
     - name: interest_coverage
       type: float
       nullable: true
-      api: interestCoverage
+      api: interestCoverageRatio
 - domain: eod
   source: fred
   dataset: fred-dgs10

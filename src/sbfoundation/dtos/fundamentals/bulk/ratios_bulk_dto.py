@@ -20,17 +20,13 @@ class RatiosBulkDTO(BronzeToSilverDTO):
     symbol: str = field(default="_none_", metadata={"api": "symbol"})
     date: date | None = field(default=None, metadata={"api": "date"})
     period: str = field(default="", metadata={"api": "period"})
-    calendar_year: int = field(default=0, metadata={"api": "calendarYear"})
+    calendar_year: int = field(default=0, metadata={"api": "fiscalYear"})
     gross_profit_margin: float | None = field(default=None, metadata={"api": "grossProfitMargin"})
     operating_profit_margin: float | None = field(default=None, metadata={"api": "operatingProfitMargin"})
     net_profit_margin: float | None = field(default=None, metadata={"api": "netProfitMargin"})
-    fcf_to_sales_ratio: float | None = field(default=None, metadata={"api": "freeCashFlowToSalesRatio"})
-    return_on_assets: float | None = field(default=None, metadata={"api": "returnOnAssets"})
-    return_on_equity: float | None = field(default=None, metadata={"api": "returnOnEquity"})
-    return_on_capital_employed: float | None = field(default=None, metadata={"api": "returnOnCapitalEmployed"})
     effective_tax_rate: float | None = field(default=None, metadata={"api": "effectiveTaxRate"})
-    debt_ratio: float | None = field(default=None, metadata={"api": "debtRatio"})
-    interest_coverage: float | None = field(default=None, metadata={"api": "interestCoverage"})
+    debt_ratio: float | None = field(default=None, metadata={"api": "debtToAssetsRatio"})
+    interest_coverage: float | None = field(default=None, metadata={"api": "interestCoverageRatio"})
 
     @property
     def key_date(self) -> date:

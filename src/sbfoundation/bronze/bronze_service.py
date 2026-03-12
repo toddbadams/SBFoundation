@@ -339,7 +339,7 @@ class BronzeService:
                 run_id=request.run_id,
                 from_date=self._BACKFILL_START.isoformat(),
                 today=request.injestion_date,
-                api_key=self.fmp_api_key,
+                api_key=self.fmp_api_key if request.recipe.source == FMP_DATA_SOURCE else None,
                 ticker=request.ticker,
                 to_date=to_date.isoformat(),
             )
@@ -448,7 +448,7 @@ class BronzeService:
                 run_id=self.run.run_id,
                 from_date=from_date,
                 today=self.run.today,
-                api_key=self.fmp_api_key,
+                api_key=self.fmp_api_key if recipe.source == FMP_DATA_SOURCE else None,
             )
             req.query_vars[recipe.paginate_param] = part
 
@@ -522,7 +522,7 @@ class BronzeService:
                     from_date=self.universe.from_date,
                     today=self.universe.today().isoformat(),
                     to_date=self.run.today,
-                    api_key=self.fmp_api_key,
+                    api_key=self.fmp_api_key if recipe.source == FMP_DATA_SOURCE else None,
                     ticker=ticker,
                 )
                 for ticker in self.run.tickers
@@ -562,7 +562,7 @@ class BronzeService:
                     from_date=self.universe.from_date,
                     today=self.universe.today().isoformat(),
                     to_date=self.run.today,
-                    api_key=self.fmp_api_key,
+                    api_key=self.fmp_api_key if recipe.source == FMP_DATA_SOURCE else None,
                 )
                 if self._backfill_to_1990:
                     self._run_backward_fill_loop(req)

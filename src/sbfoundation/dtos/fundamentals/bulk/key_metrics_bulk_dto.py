@@ -23,15 +23,11 @@ class KeyMetricsBulkDTO(BronzeToSilverDTO):
     calendar_year: int = field(default=0, metadata={"api": "fiscalYear"})
     roic: float | None = field(default=None, metadata={"api": "returnOnInvestedCapital"})
     invested_capital: float | None = field(default=None, metadata={"api": "investedCapital"})
-    revenue_per_employee: float | None = field(default=None, metadata={"api": "revenuePerEmployee"})
     capex_to_ocf: float | None = field(default=None, metadata={"api": "capexToOperatingCashFlow"})
-    ev_to_ebitda: float | None = field(default=None, metadata={"api": "enterpriseValueOverEBITDA"})
-    debt_to_equity: float | None = field(default=None, metadata={"api": "debtToEquity"})
-    asset_turnover: float | None = field(default=None, metadata={"api": "assetTurnover"})
-    days_sales_outstanding: float | None = field(default=None, metadata={"api": "daysSalesOutstanding"})
-    days_payables_outstanding: float | None = field(default=None, metadata={"api": "daysPayablesOutstanding"})
-    days_inventory: float | None = field(default=None, metadata={"api": "daysOfInventoryOnHand"})
-    receivables_turnover: float | None = field(default=None, metadata={"api": "receivablesTurnover"})
+    ev_to_ebitda: float | None = field(default=None, metadata={"api": "evToEBITDA"})
+    days_sales_outstanding: float | None = field(default=None, metadata={"api": "daysOfSalesOutstanding"})
+    days_payables_outstanding: float | None = field(default=None, metadata={"api": "daysOfPayablesOutstanding"})
+    days_inventory: float | None = field(default=None, metadata={"api": "daysOfInventoryOutstanding"})
 
     @property
     def key_date(self) -> date:

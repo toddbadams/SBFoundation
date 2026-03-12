@@ -22,7 +22,7 @@ class CashflowBulkDTO(BronzeToSilverDTO):
     capital_expenditure: float | None = field(default=None, metadata={"api": "capitalExpenditure"})
     free_cash_flow: float | None = field(default=None, metadata={"api": "freeCashFlow"})
     net_income: float | None = field(default=None, metadata={"api": "netIncome"})
-    dividends_paid: float | None = field(default=None, metadata={"api": "dividendsPaid"})
+    dividends_paid: float | None = field(default=None, metadata={"api": "netDividendsPaid"})
 
     @property
     def key_date(self) -> date:

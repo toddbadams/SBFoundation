@@ -59,8 +59,8 @@ if __name__ == "__main__":
     from datetime import date, timedelta
     from sbfoundation.api import SBFoundationAPI, RunCommand
 
-    _start = date(2026, 1, 1)
-    _end = date(2026, 3, 9)
+    _start = date(2026, 1, 2)
+    _end = date(2026, 1, 3)
     _day = _start
     while _day <= _end:
         if _day.weekday() < 5:  # Mon–Fri only

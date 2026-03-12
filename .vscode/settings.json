@@ -32,7 +32,11 @@
   "files.exclude": {
     "**/__pycache__": true,
     "**/.pytest_cache": true,
-    ".venv": true
+    ".venv": true,
+    "**/venv": true,
+    "**/.venv": true,
+    "**/node_modules": true,
+    "**/data": true
   },
   "search.useIgnoreFiles": true,
   // ---- Jupyter/Notebooks (optional) ----
@@ -51,5 +55,13 @@
   ],
   "claudeCode.allowDangerouslySkipPermissions": true,
   "python-envs.defaultEnvManager": "ms-python.python:poetry",
-  "python-envs.defaultPackageManager": "ms-python.python:poetry"
+  "python-envs.defaultPackageManager": "ms-python.python:poetry",
+  "python.analysis.exclude": [
+    "**/venv",
+    "**/.venv",
+    "**/node_modules",
+    "**/__pycache__",
+    "**/data",
+    "**/.*"
+  ]
 }

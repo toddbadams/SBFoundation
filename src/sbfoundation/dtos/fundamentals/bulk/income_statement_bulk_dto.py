@@ -25,6 +25,12 @@ class IncomeStatementBulkDTO(BronzeToSilverDTO):
     ebitda: float | None = field(default=None, metadata={"api": "ebitda"})
     eps: float | None = field(default=None, metadata={"api": "eps"})
     eps_diluted: float | None = field(default=None, metadata={"api": "epsdiluted"})
+    research_and_development_expenses: float | None = field(default=None, metadata={"api": "researchAndDevelopmentExpenses"})
+    selling_general_and_administrative_expenses: float | None = field(default=None, metadata={"api": "sellingGeneralAndAdministrativeExpenses"})
+    interest_expense: float | None = field(default=None, metadata={"api": "interestExpense"})
+    income_before_tax: float | None = field(default=None, metadata={"api": "incomeBeforeTax"})
+    income_tax_expense: float | None = field(default=None, metadata={"api": "incomeTaxExpense"})
+    depreciation_and_amortization: float | None = field(default=None, metadata={"api": "depreciationAndAmortization"})
 
     @property
     def key_date(self) -> date:

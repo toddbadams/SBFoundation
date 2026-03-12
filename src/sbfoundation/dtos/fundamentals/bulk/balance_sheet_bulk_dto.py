@@ -27,6 +27,8 @@ class BalanceSheetBulkDTO(BronzeToSilverDTO):
     long_term_debt: float | None = field(default=None, metadata={"api": "longTermDebt"})
     total_debt: float | None = field(default=None, metadata={"api": "totalDebt"})
     net_debt: float | None = field(default=None, metadata={"api": "netDebt"})
+    deferred_revenue: float | None = field(default=None, metadata={"api": "deferredRevenue"})
+    goodwill_and_intangible_assets: float | None = field(default=None, metadata={"api": "goodwillAndIntangibleAssets"})
 
     @property
     def key_date(self) -> date:

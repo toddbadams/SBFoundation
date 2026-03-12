@@ -8,6 +8,11 @@ from sbfoundation.dtos.eod.eod_bulk_company_profile_dto import EodBulkCompanyPro
 from sbfoundation.dtos.fundamentals.bulk.income_statement_bulk_dto import IncomeStatementBulkDTO
 from sbfoundation.dtos.fundamentals.bulk.balance_sheet_bulk_dto import BalanceSheetBulkDTO
 from sbfoundation.dtos.fundamentals.bulk.cashflow_bulk_dto import CashflowBulkDTO
+from sbfoundation.dtos.fundamentals.bulk.key_metrics_bulk_dto import KeyMetricsBulkDTO
+from sbfoundation.dtos.fundamentals.bulk.ratios_bulk_dto import RatiosBulkDTO
+from sbfoundation.dtos.economics.fred_dgs10_dto import FredDgs10DTO
+from sbfoundation.dtos.economics.fred_usrecm_dto import FredUsrecmDTO
+from sbfoundation.dtos.economics.market_risk_premium_dto import MarketRiskPremiumDTO
 
 
 class DTORegistry:
@@ -61,6 +66,14 @@ DTO_REGISTRY = DTORegistry(
         "income-statement-bulk-annual": IncomeStatementBulkDTO,
         "balance-sheet-bulk-annual": BalanceSheetBulkDTO,
         "cashflow-bulk-annual": CashflowBulkDTO,
+        "key-metrics-bulk-annual": KeyMetricsBulkDTO,
+        "ratios-bulk-annual": RatiosBulkDTO,
+        # Quarter bulk domain (key metrics)
+        "key-metrics-bulk-quarter": KeyMetricsBulkDTO,
+        # Economics / Macro
+        "fred-dgs10": FredDgs10DTO,
+        "fred-usrecm": FredUsrecmDTO,
+        "market-risk-premium": MarketRiskPremiumDTO,
     }
 )
 

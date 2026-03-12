@@ -77,7 +77,7 @@ class QuarterService(BulkPipelineService):
 if __name__ == "__main__":
     from sbfoundation.api import SBFoundationAPI, RunCommand
 
-    for _year in range(2022, 2025):
+    for _year in range(2019, 2026):
         for _period in ("Q1", "Q2", "Q3", "Q4"):
             print(f"\n===== {_year} {_period} =====")
             command = RunCommand(

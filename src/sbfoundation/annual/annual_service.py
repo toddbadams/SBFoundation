@@ -52,7 +52,7 @@ if __name__ == "__main__":
     from sbfoundation.api import SBFoundationAPI, RunCommand
 
     for _year in range(2020, 2026):
-        print(f"\n===== {_year} =====")
+        print(f"\n===== FY {_year} =====")
         command = RunCommand(
             domain=ANNUAL_DOMAIN,
             concurrent_requests=1,  # sync mode for debugging

@@ -78,7 +78,13 @@
       "Bash(awk 'NR>=1 && NR<=60' \"C:/sb/SBFoundation/data/logs/logs_2026-03-10.txt\")",
       "Bash(awk 'NR>=30 && NR<=50' \"C:/sb/SBFoundation/data/logs/logs_2026-03-10.txt\")",
       "Bash(awk 'NR>=430 && NR<=445' \"C:/sb/SBFoundation/data/logs/logs_2026-03-10.txt\")",
-      "Bash(cmd.exe /c \"where gh 2>nul\")"
+      "Bash(cmd.exe /c \"where gh 2>nul\")",
+      "Bash(gh repo:*)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(ls -la /c/sb/SBFoundation/.claude/ 2>/dev/null || echo \"No .claude dir\" && curl --version 2>&1 | head -1 && git --version)",
+      "Bash(mkdir -p /c/sb/SBFoundation/.claude/skills && cp -r /tmp/caf/.claude/skills/* /c/sb/SBFoundation/.claude/skills/ && echo \"Done\")",
+      "WebFetch(domain:pages.stern.nyu.edu)",
+      "WebFetch(domain:pypi.org)"
     ]
   }
 }

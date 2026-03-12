@@ -63,8 +63,14 @@ class BronzeResult(BronzeToSilverDTO):
                     raise e
             else:
                 self.content = response.json()
+                # For sources that wrap their payload in an envelope dict (e.g. FRED
+                # returns {"observations": [...]}), extract the array using the key
+                # declared on the recipe so Bronze stores a flat list[dict].
+                json_content_key = getattr(self.request.recipe, "json_content_key", None)
+                if json_content_key and isinstance(self.content, dict):
+                    self.content = self.content.get(json_content_key) or []
                 # Normalize list[str] payloads (e.g. available-countries) to list[dict]
-                if isinstance(self.content, list) and self.content and isinstance(self.content[0], str):
+                elif isinstance(self.content, list) and self.content and isinstance(self.content[0], str):
                     self.content = [{"value": item} for item in self.content]
         else:
             self.content = response.text

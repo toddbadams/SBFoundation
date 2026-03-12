@@ -28,6 +28,7 @@ class DatasetRecipe(BronzeToSilverDTO):
     discriminator: str | None = None  # an optional discriminator to build deterministic filenames, partitions to avoid collisions
     execution_phase: str = EXECUTION_PHASE_DATA_ACQUISITION  # 'instrument_discovery' or 'data_acquisition'
     paginate_param: str | None = None  # query var key to paginate on (e.g. "part"); loops 0..N until empty response
+    json_content_key: str | None = None  # if set, extract response.json()[key] as content (e.g. "observations" for FRED)
     error: str = None  # error description
 
     # todo: expand recipe metadata to include Bronze/Silver lineage hints from
@@ -109,10 +110,12 @@ class DatasetRecipe(BronzeToSilverDTO):
                 q[k] = PERIOD_ANNUAL
 
         # Always include api key (will be filtered if None)
-        api_key_env = DATA_SOURCES_CONFIG[self.source][API_KEY]
-        api_key_value = api_key if api_key else os.getenv(api_key_env)
+        source_cfg = DATA_SOURCES_CONFIG.get(self.source, {})
+        api_key_env = source_cfg.get(API_KEY, "")
+        api_key_value = api_key if api_key else (os.getenv(api_key_env) if api_key_env else None)
+        api_key_param_name = source_cfg.get(API_KEY_QUERY_PARAM, "apikey")
         if api_key_value:
-            q["apikey"] = api_key_value
+            q[api_key_param_name] = api_key_value
 
         # Remove None-valued items
         return {k: v for k, v in q.items() if v is not None}

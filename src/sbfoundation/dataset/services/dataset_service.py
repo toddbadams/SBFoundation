@@ -123,6 +123,7 @@ class DatasetService:
                     "discriminator": entry.get("discriminator") or None,
                     "plans": recipe.get("plans"),
                     "paginate_param": recipe.get("paginate_param") or None,
+                    "json_content_key": recipe.get("json_content_key") or None,
                 }
                 # Only include execution_phase if explicitly set (otherwise use default)
                 if recipe.get("execution_phase"):

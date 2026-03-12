@@ -98,6 +98,7 @@ uv pip install -r <(poetry export --without-hashes)
 
 ```dotenv
 FMP_API_KEY=your_fmp_api_key_here
+FRED_API_KEY=your_fred_api_key_here    # required for FRED datasets (fred-dgs10, fred-usrecm)
 FMP_PLAN = "ultimate"                             # the data ingestion only runs import for datasets in purchased plan
 DATA_ROOT_FOLDER=c:/sb/SBFoundation/data          # Bronze JSON files, DuckDB, logs
 REPO_ROOT_FOLDER=c:/sb/SBFoundation               # Repo root (used for config/ and db/migrations/)
@@ -121,7 +122,8 @@ The defaults (`DATA_ROOT_FOLDER=c:/sb/SBFoundation/data`, `REPO_ROOT_FOLDER=c:/s
 | Testing | pytest `^9`, pytest-httpserver, freezegun, pandera |
 | Code quality | Black (line-length 150), isort (Black profile), flake8, mypy |
 | Primary data source | Financial Modeling Prep (FMP) via REST |
-| Planned / future | Alpha Vantage, FRED, BIS |
+| Active additional source | FRED (Federal Reserve Economic Data) via REST — `fred-dgs10`, `fred-usrecm` |
+| Planned / future | Alpha Vantage, BIS |
 | Orchestration | Prefect OSS (nightly batch; `orchestrate/` package in this project) |
 | UI | Streamlit + streamlit-echarts + Altair (separate package) |
 | Deployment | Docker Compose; used for PROD deploy |
@@ -555,7 +557,31 @@ The Economics domain provides macroeconomic indicators, treasury rates, and mark
 - **Documentation:** [FMP Market Risk Premium](https://site.financialmodelingprep.com/developer/docs#market-risk-premium)
 - **Use Case:** Equity risk modeling, expected return calculations
 
-#### 3. economic-indicators (27 indicators)
+#### 3. FRED Datasets (Federal Reserve Economic Data)
+
+**fred-dgs10** — 10-Year Treasury Constant Maturity Rate
+
+- **Purpose:** Daily 10-year U.S. Treasury yield (risk-free rate proxy for CAPM/DCF models)
+- **Source:** FRED (Federal Reserve Bank of St. Louis)
+- **Scope:** Global (non-ticker-based)
+- **Refresh:** Daily (min_age_days: 1)
+- **Silver Table:** `silver.fred_dgs10`
+- **Key Columns:** `series_id`, `date`
+- **Gold:** Silver-only — no `instrument_sk` FK; consumed directly by the feature engine
+- **Requires:** `FRED_API_KEY` environment variable
+
+**fred-usrecm** — NBER U.S. Recession Indicator
+
+- **Purpose:** Binary monthly indicator (1 = recession, 0 = expansion) from the NBER Business Cycle Dating Committee
+- **Source:** FRED (Federal Reserve Bank of St. Louis)
+- **Scope:** Global (non-ticker-based)
+- **Refresh:** Monthly (min_age_days: 30)
+- **Silver Table:** `silver.fred_usrecm`
+- **Key Columns:** `series_id`, `date`
+- **Gold:** Silver-only — no `instrument_sk` FK; consumed directly by the feature engine
+- **Requires:** `FRED_API_KEY` environment variable
+
+#### 4. economic-indicators (27 indicators)
 
 - **Purpose:** U.S. macroeconomic time series data
 - **Scope:** Global (non-ticker-based)
@@ -845,6 +871,41 @@ The FX domain provides access to historical exchange rate data for currency pair
 
 ---
 
+## Gold Layer and Feature Column Conventions
+
+### Fact Tables
+
+| Table | Grain | Source Silver Tables |
+|---|---|---|
+| `gold.fact_eod` | (instrument_sk, date_sk) | `fmp_eod_bulk_price` |
+| `gold.fact_quarter` | (instrument_sk, period_date_sk, period) | `fmp_income_bulk_quarter`, `fmp_balance_sheet_bulk_quarter`, `fmp_cashflow_bulk_quarter` |
+| `gold.fact_annual` | (instrument_sk, period_date_sk) | `fmp_income_bulk_annual`, `fmp_balance_sheet_bulk_annual`, `fmp_cashflow_bulk_annual`, `fmp_key_metrics_bulk_annual`, `fmp_ratios_bulk_annual` |
+
+### Feature Column Naming Convention
+
+All **feature placeholder columns** in Gold fact tables must end in **`_f`**. Signal/score columns end in **`_s`**. These suffixes are mandatory.
+
+| Suffix | Meaning | Example |
+|---|---|---|
+| `_f` | Feature — measured property of an instrument at a time; computed by the feature engine | `momentum_1m_f`, `volatility_30d_f` |
+| `_s` | Signal/Score — opinion derived from features; computed by the signal engine | `moat_score_s` |
+
+Feature placeholder columns in `gold.fact_eod` (always NULL until the feature engine runs):
+- `momentum_1m_f`, `momentum_3m_f`, `momentum_6m_f`, `momentum_12m_f`
+- `volatility_30d_f`
+
+### Silver-Only Datasets (no Gold promotion)
+
+Some datasets cannot join to the Gold star schema because they have no `instrument_sk` foreign key. These remain in Silver and are consumed directly by the feature engine:
+
+| Silver Table | Content | Reason Silver-only |
+|---|---|---|
+| `silver.fred_dgs10` | 10-year Treasury yield (daily) | No ticker — macro series |
+| `silver.fred_usrecm` | NBER recession indicator (monthly) | No ticker — macro series |
+| `silver.fmp_market_risk_premium` | Equity risk premium by country | No ticker — country-level |
+
+---
+
 ## Strengths
 
 - **Full auditability** — every Silver row traces back to a specific Bronze JSON file via `bronze_file_id`. Lineage is never broken.
@@ -866,7 +927,7 @@ The FX domain provides access to historical exchange rate data for currency pair
 | **Single-writer DuckDB** | Medium | The system is designed for a single-process writer. Concurrent ingestion runs (e.g., two Prefect deployments) will cause DuckDB lock contention. |
 | **Parquet → DuckDB migration** | ~~Medium~~ Resolved | All Parquet references removed from active code. `silver_data_contracts.md` does not exist in the repo. Stale Parquet comments in `result_mapper.py`, `bronze_to_silver_dto.py`, and `scripts/cleanup_ticker_state_partitions.py` have been updated. No `pyarrow` or `fastparquet` imports remain in the codebase. DuckDB is now the sole Silver/Gold storage backend. |
 | **No pagination support** | Medium | `DatasetRecipe` defers pagination by design. All large datasets rely on `from_date` windowing (`from_date` → `to_date` = today) rather than offset or cursor pagination. If a single API window returns a truncated result set (e.g., FMP caps responses at 10 000 rows), data beyond that limit is silently dropped. Mitigation: use shorter `min_age_days` windows for high-volume datasets. Full fix requires adding `page`/`cursor` support to `RunProvider._get_query_vars()` and a looping driver in `bronze_service.py`. |
-| **FMP API key is the only configured source** | Low | `DATA_SOURCES_CONFIG` only has an FMP entry. Alpha Vantage, BIS, FRED, and other planned sources have dataset constants defined but no HTTP configuration yet. |
+| **FMP API key is the only configured source** | ~~Low~~ Resolved | FRED is now fully configured. `DATA_SOURCES_CONFIG` includes both FMP and FRED entries. `BronzeService` resolves API keys per-source: FMP key for FMP recipes, `FRED_API_KEY` env var for FRED recipes. Alpha Vantage and BIS remain planned. |
 | **`sbfoundation/settings.py` uses wildcard import** | Low | `from sbfoundation.settings import *` is used in `api.py` and `sbfoundation/folders.py`. This makes static analysis harder and can cause name collisions if settings grow. |
 | **No concurrency / parallelism** | Info | Bronze ingestion is sequential per recipe. Throughput is bounded by `THROTTLE_MAX_CALLS_PER_MINUTE` (50/min for FMP). Large universes (1000+ tickers × 40+ datasets) take significant wall-clock time. |
 | **PROD runs on Raspberry Pi** | Info | Low RAM and single-core constraints apply. Chunk size (10 tickers) and recipe limits in `OrchestrationSettings` are the primary throughput controls. |

@@ -1,7 +1,7 @@
 # Strawberry Context
 
-**Version**: 3.4
-**Last Updated**: 2026-03-09
+**Version**: 3.5
+**Last Updated**: 2026-03-12
 **Maintenance**: Update when changing architecture patterns, modifying dataset_keymap.yaml structure, or adding new domains/contracts.
 
 ## Purpose
@@ -19,6 +19,7 @@ Strawberry Foundation is a **Bronze + Silver + Gold data acquisition, validation
 - **Writing a recipe?** → Section 9 (Recipe Contracts)
 - **DuckDB schema?** → Section 10 (DuckDB Storage)
 - **Gold layer design?** → Section 10.4–10.6 (Gold Tables, dims, facts)
+- **Feature column naming?** → Section 5.2 (all feature columns must end in `_f`)
 - **Before modifying `/src`?** → Section 11 (DDD Review Checklist)
 - **Logging (format, levels, run_id)?** → Section 13 (Logging)
 
@@ -49,7 +50,8 @@ Strawberry implements **all three layers** of a medallion/lakehouse architecture
 - Static dimension tables bootstrapped from code (`dim_date`, `dim_instrument_type`, `dim_country`, `dim_exchange`, `dim_industry`, `dim_sectors`)
 - Data-derived dimension tables built from Silver (`dim_instrument`, `dim_company`)
 - Fact tables with foreign keys to dimensions (`fact_eod`, `fact_quarter`, `fact_annual`)
-- Placeholder columns for features and signals (populated by the feature engine in a later phase)
+- Placeholder columns for features (always NULL until the feature engine runs); all feature placeholder columns are suffixed `_f` (e.g., `momentum_1m_f`, `volatility_30d_f`)
+- **Note**: datasets without an `instrument_sk` join (e.g., FRED series, market-risk-premium) remain Silver-only and are NOT promoted to Gold
 
 **Ingested data domains**: fundamentals, market data, analytical data, alternative data (macro/economics).
 
@@ -76,6 +78,10 @@ Strawberry implements **all three layers** of a medallion/lakehouse architecture
    - Perform cross-dataset joins or aggregations
 
    Gold promotion is handled exclusively by `GoldDimService` and `GoldFactService` in the `gold/` package, which read from Silver and write to the `gold` DuckDB schema.
+
+7. **FMP bulk CSV field names differ from JSON API docs**. When adding or modifying bulk-endpoint DTOs (e.g., `eod-bulk-price`, `income-bulk`, `key-metrics-bulk`, `ratios-bulk`), always verify field names against actual Bronze file content — the CSV column headers returned by the bulk endpoint frequently differ from the field names documented in the FMP JSON API reference. Do not assume JSON doc field names apply to bulk CSV responses.
+
+8. **`BronzeService` resolves API keys per source**. `BronzeService` stores only `fmp_api_key` and passes `api_key=self.fmp_api_key if recipe.source == FMP_DATA_SOURCE else None` at every `RunRequest.from_recipe()` call site. Non-FMP sources (e.g., FRED) must have their API keys injected via their own environment variables (e.g., `FRED_API_KEY`), which `RunProvider._get_query_vars()` resolves from `DATA_SOURCES_CONFIG[source][API_KEY]`.
 
 **Enforcement**: `DatasetService` validates keymap on load; `tests/unit/dataset/` validates config parsing; `tests/e2e/` verifies end-to-end behavior; mypy enforces types.
 
@@ -128,6 +134,7 @@ When documents conflict, priority order:
 - Bronze: raw results + metadata only
 - Silver: validated, typed, conformed datasets
 - All layer mappings defined in `config/dataset_keymap.yaml`
+- **Gold feature column naming**: all feature placeholder columns in Gold fact tables must end in `_f` (e.g., `momentum_1m_f`, `volatility_30d_f`). Signal/score columns end in `_s`. This suffix is mandatory — do not add feature columns without it.
 
 ### 5.3 Adding a New Dataset
 
@@ -440,9 +447,12 @@ gold    — star schema: static dims, data-derived dims, fact tables (managed by
 `dim_company` — ticker + `instrument_sk` FK + company profile fields + dim FKs + `company_sk` PK
 
 **Fact tables** (built from Silver + dims by `GoldFactService`):
-`fact_eod` — one row per (instrument_sk, date_sk); EOD pricing; placeholder columns for features/signals
-`fact_quarter` — one row per (instrument_sk, period_date_sk, period); quarterly fundamentals
-`fact_annual` — one row per (instrument_sk, period_date_sk); annual (FY) fundamentals
+`fact_eod` — one row per (instrument_sk, date_sk); EOD pricing (open, high, low, close, adj_close, volume); placeholder `_f` columns for momentum/volatility features (always NULL until feature dev runs)
+`fact_quarter` — one row per (instrument_sk, period_date_sk, period); quarterly fundamentals from income/balance/cashflow bulk Silver tables
+`fact_annual` — one row per (instrument_sk, period_date_sk); annual (FY) fundamentals merged from income bulk, balance sheet bulk, key metrics bulk, and ratios bulk Silver tables via optional LEFT JOINs
+
+**Silver-only datasets** (no Gold promotion — no `instrument_sk` FK available):
+`silver.fred_dgs10`, `silver.fred_usrecm`, `silver.fmp_market_risk_premium` — these stay in Silver and are consumed directly by the feature engine
 
 **Rules for all Gold tables**:
 - Every table includes: `gold_build_id`, `model_version` (git SHA)

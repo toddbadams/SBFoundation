@@ -20,7 +20,7 @@ import argparse
 import sys
 from datetime import date
 
-from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
+from sbfoundation.maintenance import DuckDbBootstrap
 from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbuniverse.infra.universe_repo import UniverseRepo, UniverseSnapshot
 from sbuniverse.services.universe_service import UniverseService

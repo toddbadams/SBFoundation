@@ -4,7 +4,7 @@ import argparse
 import sys
 from typing import Any
 
-from sbfoundation.infra.duckdb.duckdb_bootstrap import DuckDbBootstrap
+from sbfoundation.maintenance import DuckDbBootstrap
 from sbfoundation.ops.infra.duckdb_ops_repo import DuckDbOpsRepo
 
 

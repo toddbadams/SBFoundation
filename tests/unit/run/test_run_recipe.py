@@ -15,30 +15,12 @@ from tests.unit.helpers import make_dataset_recipe
         ({"source": "missing"}, "INVALID DATA SOURCE"),
         ({"dataset": "missing"}, "INVALID DATA SET"),
         ({"cadence_mode": "missing"}, "INVALID CADENCE MODE"),
-        ({"run_days": ["invalid"]}, "INVALID RUN DAYS"),
     ],
 )
 def test_invalid_constants_set_error(overrides: dict[str, object], expected_error: str) -> None:
     recipe = make_dataset_recipe(**overrides)
     assert not recipe.isValid()
     assert recipe.error == expected_error
-
-
-def test_run_days_normalize_and_default() -> None:
-    recipe_with_explicit = make_dataset_recipe(run_days=[" MON ", "tues"])
-    assert recipe_with_explicit.run_days == ["mon", "tues"]
-    assert recipe_with_explicit.isValid()
-
-    recipe_with_blank = make_dataset_recipe(run_days=["   "])
-    assert recipe_with_blank.isValid()
-    assert recipe_with_blank.run_days == list(DAYS_OF_WEEK)
-
-
-def test_runs_on_with_default_days() -> None:
-    recipe = make_dataset_recipe()
-    assert recipe.runs_on("mon")
-    assert recipe.runs_on("MON")
-    assert recipe.runs_on("")
 
 
 def test_get_query_vars_substitutes_placeholders(monkeypatch: pytest.MonkeyPatch) -> None:

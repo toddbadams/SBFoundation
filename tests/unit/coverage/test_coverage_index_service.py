@@ -8,7 +8,7 @@ import logging
 import duckdb
 import pytest
 
-from sbfoundation.infra.duckdb.duckdb_bootstrap import (
+from sbfoundation.maintenance.duckdb_bootstrap import (
     OPS_COVERAGE_INDEX_DDL,
     OPS_FILE_INGESTIONS_DDL,
     SCHEMA_DDL,

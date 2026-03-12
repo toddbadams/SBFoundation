@@ -25,27 +25,14 @@ class DatasetRecipe(BronzeToSilverDTO):
     min_age_days: int  # when in interval cadendnce mode in market days.  ingestion_date >= base_date + N
     is_ticker_based: bool  # does this recipe run across all tickers?
     help_url: str  # a URL for online API documentation of this source endpoint
-    run_days: list[str] | None = None  # which weekdays this recipe can run (defaults to all)
     discriminator: str | None = None  # an optional discriminator to build deterministic filenames, partitions to avoid collisions
     execution_phase: str = EXECUTION_PHASE_DATA_ACQUISITION  # 'instrument_discovery' or 'data_acquisition'
+    paginate_param: str | None = None  # query var key to paginate on (e.g. "part"); loops 0..N until empty response
+    json_content_key: str | None = None  # if set, extract response.json()[key] as content (e.g. "observations" for FRED)
     error: str = None  # error description
 
     # todo: expand recipe metadata to include Bronze/Silver lineage hints from
     # docs/AI_context/architecture.md.md for richer manifests.
-
-    def __post_init__(self) -> None:
-        if not self.run_days:
-            self.run_days = list(DAYS_OF_WEEK)
-            return
-
-        if isinstance(self.run_days, str):
-            raw = [self.run_days]
-        else:
-            raw = list(self.run_days)
-
-        self.run_days = [str(day).strip().lower() for day in raw if str(day).strip()]
-        if not self.run_days:
-            self.run_days = list(DAYS_OF_WEEK)
 
     def create_file_id(self) -> str:
         return uuid.uuid4().hex
@@ -69,10 +56,6 @@ class DatasetRecipe(BronzeToSilverDTO):
             self.error = "INVALID CADENCE MODE"
             return False
 
-        if any(day not in DAYS_OF_WEEK for day in (self.run_days or [])):
-            self.error = "INVALID RUN DAYS"
-            return False
-
         if self.execution_phase not in EXECUTION_PHASES:
             self.error = "INVALID EXECUTION PHASE"
             return False
@@ -83,11 +66,6 @@ class DatasetRecipe(BronzeToSilverDTO):
     @property
     def msg(self) -> str:
         return f"domain={self.domain} | source={self.source} | dataset={self.dataset} | discriminator={self.discriminator}"
-
-    def runs_on(self, day: str) -> bool:
-        if not day:
-            return True
-        return day.lower() in (self.run_days or DAYS_OF_WEEK)
 
     @property
     def uses_date_range(self) -> bool:
@@ -132,10 +110,12 @@ class DatasetRecipe(BronzeToSilverDTO):
                 q[k] = PERIOD_ANNUAL
 
         # Always include api key (will be filtered if None)
-        api_key_env = DATA_SOURCES_CONFIG[self.source][API_KEY]
-        api_key_value = api_key if api_key else os.getenv(api_key_env)
+        source_cfg = DATA_SOURCES_CONFIG.get(self.source, {})
+        api_key_env = source_cfg.get(API_KEY, "")
+        api_key_value = api_key if api_key else (os.getenv(api_key_env) if api_key_env else None)
+        api_key_param_name = source_cfg.get(API_KEY_QUERY_PARAM, "apikey")
         if api_key_value:
-            q["apikey"] = api_key_value
+            q[api_key_param_name] = api_key_value
 
         # Remove None-valued items
         return {k: v for k, v in q.items() if v is not None}

@@ -2,73 +2,17 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from sbfoundation.dtos.company.company_delisted_dto import CompanyDelistedDTO
-from sbfoundation.dtos.company.company_dto import CompanyDTO
-from sbfoundation.dtos.company.company_notes_dto import CompanyNotesDTO
-from sbfoundation.dtos.company.company_employees_dto import CompanyEmployeesDTO
-from sbfoundation.dtos.company.company_market_cap_dto import CompanyMarketCapDTO
-from sbfoundation.dtos.company.company_officers_dto import CompanyOfficerDTO
-from sbfoundation.dtos.company.company_peers_dto import CompanyPeersDTO
-from sbfoundation.dtos.company.company_shares_float_dto import CompanySharesFloatDTO
-
-from sbfoundation.dtos.economics.economics_dto import EconomicsDTO
-from sbfoundation.dtos.economics.market_risk_premium_dto import MarketRiskPremiumDTO
-from sbfoundation.dtos.economics.treasury_rates_dto import TreasuryRatesDTO
-
-from sbfoundation.dtos.fundamentals.balance_sheet_statement_dto import BalanceSheetStatementDTO
-from sbfoundation.dtos.fundamentals.balance_sheet_statement_growth_dto import BalanceSheetStatementGrowthDTO
-from sbfoundation.dtos.fundamentals.cashflow_statement_dto import CashflowStatementDTO
-from sbfoundation.dtos.fundamentals.cashflow_statement_growth_dto import CashflowStatementGrowthDTO
-from sbfoundation.dtos.fundamentals.enterprise_values_dto import EnterpriseValuesDTO
-from sbfoundation.dtos.fundamentals.financial_scores_dto import FinancialScoresDTO
-from sbfoundation.dtos.fundamentals.financial_statement_growth_dto import FinancialStatementGrowthDTO
-from sbfoundation.dtos.fundamentals.income_statement_dto import IncomeStatementDTO
-from sbfoundation.dtos.fundamentals.income_statement_growth_dto import IncomeStatementGrowthDTO
-from sbfoundation.dtos.fundamentals.key_metrics_dto import KeyMetricsDTO
-from sbfoundation.dtos.fundamentals.key_metrics_ttm_dto import KeyMetricsTtmDTO
-from sbfoundation.dtos.fundamentals.latest_financial_statements_dto import LatestFinancialStatementsDTO
-from sbfoundation.dtos.fundamentals.metrics_ratios_dto import MetricsRatiosDTO
-from sbfoundation.dtos.fundamentals.owner_earnings_dto import OwnerEarningsDTO
-from sbfoundation.dtos.fundamentals.revenue_segmentation_dto import RevenueSegmentationDTO
-
 from sbfoundation.dtos.bronze_to_silver_dto import BronzeToSilverDTO
-
-from sbfoundation.dtos.technicals.average_directional_index_dto import AverageDirectionalIndexDTO
-from sbfoundation.dtos.technicals.double_exponential_moving_average_dto import DoubleExponentialMovingAverageDTO
-from sbfoundation.dtos.technicals.exponential_moving_average_dto import ExponentialMovingAverageDTO
-from sbfoundation.dtos.technicals.historical_price_eod_dividend_adjusted_dto import HistoricalPriceEodDividendAdjustedDTO
-from sbfoundation.dtos.technicals.historical_price_eod_full_dto import HistoricalPriceEodFullDTO
-from sbfoundation.dtos.technicals.historical_price_eod_non_split_adjusted_dto import HistoricalPriceEodNonSplitAdjustedDTO
-from sbfoundation.dtos.technicals.relative_strength_index_dto import RelativeStrengthIndexDTO
-from sbfoundation.dtos.technicals.simple_moving_average_dto import SimpleMovingAverageDTO
-from sbfoundation.dtos.technicals.standard_deviation_dto import StandardDeviationDTO
-from sbfoundation.dtos.technicals.triple_exponential_moving_average_dto import TripleExponentialMovingAverageDTO
-from sbfoundation.dtos.technicals.weighted_moving_average_dto import WeightedMovingAverageDTO
-from sbfoundation.dtos.technicals.williams_dto import WilliamsDTO
-
-from sbfoundation.dtos.instrument.stock_list_dto import StockListDTO
-from sbfoundation.dtos.instrument.etf_list_dto import ETFListDTO
-from sbfoundation.dtos.instrument.index_list_dto import IndexListDTO
-from sbfoundation.dtos.instrument.cryptocurrency_list_dto import CryptocurrencyListDTO
-from sbfoundation.dtos.instrument.etf_holdings_dto import ETFHoldingsDTO
-
-from sbfoundation.dtos.market.market_countries_dto import MarketCountriesDTO
-from sbfoundation.dtos.market.market_exchanges_dto import MarketExchangesDTO
-from sbfoundation.dtos.market.market_sectors_dto import MarketSectorsDTO
-from sbfoundation.dtos.market.market_industries_dto import MarketIndustriesDTO
-from sbfoundation.dtos.market.market_screener_dto import MarketScreenerDTO
-from sbfoundation.dtos.market.market_sector_performance_dto import MarketSectorPerformanceDTO
-from sbfoundation.dtos.market.market_industry_performance_dto import MarketIndustryPerformanceDTO
-from sbfoundation.dtos.market.market_sector_pe_dto import MarketSectorPeDTO
-from sbfoundation.dtos.market.market_industry_pe_dto import MarketIndustryPeDTO
-from sbfoundation.dtos.market.market_hours_dto import MarketHoursDTO
-from sbfoundation.dtos.market.market_holidays_dto import MarketHolidaysDTO
-
-from sbfoundation.dtos.commodities.commodities_list_dto import CommoditiesListDTO
-from sbfoundation.dtos.commodities.commodities_price_eod_dto import CommoditiesPriceEodDTO
-from sbfoundation.dtos.crypto.crypto_price_eod_dto import CryptoPriceEodDTO
-from sbfoundation.dtos.fx.fx_list_dto import FxListDTO
-from sbfoundation.dtos.fx.fx_price_eod_dto import FxPriceEodDTO
+from sbfoundation.dtos.eod.eod_bulk_price_dto import EodBulkPriceDTO
+from sbfoundation.dtos.eod.eod_bulk_company_profile_dto import EodBulkCompanyProfileDTO
+from sbfoundation.dtos.fundamentals.bulk.income_statement_bulk_dto import IncomeStatementBulkDTO
+from sbfoundation.dtos.fundamentals.bulk.balance_sheet_bulk_dto import BalanceSheetBulkDTO
+from sbfoundation.dtos.fundamentals.bulk.cashflow_bulk_dto import CashflowBulkDTO
+from sbfoundation.dtos.fundamentals.bulk.key_metrics_bulk_dto import KeyMetricsBulkDTO
+from sbfoundation.dtos.fundamentals.bulk.ratios_bulk_dto import RatiosBulkDTO
+from sbfoundation.dtos.economics.fred_dgs10_dto import FredDgs10DTO
+from sbfoundation.dtos.economics.fred_usrecm_dto import FredUsrecmDTO
+from sbfoundation.dtos.economics.market_risk_premium_dto import MarketRiskPremiumDTO
 
 
 class DTORegistry:
@@ -111,83 +55,25 @@ class DTORegistry:
 
 DTO_REGISTRY = DTORegistry(
     {
-        "economic-indicators": EconomicsDTO,
-        "treasury-rates": TreasuryRatesDTO,
+        # EOD bulk domain
+        "eod-bulk-price": EodBulkPriceDTO,
+        "company-profile-bulk": EodBulkCompanyProfileDTO,
+        # Quarter bulk domain
+        "income-statement-bulk-quarter": IncomeStatementBulkDTO,
+        "balance-sheet-bulk-quarter": BalanceSheetBulkDTO,
+        "cashflow-bulk-quarter": CashflowBulkDTO,
+        # Annual bulk domain
+        "income-statement-bulk-annual": IncomeStatementBulkDTO,
+        "balance-sheet-bulk-annual": BalanceSheetBulkDTO,
+        "cashflow-bulk-annual": CashflowBulkDTO,
+        "key-metrics-bulk-annual": KeyMetricsBulkDTO,
+        "ratios-bulk-annual": RatiosBulkDTO,
+        # Quarter bulk domain (key metrics)
+        "key-metrics-bulk-quarter": KeyMetricsBulkDTO,
+        # Economics / Macro
+        "fred-dgs10": FredDgs10DTO,
+        "fred-usrecm": FredUsrecmDTO,
         "market-risk-premium": MarketRiskPremiumDTO,
-        "company-profile": CompanyDTO,
-        "company-notes": CompanyNotesDTO,
-        "company-peers": CompanyPeersDTO,
-        "company-employees": CompanyEmployeesDTO,
-        "company-market-cap": CompanyMarketCapDTO,
-        "company-shares-float": CompanySharesFloatDTO,
-        "company-officers": CompanyOfficerDTO,
-        "company-delisted": CompanyDelistedDTO,
-        "income-statement": IncomeStatementDTO,
-        "balance-sheet-statement": BalanceSheetStatementDTO,
-        "cashflow-statement": CashflowStatementDTO,
-        "key-metrics": KeyMetricsDTO,
-        "metric-ratios": MetricsRatiosDTO,
-        "key-metrics-ttm": KeyMetricsTtmDTO,
-        "latest-financial-statements": LatestFinancialStatementsDTO,
-        "financial-scores": FinancialScoresDTO,
-        "owner-earnings": OwnerEarningsDTO,
-        "enterprise-values": EnterpriseValuesDTO,
-        "income-statement-growth": IncomeStatementGrowthDTO,
-        "balance-sheet-statement-growth": BalanceSheetStatementGrowthDTO,
-        "cashflow-statement-growth": CashflowStatementGrowthDTO,
-        "financial-statement-growth": FinancialStatementGrowthDTO,
-        "revenue-product-segmentation": RevenueSegmentationDTO,
-        "revenue-geographic-segmentation": RevenueSegmentationDTO,
-        "technicals-historical-price-eod-full": HistoricalPriceEodFullDTO,
-        "technicals-historical-price-eod-non-split-adjusted": HistoricalPriceEodNonSplitAdjustedDTO,
-        "technicals-historical-price-eod-dividend-adjusted": HistoricalPriceEodDividendAdjustedDTO,
-        "technicals-sma-20": SimpleMovingAverageDTO,
-        "technicals-sma-50": SimpleMovingAverageDTO,
-        "technicals-sma-200": SimpleMovingAverageDTO,
-        "technicals-ema-12": ExponentialMovingAverageDTO,
-        "technicals-ema-26": ExponentialMovingAverageDTO,
-        "technicals-ema-50": ExponentialMovingAverageDTO,
-        "technicals-ema-200": ExponentialMovingAverageDTO,
-        "technicals-wma-20": WeightedMovingAverageDTO,
-        "technicals-wma-50": WeightedMovingAverageDTO,
-        "technicals-wma-200": WeightedMovingAverageDTO,
-        "technicals-dema-12": DoubleExponentialMovingAverageDTO,
-        "technicals-dema-26": DoubleExponentialMovingAverageDTO,
-        "technicals-dema-50": DoubleExponentialMovingAverageDTO,
-        "technicals-dema-200": DoubleExponentialMovingAverageDTO,
-        "technicals-tema-20": TripleExponentialMovingAverageDTO,
-        "technicals-rsi-14": RelativeStrengthIndexDTO,
-        "technicals-rsi-7": RelativeStrengthIndexDTO,
-        "technicals-standard-deviation-20": StandardDeviationDTO,
-        "technicals-williams-14": WilliamsDTO,
-        "technicals-adx-14": AverageDirectionalIndexDTO,
-        # Market domain (list datasets)
-        "stock-list": StockListDTO,
-        "etf-list": ETFListDTO,
-        "index-list": IndexListDTO,
-        "cryptocurrency-list": CryptocurrencyListDTO,
-        "etf-holdings": ETFHoldingsDTO,
-        # Market domain
-        "market-countries": MarketCountriesDTO,
-        "market-exchanges": MarketExchangesDTO,
-        "market-sectors": MarketSectorsDTO,
-        "market-industries": MarketIndustriesDTO,
-        "market-sector-performance": MarketSectorPerformanceDTO,
-        "market-industry-performance": MarketIndustryPerformanceDTO,
-        "market-sector-pe": MarketSectorPeDTO,
-        "market-industry-pe": MarketIndustryPeDTO,
-        "market-hours": MarketHoursDTO,
-        "market-holidays": MarketHolidaysDTO,
-        "market-screener": MarketScreenerDTO,
-        # Commodities domain
-        "commodities-list": CommoditiesListDTO,
-        "commodities-price-eod": CommoditiesPriceEodDTO,
-        # Crypto domain
-        "cryptocurrency-list": CryptocurrencyListDTO,
-        "crypto-price-eod": CryptoPriceEodDTO,
-        # FX domain
-        "forex-list": FxListDTO,
-        "fx-price-eod": FxPriceEodDTO,
     }
 )
 

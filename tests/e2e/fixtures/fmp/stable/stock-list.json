@@ -1,0 +1,5 @@
+[
+  {"symbol": "AAPL", "name": "Apple Inc.", "price": 232.80, "exchange": "NASDAQ Global Select", "exchangeShortName": "NASDAQ", "type": "stock"},
+  {"symbol": "MSFT", "name": "Microsoft Corporation", "price": 415.50, "exchange": "NASDAQ Global Select", "exchangeShortName": "NASDAQ", "type": "stock"},
+  {"symbol": "GOOGL", "name": "Alphabet Inc.", "price": 180.20, "exchange": "NASDAQ Global Select", "exchangeShortName": "NASDAQ", "type": "stock"}
+]

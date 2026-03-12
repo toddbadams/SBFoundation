@@ -12,8 +12,8 @@ from sbfoundation.run.dtos.bronze_result import BronzeResult
 from sbfoundation.settings import (
     BASE_URL,
     CADENCES,
-    COMPANY_DOMAIN,
-    COMPANY_INFO_DATASET,
+    EOD_DOMAIN,
+    EOD_BULK_PRICE_DATASET,
     DATA_SOURCES_CONFIG,
     DEFAULT_LIMIT,
     FMP_DATA_SOURCE,
@@ -22,9 +22,9 @@ from sbfoundation.settings import (
 
 def make_dataset_recipe(**overrides: object) -> DatasetRecipe:
     base = {
-        "domain": COMPANY_DOMAIN,
+        "domain": EOD_DOMAIN,
         "source": FMP_DATA_SOURCE,
-        "dataset": COMPANY_INFO_DATASET,
+        "dataset": EOD_BULK_PRICE_DATASET,
         "data_source_path": "/tmp",
         "query_vars": {"constant": "value"},
         "date_key": "date",

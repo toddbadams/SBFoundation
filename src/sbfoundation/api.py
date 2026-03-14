@@ -6,7 +6,7 @@ import traceback
 from sbfoundation.annual import AnnualService
 from sbfoundation.dataset.services.dataset_service import DatasetService
 from sbfoundation.eod import EodService
-from sbfoundation.gold import GoldDimService, GoldFactService
+from sbfoundation.gold import EodFeatureService, GoldDimService, GoldFactService, MoatFeatureService
 from sbfoundation.infra.logger import LoggerFactory, SBLogger
 from sbfoundation.infra.universe_repo import UniverseRepo
 from sbfoundation.maintenance import DuckDbBootstrap
@@ -212,7 +212,27 @@ class SBFoundationAPI:
             self.logger.error(f"Gold fact promotion failed: {exc}", run_id=run.run_id)
             traceback.print_exc()
 
-        all_counts = {**dim_counts, **fact_counts}
+        eod_feat_count = 0
+        try:
+            eod_svc = EodFeatureService(bootstrap=self._bootstrap, logger=self.logger)
+            eod_feat_count = eod_svc.build(run_id=run.run_id)
+            self.logger.info(f"EOD features: rows_with_momentum={eod_feat_count}", run_id=run.run_id)
+        except Exception as exc:
+            error_message = (error_message + " | " if error_message else "") + str(exc)
+            self.logger.error(f"EOD feature computation failed: {exc}", run_id=run.run_id)
+            traceback.print_exc()
+
+        moat_rows = 0
+        try:
+            moat_svc = MoatFeatureService(bootstrap=self._bootstrap, logger=self.logger)
+            moat_rows = moat_svc.build(gold_build_id=gold_build_id, run_id=run.run_id)
+            self.logger.info(f"Moat features: fact_moat_annual rows={moat_rows}", run_id=run.run_id)
+        except Exception as exc:
+            error_message = (error_message + " | " if error_message else "") + str(exc)
+            self.logger.error(f"Moat feature computation failed: {exc}", run_id=run.run_id)
+            traceback.print_exc()
+
+        all_counts = {**dim_counts, **fact_counts, "fact_eod_features": eod_feat_count, "fact_moat_annual": moat_rows}
         tables_built = [t for t, n in all_counts.items() if n > 0]
         self.ops_service.finish_gold_build(
             gold_build_id=gold_build_id,

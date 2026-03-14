@@ -136,7 +136,9 @@ The defaults (`DATA_ROOT_FOLDER=c:/sb/SBFoundation/data`, `REPO_ROOT_FOLDER=c:/s
 SBFoundation/
 ├── config/
 │   └── dataset_keymap.yaml       # AUTHORITATIVE dataset/recipe/DTO/Silver-table definitions
-├── docs/                         # project documentation Architecture, contracts, DuckDB design docs
+├── docs/
+│   ├── backlog/                  # ExecPlans queued for implementation
+│   └── completed/                # ExecPlans that have been fully implemented and closed out
 ├── src/
 │   └── sbfoundation/
 │       ├── __init__.py               # Public API: SBFoundationAPI, RunCommand
@@ -222,6 +224,20 @@ SBFoundation/
 | `dtos/dto_registry.py` | Maps dataset name strings → DTO classes. Used by `SilverService` for dynamic dispatch. |
 | `sbfoundation/settings.py` | Single module of all constants: domain names, dataset names, data source config, placeholder strings, folder names, cadence modes, FMP plan tiers. |
 | `sbfoundation/folders.py` | Resolves `DATA_ROOT_FOLDER` / `REPO_ROOT_FOLDER` into concrete `Path` objects for Bronze, DuckDB, logs, migrations, and keymap. |
+
+---
+
+## Historical Data Backfill
+
+Each domain service file contains an `if __name__ == "__main__"` block that serves as the entrypoint for backfilling historical data. Running the file directly in VS Code also enables full debugger support (`concurrent_requests=1` keeps execution synchronous).
+
+| Service file | What it backfills | How to control the range |
+|---|---|---|
+| `src/sbfoundation/eod/eod_service.py` | EOD prices — one trading day at a time (Mon–Fri) | Edit `_start` / `_end` date range in the `__main__` block |
+| `src/sbfoundation/annual/annual_service.py` | Annual fundamentals — one fiscal year at a time | Edit the `range(start_year, end_year)` in the `__main__` block |
+| `src/sbfoundation/quarter/quarter_service.py` | Quarterly fundamentals — one quarter at a time (Q1–Q4 × year) | Edit the year `range` and period list in the `__main__` block |
+
+**Season gates are bypassed** when explicit date/year/period parameters are provided, so backfill runs work regardless of the current calendar date.
 
 ---
 

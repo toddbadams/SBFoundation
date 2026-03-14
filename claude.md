@@ -1,7 +1,7 @@
 # Strawberry Context
 
-**Version**: 3.5
-**Last Updated**: 2026-03-12
+**Version**: 3.8
+**Last Updated**: 2026-03-14
 **Maintenance**: Update when changing architecture patterns, modifying dataset_keymap.yaml structure, or adding new domains/contracts.
 
 ## Purpose
@@ -14,14 +14,16 @@ Strawberry Foundation is a **Bronze + Silver + Gold data acquisition, validation
 
 - **Adding new dataset?** → Edit `config/dataset_keymap.yaml` (see Section 5.3)
 - **Modifying data pipeline?** → `src/sbfoundation/api.py` + `config/dataset_keymap.yaml`
-- **Complex refactor?** → Section 7 (ExecPlans)
+- **Complex refactor?** → Section 7 (ExecPlans); backlog in `docs/backlog/`, completed in `docs/completed/`
 - **Writing a DTO?** → Section 8 (DTO Contracts)
 - **Writing a recipe?** → Section 9 (Recipe Contracts)
 - **DuckDB schema?** → Section 10 (DuckDB Storage)
 - **Gold layer design?** → Section 10.4–10.6 (Gold Tables, dims, facts)
 - **Feature column naming?** → Section 5.2 (all feature columns must end in `_f`)
+- **Feature calculations?** → Section 2, constraint 9 (prefer DuckDB SQL over Python)
 - **Before modifying `/src`?** → Section 11 (DDD Review Checklist)
 - **Logging (format, levels, run_id)?** → Section 13 (Logging)
+- **Historical data backfill / debug run?** → Section 14 (Backfill Entrypoints)
 
 ---
 
@@ -81,6 +83,8 @@ Strawberry implements **all three layers** of a medallion/lakehouse architecture
 
 7. **FMP bulk CSV field names differ from JSON API docs**. When adding or modifying bulk-endpoint DTOs (e.g., `eod-bulk-price`, `income-bulk`, `key-metrics-bulk`, `ratios-bulk`), always verify field names against actual Bronze file content — the CSV column headers returned by the bulk endpoint frequently differ from the field names documented in the FMP JSON API reference. Do not assume JSON doc field names apply to bulk CSV responses.
 
+9. **Feature calculations must be implemented in DuckDB SQL where possible**. Window functions, cross-sectional aggregations (percentile, z-score, rank), ratio computations, and rolling statistics should be expressed as DuckDB SQL (executed via `duckdb.DuckDBPyConnection`) rather than pulled into Python/pandas. Use Python only when the computation cannot be expressed in SQL (e.g., iterative optimization, external model inference). This is mandatory for performance — pulling large Gold tables into memory for row-by-row Python computation is not acceptable. `EodFeatureService` and `MoatFeatureService` must follow this constraint.
+
 8. **`BronzeService` resolves API keys per source**. `BronzeService` stores only `fmp_api_key` and passes `api_key=self.fmp_api_key if recipe.source == FMP_DATA_SOURCE else None` at every `RunRequest.from_recipe()` call site. Non-FMP sources (e.g., FRED) must have their API keys injected via their own environment variables (e.g., `FRED_API_KEY`), which `RunProvider._get_query_vars()` resolves from `DATA_SOURCES_CONFIG[source][API_KEY]`.
 
 **Enforcement**: `DatasetService` validates keymap on load; `tests/unit/dataset/` validates config parsing; `tests/e2e/` verifies end-to-end behavior; mypy enforces types.
@@ -94,7 +98,7 @@ When documents conflict, priority order:
 1. `config/dataset_keymap.yaml` — authoritative for all dataset definitions and mappings
 2. Recipe contracts (Section 9) — for recipe semantics and behavior
 3. Bronze contracts (Section 6) — for Bronze storage format
-4. `docs/prompts/technology_stack.md` — runtime/tooling defaults
+4. ExecPlans in `docs/backlog/` — runtime/tooling defaults and in-progress decisions
 5. Architecture (Section 1) — conceptual intent
 
 ---
@@ -305,7 +309,7 @@ All work for the ExecPlan must be committed to this branch. Do not commit to `ma
 
 Only after the user confirms: commit any remaining changes to the feature branch, then create a PR targeting `main` with a descriptive title and summary of what was changed and why. Do not merge the PR.
 
-ExecPlans are stored as `.md` files under `docs/prompts/`. They are living documents — update all sections as work proceeds.
+ExecPlans are stored as `.md` files under `docs/backlog/` (pending implementation) or `docs/completed/` (fully implemented and closed out). They are living documents — update all sections as work proceeds. When closing out an ExecPlan, move the file from `docs/backlog/` to `docs/completed/`.
 
 ---
 
@@ -487,7 +491,7 @@ Before modifying production code, review the target classes against:
 
 **Good Python Practices to check**: clear structure + comments; explicit type annotations + dataclasses; docstrings for behavior; context managers for resources; consistent naming.
 
-Record findings in the ExecPlan's `Surprises & Discoveries` and `Review Findings` sections before changing code. Save the resulting ExecPlan under `docs/prompts/`.
+Record findings in the ExecPlan's `Surprises & Discoveries` and `Review Findings` sections before changing code. Save the resulting ExecPlan under `docs/backlog/`.
 
 ---
 
@@ -590,7 +594,38 @@ service = MyService(logger=logger)
 
 ---
 
-## 14) What "Done" Looks Like
+## 14) Historical Data Backfill Entrypoints
+
+Each service file contains an `if __name__ == "__main__"` block that acts as the entrypoint for backfilling historical data. Running the file directly in VS Code (or any Python runner) also enables full debugger support.
+
+| Service | File | Backfill granularity | Key parameter(s) |
+|---|---|---|---|
+| EOD prices | `src/sbfoundation/eod/eod_service.py` | One trading day at a time, iterates a date range (Mon–Fri) | `eod_date` (ISO 8601 date string) passed to `RunCommand` |
+| Annual fundamentals | `src/sbfoundation/annual/annual_service.py` | One fiscal year at a time, iterates a year range | `year` (int) passed to `RunCommand` |
+| Quarterly fundamentals | `src/sbfoundation/quarter/quarter_service.py` | One quarter at a time, iterates year × period (Q1–Q4) | `quarter_year` (int) + `quarter_period` (str, e.g. `"Q2"`) passed to `RunCommand` |
+
+**Common pattern** — all three use `concurrent_requests=1` (synchronous, safe for debugging) and pass `enable_bronze=True, enable_silver=True, enable_gold=True`:
+
+```python
+# eod_service.py — backfill a date range
+_start = date(2026, 3, 13)
+_end   = date(2026, 3, 14)
+
+# annual_service.py — backfill multiple fiscal years
+for _year in range(2020, 2026): ...
+
+# quarter_service.py — backfill year × quarter combinations
+for _year in range(2019, 2026):
+    for _period in ("Q1", "Q2", "Q3", "Q4"): ...
+```
+
+**Season gates**: `AnnualService` skips runs outside Jan–Mar; `QuarterService` skips outside earnings windows. Both gates are bypassed when `year` / `year+period` are provided explicitly.
+
+To adjust the backfill range, edit the `_start`/`_end` dates or year ranges directly in the `if __name__ == "__main__"` block before running.
+
+---
+
+## 15) What "Done" Looks Like
 
 - Changes compile/type-check (mypy-friendly)
 - Formatting consistent with repo standards (Black/isort/flake8)

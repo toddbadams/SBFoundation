@@ -102,6 +102,34 @@ def _cmd_ticker(repo: DuckDbOpsRepo, args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_moat(repo: DuckDbOpsRepo, _args: argparse.Namespace) -> int:
+    rows = repo.get_moat_score_coverage()
+    if not rows:
+        print("No moat scores found in gold.fact_moat_annual.")
+        return 1
+    table = [
+        [
+            r["symbol"],
+            f"{r['min_year']}–{r['max_year']}",
+            str(r["years_covered"]),
+            _fmt(r["moat_score_s"]),
+            _fmt(r["profitability_s"]),
+            _fmt(r["stability_s"]),
+            _fmt(r["competitive_s"]),
+            _fmt(r["lock_in_s"]),
+            _fmt(r["cost_advantage_s"]),
+            _fmt(r["reinvestment_s"]),
+        ]
+        for r in rows
+    ]
+    _print_table(
+        ["symbol", "years", "n", "moat", "profit", "stab", "comp", "lock", "cost", "reinvest"],
+        table,
+        title="Moat Score Coverage (strongest first)",
+    )
+    return 0
+
+
 def _cmd_stale(repo: DuckDbOpsRepo, args: argparse.Namespace) -> int:
     rows = repo.get_stale_snapshots(args.days)
     if not rows:
@@ -143,6 +171,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p_stale = sub.add_parser("stale", help="Snapshot datasets not refreshed recently.")
     p_stale.add_argument("--days", type=int, default=90, help="Minimum age in days (default: 90)")
 
+    sub.add_parser("moat", help="Moat score coverage from gold.fact_moat_annual, strongest first.")
+
     return parser
 
 
@@ -156,6 +186,7 @@ _HANDLERS = {
     "dataset": _cmd_dataset,
     "ticker": _cmd_ticker,
     "stale": _cmd_stale,
+    "moat": _cmd_moat,
 }
 
 

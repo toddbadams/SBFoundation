@@ -695,6 +695,62 @@ class DuckDbOpsRepo:
         with self._bootstrap.ops_transaction() as conn:
             conn.execute(sql, [finished_at, status, tables_built, row_counts, error_message, gold_build_id])
 
+    # ---- Gold moat coverage ---#
+
+    def get_moat_score_coverage(self) -> list[dict[str, Any]]:
+        """Per-ticker moat score coverage from gold.fact_moat_annual.
+
+        Returns one row per ticker with year range, count of scored years,
+        and latest year's composite + pillar sub-scores. Sorted by latest
+        composite score descending so the strongest moats appear first.
+        """
+        sql = (
+            "WITH latest AS ("
+            "    SELECT"
+            "        fm.instrument_sk,"
+            "        di.symbol,"
+            "        fm.calendar_year,"
+            "        fm.moat_score_s,"
+            "        fm.profitability_s,"
+            "        fm.stability_s,"
+            "        fm.competitive_s,"
+            "        fm.lock_in_s,"
+            "        fm.cost_advantage_s,"
+            "        fm.reinvestment_s,"
+            "        ROW_NUMBER() OVER ("
+            "            PARTITION BY fm.instrument_sk ORDER BY fm.calendar_year DESC"
+            "        ) AS rn"
+            "    FROM gold.fact_moat_annual fm"
+            "    JOIN gold.dim_instrument di ON fm.instrument_sk = di.instrument_sk"
+            "),"
+            "coverage AS ("
+            "    SELECT instrument_sk,"
+            "        MIN(calendar_year) AS min_year,"
+            "        MAX(calendar_year) AS max_year,"
+            "        COUNT(*) AS years_covered"
+            "    FROM gold.fact_moat_annual"
+            "    GROUP BY instrument_sk"
+            ")"
+            "SELECT"
+            "    l.symbol,"
+            "    c.min_year,"
+            "    c.max_year,"
+            "    c.years_covered,"
+            "    l.calendar_year AS latest_year,"
+            "    l.moat_score_s,"
+            "    l.profitability_s,"
+            "    l.stability_s,"
+            "    l.competitive_s,"
+            "    l.lock_in_s,"
+            "    l.cost_advantage_s,"
+            "    l.reinvestment_s"
+            " FROM latest l"
+            " JOIN coverage c ON l.instrument_sk = c.instrument_sk"
+            " WHERE l.rn = 1"
+            " ORDER BY l.moat_score_s DESC NULLS LAST"
+        )
+        return self._fetch_dicts(sql, [])
+
     # ---- PRIVATE METHODS ---#
 
 

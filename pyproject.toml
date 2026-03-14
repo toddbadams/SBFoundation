@@ -7,6 +7,7 @@ package-mode = true
 packages = [
   {include = "sbfoundation", from = "src"},
   {include = "sbuniverse",   from = "src"},
+  {include = "services",     from = "src"},
 ]
 
 [tool.poetry.dependencies]

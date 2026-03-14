@@ -85,7 +85,9 @@
       "Bash(mkdir -p /c/sb/SBFoundation/.claude/skills && cp -r /tmp/caf/.claude/skills/* /c/sb/SBFoundation/.claude/skills/ && echo \"Done\")",
       "WebFetch(domain:pages.stern.nyu.edu)",
       "WebFetch(domain:pypi.org)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(cd \"C:/sb/SBFoundation\" && gh auth status)",
+      "Bash(gh auth:*)"
     ]
   }
 }

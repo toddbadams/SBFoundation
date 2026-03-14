@@ -80,7 +80,17 @@ A failed ingestion request does not abort the run. A `BronzeResult` error record
 
 ## Installation
 
-**Prerequisites:** Python 3.12 (or any `>=3.11,<3.14`), [Poetry](https://python-poetry.org/)
+**Prerequisites:** Python 3.12 (or any `>=3.11,<3.14`), [Poetry](https://python-poetry.org/), [GitHub CLI](https://cli.github.com/)
+
+Install the GitHub CLI (required for branch and PR workflows):
+
+```powershell
+# Windows — winget (built into Windows 10/11)
+winget install --id GitHub.cli
+
+# Then authenticate
+gh auth login
+```
 
 ```bash
 # Clone and enter the repo
